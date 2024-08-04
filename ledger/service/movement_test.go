@@ -546,7 +546,10 @@ func TestTransact(t *testing.T) {
 	t.Parallel()
 
 	newTableQuery := "CREATE TABLE IF NOT EXISTS trasact_test(id int PRIMARY KEY);"
-	_, err := testPG.Exec(context.Background(), newTableQuery)
+	err := testQueries.Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
+		_, err := pg.Exec(ctx, newTableQuery)
+		return err
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

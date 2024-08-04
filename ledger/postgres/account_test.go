@@ -17,7 +17,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 	t.Parallel()
 
 	now := time.Now()
-
 	tests := []struct {
 		name                  string
 		createAccounts        []CreateLedgerAccount
@@ -91,10 +90,16 @@ func TestCreateLedgerAccounts(t *testing.T) {
 		},
 	}
 
+	// Fork the schema so we can test in parallel.
+	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			if err := testQueries.CreateLedgerAccounts(context.Background(), test.createAccounts...); !errors.Is(err, test.err) {
+			if err := tq.CreateLedgerAccounts(context.Background(), test.createAccounts...); !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}
 
@@ -103,7 +108,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				accounts = append(accounts, ca.AccountID)
 			}
 
-			gotAcc, err := testQueries.GetAccounts(context.Background(), accounts)
+			gotAcc, err := tq.GetAccounts(context.Background(), accounts)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -111,7 +116,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				t.Fatalf("(-want/+got)\n%s", diff)
 			}
 
-			gotAccb, err := testQueries.GetAccountsBalance(context.Background(), accounts)
+			gotAccb, err := tq.GetAccountsBalance(context.Background(), accounts)
 			if err != nil {
 				t.Fatal(err)
 			}

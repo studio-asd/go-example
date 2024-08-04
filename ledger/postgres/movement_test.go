@@ -122,12 +122,10 @@ func TestMove(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Fork a new connection to a new schema so we can test in parallel.
-			pg, err := testHelper.ForkSchema(context.Background(), testPG, "public")
+			query, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
 			if err != nil {
 				t.Fatal(err)
 			}
-			query := New(pg)
 
 			for accountID, balance := range accountsSetup {
 				if err := query.CreateAccountBalance(testCtx, CreateAccountBalanceParams{
@@ -344,11 +342,10 @@ WHERE ab.account_id = v.account_id;
 				accounts = append(accounts, acc)
 			}
 			// Fork a new connection to a new schema so we can test in parallel.
-			pg, err := testHelper.ForkSchema(context.Background(), testPG, "public")
+			query, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
 			if err != nil {
 				t.Fatal(err)
 			}
-			query := New(pg)
 			for _, account := range test.accounts {
 				if err := query.CreateAccountBalance(context.Background(), CreateAccountBalanceParams{
 					AccountID:     account.AccountID,
@@ -359,8 +356,6 @@ WHERE ab.account_id = v.account_id;
 					t.Fatal(err)
 				}
 			}
-
-			t.Log("Search Path:", pg.DefaultSearchPath())
 
 			var (
 				updateBalanceQuery string

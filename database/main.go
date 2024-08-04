@@ -426,20 +426,17 @@ package {{ .GoPackageName }}
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/albertwidi/pkg/postgres"
-	"github.com/albertwidi/pkg/testing/pgtest"
 )
 
 var (
-	testPG *postgres.Postgres
 	testQueries *Queries
-	testHelper *pgtest.PGTest
 	testCtx context.Context
+	testHelper *TestHelper
 )
 
 func TestMain(m *testing.M) {
@@ -453,15 +450,22 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func run(ctx context.Context, m *testing.M) (int, error) {
-	var err error
-	testPG, err = PrepareTest(ctx)
+func run(ctx context.Context, m *testing.M) (code int, err error) {
+	th := NewTestHelper()
+	testQueries, err = th.PrepareTest(ctx)
 	if err != nil {
-		return 1, err
+		code = 1
+		return
 	}
-	testQueries = New(testPG)
-	testHelper = pgtest.New()
-	return m.Run(), nil
+	// Close all resources upon exit, and record the error when closing the resources if any.
+	defer func() {
+		errClose := th.Close()
+		if errClose != nil {
+			err = errors.Join(err, errClose)
+		}
+	}()
+	code = m.Run()
+	return
 }
 `
 
@@ -471,6 +475,7 @@ package {{ .GoPackageName }}
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -479,10 +484,22 @@ import (
 	"github.com/albertwidi/pkg/testing/pgtest"
 )
 
-const dbName = "{{ .DatabaseName }}"
+type TestHelper struct {
+	dbName string
+	conn *postgres.Postgres
+	pgtestHelper *pgtest.PGTest
+}
 
-// PrepareTest returns a new postgres connection with schema applied inside the database.
-func PrepareTest(ctx context.Context) (*postgres.Postgres, error) {
+func NewTestHelper() *TestHelper {
+	return &TestHelper{
+		dbName: "{{ .DatabaseName }}",
+		pgtestHelper: pgtest.New(),
+	}
+}
+
+// PrepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
+// to the database that can be used for testing purposes.
+func (th *TestHelper) PrepareTest(ctx context.Context) (*Queries, error) {
 	// Configuration for creating and preparing the database.
 	config := postgres.ConnectConfig{
 		Driver:   "pgx",
@@ -495,7 +512,7 @@ func PrepareTest(ctx context.Context) (*postgres.Postgres, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := pgtest.CreateDatabase(ctx, pgconn, dbName); err != nil {
+	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName); err != nil {
 		return nil, err
 	}
 	// Close the connection as we no-longer need it. We need it only to create the database.
@@ -504,7 +521,7 @@ func PrepareTest(ctx context.Context) (*postgres.Postgres, error) {
 	}
 
 	// Create a new connection with the correct database name.
-	config.DBName = dbName
+	config.DBName = th.dbName
 	testConn, err := postgres.Connect(context.Background(), config)
 	if err != nil {
 		return nil, err
@@ -522,6 +539,34 @@ func PrepareTest(ctx context.Context) (*postgres.Postgres, error) {
 	if err != nil {
 		return nil, err
 	}
-	return testConn, nil
+	// Assgign the connection for the test helper.
+	th.conn = testConn
+	return New(testConn), nil
+}
+
+// Close closes all connections from the test helper.
+func (th *TestHelper) Close() error {
+	var err error
+	if th.conn != nil {
+		errClose := th.conn.Close()
+		if errClose != nil {
+			err = errors.Join(err, errClose)
+		}
+	}
+	errClose := th.pgtestHelper.Close()
+	if errClose != nil {
+		errors.Join(err ,errClose)
+	}
+	return err
+}
+
+// ForkPostgresSchema forks the sourceSchema with the underlying connection inside the Queries. The function will return a new connection
+// with default search_path into the new schema. The schema name currently is random and cannot be defined by the user.
+func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*Queries, error) {
+	pg , err:= th.pgtestHelper.ForkSchema(ctx, q.db, sourceSchema)
+	if err != nil {
+		return nil, err
+	}
+	return New(pg), nil
 }
 `

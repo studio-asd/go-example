@@ -2,12 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"testing"
-
-	"github.com/albertwidi/pkg/postgres"
 
 	ledgerpg "github.com/albertwidi/go-example/ledger/postgres"
 )
@@ -16,7 +15,7 @@ var (
 	// All variables below this only available if '-short' is not used, this means we will do integration test.
 	testLedger  *Ledger
 	testQueries *ledgerpg.Queries
-	testPG      *postgres.Postgres
+	testHelper  *ledgerpg.TestHelper
 )
 
 func TestMain(m *testing.M) {
@@ -28,17 +27,21 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func run(m *testing.M) (int, error) {
+func run(m *testing.M) (code int, err error) {
 	if !testing.Short() {
-		pg, err := ledgerpg.PrepareTest(context.Background())
+		var err error
+		testHelper = ledgerpg.NewTestHelper()
+		testQueries, err = testHelper.PrepareTest(context.Background())
 		if err != nil {
 			return 1, err
 		}
-		testPG = pg
-		testQueries = ledgerpg.New(pg)
-		testLedger = New(pg)
+		defer func() {
+			closeErr := testHelper.Close()
+			if closeErr != nil {
+				err = errors.Join(err, closeErr)
+			}
+		}()
 	}
-
-	code := m.Run()
-	return code, nil
+	code = m.Run()
+	return
 }

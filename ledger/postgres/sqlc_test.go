@@ -4,20 +4,17 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"testing"
 	"time"
-
-	"github.com/albertwidi/pkg/postgres"
-	"github.com/albertwidi/pkg/testing/pgtest"
 )
 
 var (
-	testPG *postgres.Postgres
 	testQueries *Queries
-	testHelper *pgtest.PGTest
 	testCtx context.Context
+	testHelper *TestHelper
 )
 
 func TestMain(m *testing.M) {
@@ -31,13 +28,20 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func run(ctx context.Context, m *testing.M) (int, error) {
-	var err error
-	testPG, err = PrepareTest(ctx)
+func run(ctx context.Context, m *testing.M) (code int, err error) {
+	th := NewTestHelper()
+	testQueries, err = th.PrepareTest(ctx)
 	if err != nil {
-		return 1, err
+		code = 1
+		return
 	}
-	testQueries = New(testPG)
-	testHelper = pgtest.New()
-	return m.Run(), nil
+	// Close all resources upon exit, and record the error when closing the resources if any.
+	defer func() {
+		errClose := th.Close()
+		if errClose != nil {
+			err = errors.Join(err, errClose)
+		}
+	}()
+	code = m.Run()
+	return
 }

@@ -1,8 +1,6 @@
 package service
 
 import (
-	"github.com/albertwidi/pkg/postgres"
-
 	ledgerpg "github.com/albertwidi/go-example/ledger/postgres"
 )
 
@@ -10,9 +8,9 @@ type Ledger struct {
 	q *ledgerpg.Queries
 }
 
-func New(pg *postgres.Postgres) *Ledger {
+func New(q *ledgerpg.Queries) *Ledger {
 	l := &Ledger{
-		q: ledgerpg.New(pg),
+		q: q,
 	}
 	return l
 }

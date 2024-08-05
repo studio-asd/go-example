@@ -9,7 +9,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
-	"github.com/kr/pretty"
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
@@ -352,7 +351,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				cmpopts.IgnoreFields(ledger.MovementLedgerEntries{}, "AccountsSummary"),
 			}
 			if diff := cmp.Diff(test.expect, le, opts...); diff != "" {
-				pretty.Logln(le)
 				t.Fatalf("(-want/+got)\n%s", diff)
 			}
 
@@ -545,8 +543,14 @@ func TestTransact(t *testing.T) {
 	}
 	t.Parallel()
 
+	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tl := New(tq)
+
 	newTableQuery := "CREATE TABLE IF NOT EXISTS trasact_test(id int PRIMARY KEY);"
-	err := testQueries.Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
+	err = tq.Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
 		_, err := pg.Exec(ctx, newTableQuery)
 		return err
 	})
@@ -566,7 +570,7 @@ func TestTransact(t *testing.T) {
 			return nil
 		}
 
-		testLedger.Transact(context.Background(), CreateTransaction{
+		tl.Transact(context.Background(), CreateTransaction{
 			UniqueID: uuid.NewString(),
 			Entries:  []MovementEntry{},
 		}, fn)

@@ -29,11 +29,10 @@ func TestMain(m *testing.M) {
 
 func run(m *testing.M) (code int, err error) {
 	if !testing.Short() {
-		var err error
-		testHelper = ledgerpg.NewTestHelper()
-		testQueries, err = testHelper.PrepareTest(context.Background())
+		testHelper, err = ledgerpg.NewTestHelper(context.Background())
 		if err != nil {
-			return 1, err
+			code = 1
+			return
 		}
 		defer func() {
 			closeErr := testHelper.Close()
@@ -41,6 +40,7 @@ func run(m *testing.M) (code int, err error) {
 				err = errors.Join(err, closeErr)
 			}
 		}()
+		testLedger = New(testQueries)
 	}
 	code = m.Run()
 	return

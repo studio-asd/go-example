@@ -15,20 +15,31 @@ import (
 
 type TestHelper struct {
 	dbName string
+	testQueries *Queries
 	conn *postgres.Postgres
 	pgtestHelper *pgtest.PGTest
 }
 
-func NewTestHelper() *TestHelper {
-	return &TestHelper{
+func NewTestHelper(ctx context.Context) (*TestHelper, error) {
+	th :=&TestHelper{
 		dbName: "ledger",
 		pgtestHelper: pgtest.New(),
 	}
+	q, err := th.prepareTest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	th.testQueries = q
+	return th, nil
 }
 
-// PrepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
+func (th *TestHelper) Queries() *Queries{
+	return th.testQueries
+}
+
+// prepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
 // to the database that can be used for testing purposes.
-func (th *TestHelper) PrepareTest(ctx context.Context) (*Queries, error) {
+func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 	// Configuration for creating and preparing the database.
 	config := postgres.ConnectConfig{
 		Driver:   "pgx",

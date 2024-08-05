@@ -122,7 +122,7 @@ func TestMove(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			query, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
+			query, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -342,7 +342,7 @@ WHERE ab.account_id = v.account_id;
 				accounts = append(accounts, acc)
 			}
 			// Fork a new connection to a new schema so we can test in parallel.
-			query, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
+			query, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
 			if err != nil {
 				t.Fatal(err)
 			}

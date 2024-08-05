@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/albertwidi/pkg/postgres"
 	"github.com/google/go-cmp/cmp"
 	"github.com/shopspring/decimal"
 
@@ -22,7 +23,9 @@ func TestCreateLedgerAccounts(t *testing.T) {
 		createAccounts        []CreateLedgerAccount
 		expectAccounts        []Account
 		expectAccountsBalance []GetAccountsBalanceRow
-		err                   error
+		// isolatedSchema fork the schema and creates a new schema for the test.
+		isolatedSchema bool
+		err            error
 	}{
 		{
 			name: "many accounts",
@@ -88,17 +91,82 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			},
 			err: nil,
 		},
-	}
-
-	// Fork the schema so we can test in parallel.
-	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
-	if err != nil {
-		t.Fatal(err)
+		{
+			name: "one account",
+			createAccounts: []CreateLedgerAccount{
+				{
+					AccountID:       "one_one",
+					ParentAccountID: "",
+					AccountType:     ledger.AccountTypeDeposit,
+					AccountStatus:   string(AccountStatusActive),
+					AllowNegative:   true,
+					Currency:        currency.IDR,
+					CreatedAt:       now.Add(time.Second * 3),
+				},
+			},
+			expectAccounts: []Account{
+				{
+					AccountID:       "one_one",
+					ParentAccountID: "",
+					AccountType:     ledger.AccountTypeDeposit,
+					AccountStatus:   AccountStatusActive,
+					CurrencyID:      1,
+					CreatedAt:       now.Add(time.Second * 3),
+				},
+			},
+			expectAccountsBalance: []GetAccountsBalanceRow{
+				{
+					AccountID:     "one_one",
+					AccountStatus: AccountStatusActive,
+					AccountType:   ledger.AccountTypeDeposit,
+					CurrencyID:    1,
+					AllowNegative: true,
+					Balance:       decimal.Zero,
+					LastLedgerID:  "",
+					CreatedAt:     now.Add(time.Second * 3),
+				},
+			},
+			err: nil,
+		},
+		{
+			name:           "isolated, conflict account id",
+			isolatedSchema: true,
+			createAccounts: []CreateLedgerAccount{
+				{
+					AccountID:       "one",
+					ParentAccountID: "",
+					AccountType:     ledger.AccountTypeDeposit,
+					AccountStatus:   string(AccountStatusActive),
+					AllowNegative:   true,
+					Currency:        currency.IDR,
+					CreatedAt:       now.Add(time.Second),
+				},
+				{
+					AccountID:       "one",
+					ParentAccountID: "",
+					AccountType:     ledger.AccountTypeDeposit,
+					AccountStatus:   string(AccountStatusActive),
+					AllowNegative:   true,
+					Currency:        currency.USD,
+					CreatedAt:       now.Add(time.Second * 2),
+				},
+			},
+			err: postgres.ErrUniqueViolation,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+
+			var err error
+			tq := testHelper.Queries()
+			if test.isolatedSchema {
+				tq, err = testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
 			if err := tq.CreateLedgerAccounts(context.Background(), test.createAccounts...); !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}

@@ -12,7 +12,6 @@ import (
 )
 
 var (
-	testQueries *Queries
 	testCtx context.Context
 	testHelper *TestHelper
 )
@@ -29,15 +28,14 @@ func TestMain(m *testing.M) {
 }
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
-	th := NewTestHelper()
-	testQueries, err = th.PrepareTest(ctx)
+	testHelper, err = NewTestHelper(ctx)
 	if err != nil {
 		code = 1
 		return
 	}
 	// Close all resources upon exit, and record the error when closing the resources if any.
 	defer func() {
-		errClose := th.Close()
+		errClose := testHelper.Close()
 		if errClose != nil {
 			err = errors.Join(err, errClose)
 		}

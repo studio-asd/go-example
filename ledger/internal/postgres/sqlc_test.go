@@ -43,3 +43,4 @@ func run(ctx context.Context, m *testing.M) (code int, err error) {
 	code = m.Run()
 	return
 }
+

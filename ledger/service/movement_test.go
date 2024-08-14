@@ -13,7 +13,7 @@ import (
 
 	"github.com/albertwidi/go-example/internal/currency"
 	"github.com/albertwidi/go-example/ledger"
-	ledgerpg "github.com/albertwidi/go-example/ledger/postgres"
+	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
 	"github.com/albertwidi/pkg/postgres"
 )
 
@@ -547,10 +547,10 @@ func TestTransact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tl := New(tq)
+	tl := New(tq.Queries())
 
 	newTableQuery := "CREATE TABLE IF NOT EXISTS trasact_test(id int PRIMARY KEY);"
-	err = tq.Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
+	err = tq.Queries().Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
 		_, err := pg.Exec(ctx, newTableQuery)
 		return err
 	})

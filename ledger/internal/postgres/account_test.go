@@ -162,10 +162,11 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			var err error
 			tq := testHelper.Queries()
 			if test.isolatedSchema {
-				tq, err = testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+				th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
 				if err != nil {
 					t.Fatal(err)
 				}
+				tq = th.Queries()
 			}
 			if err := tq.CreateLedgerAccounts(context.Background(), test.createAccounts...); !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)

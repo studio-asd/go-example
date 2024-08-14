@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	ledgerpg "github.com/albertwidi/go-example/ledger/postgres"
+	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
 )
 
 var (
@@ -28,10 +28,16 @@ func TestMain(m *testing.M) {
 }
 
 func run(m *testing.M) (code int, err error) {
+	defer func() {
+		if err != nil {
+			code = 1
+		}
+		return
+	}()
+
 	if !testing.Short() {
 		testHelper, err = ledgerpg.NewTestHelper(context.Background())
 		if err != nil {
-			code = 1
 			return
 		}
 		defer func() {

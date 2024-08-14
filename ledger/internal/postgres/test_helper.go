@@ -7,8 +7,10 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/albertwidi/pkg/postgres"
+
 	testingpkg "github.com/albertwidi/pkg/testing"
 	"github.com/albertwidi/pkg/testing/pgtest"
 )
@@ -18,11 +20,19 @@ type TestHelper struct {
 	testQueries *Queries
 	conn *postgres.Postgres
 	pgtestHelper *pgtest.PGTest
+	// forks is the list of forked helper throughout the test. We need to track the lis of forked helper as we want
+	// to track the resource of helper and close them properly.
+	forks []*TestHelper
+	// fork is a mark that the test helper had been forked, thus several expections should be made when
+	// doing several operation like closing connections.
+	fork bool
+	closeMu sync.Mutex
+	closed bool
 }
 
 func NewTestHelper(ctx context.Context) (*TestHelper, error) {
 	th :=&TestHelper{
-		dbName: "ledger",
+		dbName: "go_example",
 		pgtestHelper: pgtest.New(),
 	}
 	q, err := th.prepareTest(ctx)
@@ -52,7 +62,7 @@ func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName); err != nil {
+	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName, false); err != nil {
 		return nil, err
 	}
 	// Close the connection as we no-longer need it. We need it only to create the database.
@@ -86,6 +96,12 @@ func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 
 // Close closes all connections from the test helper.
 func (th *TestHelper) Close() error {
+	th.closeMu.Lock()
+	defer th.closeMu.Unlock()
+	if th.closed {
+		return nil
+	}
+
 	var err error
 	if th.conn != nil {
 		errClose := th.conn.Close()
@@ -93,19 +109,53 @@ func (th *TestHelper) Close() error {
 			err = errors.Join(err, errClose)
 		}
 	}
-	errClose := th.pgtestHelper.Close()
-	if errClose != nil {
-		errors.Join(err ,errClose)
+	// If not a fork, then we should close all the connections in the test helper as it will closes all connections
+	// to the forked schemas. But in fork, we should avoid this as we don't want to control this from forked test helper.
+	if !th.fork {
+		errClose := th.pgtestHelper.Close()
+		if errClose != nil {
+			errors.Join(err ,errClose)
+		}
+		// Closes all the forked helper, this closes the postgres connection in each helper.
+		for _, forkedHelper := range th.forks {
+			if err := forkedHelper.Close(); err != nil {
+				return err
+			}
+		}
+		// Drop the database after test so we will always have a fresh database when we start the test.
+		config := th.conn.Config()
+		config.DBName = ""
+		pg, err := postgres.Connect(context.Background(), config)
+		if err != nil {
+			return err
+		}
+		defer pg.Close()
+		return pgtest.DropDatabase(context.Background(), pg, th.dbName)
+	}
+	if err == nil {
+		th.closed = true
 	}
 	return err
 }
 
 // ForkPostgresSchema forks the sourceSchema with the underlying connection inside the Queries. The function will return a new connection
 // with default search_path into the new schema. The schema name currently is random and cannot be defined by the user.
-func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*Queries, error) {
+func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*TestHelper, error) {
+	if th.fork {
+		return nil, errors.New("cannot fork the schema from a forked test helper, please use the original test helper")
+	}
 	pg , err:= th.pgtestHelper.ForkSchema(ctx, q.db, sourceSchema)
 	if err != nil {
 		return nil, err
 	}
-	return New(pg), nil
+	newTH := &TestHelper{
+		dbName: th.dbName,
+		conn: pg,
+		testQueries: New(pg),
+		pgtestHelper: th.pgtestHelper,
+		fork: true,
+	}
+	// Append the forks to the origin
+	th.forks = append(th.forks, newTH)
+	return newTH, nil
 }

@@ -11,7 +11,7 @@ sql:
       go:
         package: "postgres"
         # The database internal package is always placed under the '/[service_name]/postgres'.
-        out: "../../ledger/internal/postgres"
+        out: "../../loan/internal/postgres"
         sql_package: "pgx/v5"
         output_db_file_name: "sqlc.go"
         output_models_file_name: "types.sql.go"

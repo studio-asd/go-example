@@ -12,7 +12,7 @@ import (
 
 	"github.com/albertwidi/go-example/internal/currency"
 	"github.com/albertwidi/go-example/ledger"
-	ledgerpg "github.com/albertwidi/go-example/ledger/postgres"
+	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
 	"github.com/albertwidi/pkg/postgres"
 )
 

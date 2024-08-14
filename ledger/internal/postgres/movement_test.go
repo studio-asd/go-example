@@ -122,14 +122,15 @@ func TestMove(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			query, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			for accountID, balance := range accountsSetup {
-				if err := query.CreateAccountBalance(testCtx, CreateAccountBalanceParams{
+				if err := th.Queries().CreateAccountBalance(testCtx, CreateAccountBalanceParams{
 					AccountID:     accountID,
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       balance,
 					CreatedAt:     createdAt,
@@ -142,12 +143,12 @@ func TestMove(t *testing.T) {
 			for key := range test.expectAccountsBalance {
 				accountsID = append(accountsID, key)
 			}
-			if err := query.Move(testCtx, test.entries); err != nil {
+			if err := th.Queries().Move(testCtx, test.entries); err != nil {
 				t.Fatal(err)
 			}
 
 			// Check whether the accounts balances are correct..
-			balances, err := query.GetAccountsBalance(testCtx, accountsID)
+			balances, err := th.Queries().GetAccountsBalance(testCtx, accountsID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -167,7 +168,7 @@ func TestMove(t *testing.T) {
 				}
 			}
 			// Check whether the ledger entries are correct.
-			entries, err := query.GetAccountsLedgerByMovementID(testCtx, test.entries.MovementID)
+			entries, err := th.Queries().GetAccountsLedgerByMovementID(testCtx, test.entries.MovementID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -203,24 +204,28 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 			accounts: []CreateAccountBalanceParams{
 				{
 					AccountID:     "one",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "two",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "three",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "four",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
@@ -230,18 +235,22 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 				"one": {
 					BalanceChanges: decimal.NewFromInt(100),
 					NextLedgerID:   "one",
+					LastLedgerID:   "last",
 				},
 				"two": {
 					BalanceChanges: decimal.NewFromInt(100),
 					NextLedgerID:   "two",
+					LastLedgerID:   "last",
 				},
 				"three": {
 					BalanceChanges: decimal.NewFromInt(100),
 					NextLedgerID:   "three",
+					LastLedgerID:   "last",
 				},
 				"four": {
 					BalanceChanges: decimal.NewFromInt(-100),
 					NextLedgerID:   "four",
+					LastLedgerID:   "last",
 				},
 			},
 			expectLastBalanceInfo: map[string]AccountLastBalanceInfo{
@@ -287,24 +296,28 @@ WHERE ab.account_id = v.account_id;
 			accounts: []CreateAccountBalanceParams{
 				{
 					AccountID:     "one",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(200),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "two",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "three",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "four",
+					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
@@ -314,18 +327,22 @@ WHERE ab.account_id = v.account_id;
 				"one": {
 					BalanceChanges: decimal.NewFromInt(-300),
 					NextLedgerID:   "one",
+					LastLedgerID:   "last",
 				},
 				"two": {
 					BalanceChanges: decimal.NewFromInt(100),
 					NextLedgerID:   "two",
+					LastLedgerID:   "last",
 				},
 				"three": {
 					BalanceChanges: decimal.NewFromInt(100),
 					NextLedgerID:   "three",
+					LastLedgerID:   "last",
 				},
 				"four": {
 					BalanceChanges: decimal.NewFromInt(-100),
 					NextLedgerID:   "four",
+					LastLedgerID:   "last",
 				},
 			},
 			selectForUpdateErr: ledger.ErrInsufficientBalance,
@@ -342,17 +359,12 @@ WHERE ab.account_id = v.account_id;
 				accounts = append(accounts, acc)
 			}
 			// Fork a new connection to a new schema so we can test in parallel.
-			query, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
 			if err != nil {
 				t.Fatal(err)
 			}
 			for _, account := range test.accounts {
-				if err := query.CreateAccountBalance(context.Background(), CreateAccountBalanceParams{
-					AccountID:     account.AccountID,
-					AllowNegative: account.AllowNegative,
-					Balance:       account.Balance,
-					CreatedAt:     account.CreatedAt,
-				}); err != nil {
+				if err := th.Queries().CreateAccountBalance(context.Background(), account); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -362,7 +374,7 @@ WHERE ab.account_id = v.account_id;
 				gotInfo            map[string]AccountLastBalanceInfo
 			)
 			// Test inside the transaction as we are doing SELECT FOR UPDATE.
-			gotErr := query.WithTransact(context.Background(), sql.LevelReadUncommitted, func(ctx context.Context, q *Queries) error {
+			gotErr := th.Queries().WithTransact(context.Background(), sql.LevelReadUncommitted, func(ctx context.Context, q *Queries) error {
 				updateBalanceQuery, gotInfo, err = selectAccountsBalanceForMovement(ctx, q, test.accountChanges, test.createdAt, accounts)
 				return err
 			})
@@ -375,7 +387,7 @@ WHERE ab.account_id = v.account_id;
 				}
 			}
 			if diff := cmp.Diff(test.expectUpdateBalanceQuery, updateBalanceQuery); diff != "" {
-				t.Fatalf("(-want/+got)\n%s", diff)
+				t.Fatalf("(-want/+got)\n%s\n---\n%s\n---\n%s", diff, test.expectUpdateBalanceQuery, updateBalanceQuery)
 			}
 			if test.expectUpdateBalanceQuery != updateBalanceQuery {
 				t.Fatalf("expecting query\n%s\nbut got\n%s", test.expectUpdateBalanceQuery, updateBalanceQuery)

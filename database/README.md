@@ -1,6 +1,6 @@
 # Database
 
-The database directory contains all schema and queries needed for each database. Each sub-directory inside this directory represents a database.
+The database directory contains all schema and queries needed for each database. Each sub-directory inside this directory represents a schema for a database. The `database` is defined via `sqlc` configuration, we will learn more about that part later.
 
 For example,
 

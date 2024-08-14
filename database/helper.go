@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 )
@@ -16,20 +17,17 @@ var skipDirs = []string{
 	".",
 }
 
-// DatabaseList retrieves the list of databases for the generator. The list is also a directory as
-// we construct the directories to be per-database basis. Please note that this function will perform a walkFunc
-// from the current directory.
-func DatabaseList(dbName string, flags Flags, dir string) (databases []string, err error) {
+func SchemaDirs(dbName string, flags Flags, dir string) (schemaDirs []string, err error) {
 	if !flags.All {
 		if dbName == "" {
 			return nil, errors.New("database name cannot be empty if --all flag is not used")
 		}
-		databases = append(databases, dbName)
+		schemaDirs = append(schemaDirs, dbName)
 		return
 	}
-	// Give the user a warning when --all is being set but database name is also passed.
+	// Give the user a warning when --all is being set but directory name is also passed.
 	if dbName != "" {
-		fmt.Println("[WARNING] database name ignored when --all is being set")
+		fmt.Println("[WARNING] schema directory name ignored when --all is being set")
 	}
 
 	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -48,11 +46,19 @@ func DatabaseList(dbName string, flags Flags, dir string) (databases []string, e
 		if slices.Contains(skipDirs, d.Name()) {
 			return nil
 		}
-		databases = append(databases, d.Name())
+		// Check whether the 'schema.sql' is exists within the directory.
+		_, err = os.Stat(filepath.Join(d.Name(), "schema.sql"))
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return filepath.SkipDir
+			}
+			return err
+		}
+		schemaDirs = append(schemaDirs, d.Name())
 		return nil
 	})
 	return
 }
 
-func CreateDatabasesAndApplySchema(ctx context.Context) {
+func CreateschemaDirsAndApplySchema(ctx context.Context) {
 }

@@ -134,7 +134,7 @@ func run(args []string) error {
 		if len(args) > 1 {
 			dbName = args[1]
 		}
-		databases, err := DatabaseList(dbName, flags, ".")
+		dirs, err := SchemaDirs(dbName, flags, ".")
 		if err != nil {
 			return err
 		}
@@ -154,13 +154,33 @@ func run(args []string) error {
 				if err != nil {
 					return err
 				}
-				for _, db := range databases {
+				for _, dir := range dirs {
+					sqlcConfig := SQLCConfig{
+						fileName: flags.SQLCConfig,
+					}
+					// Read the sqlc configuration as we are using the sqlc configuration as the source of truth for database creation
+					// and schema location.
+					out, err := os.ReadFile(filepath.Join(dir, flags.SQLCConfig))
+					if err != nil {
+						return err
+					}
+					if err := yaml.Unmarshal(out, &sqlcConfig); err != nil {
+						return err
+					}
+					schemaFile := filepath.Join(dir, sqlcConfig.SQL[0].Schema)
+					dbURI := sqlcConfig.SQL[0].Database.URI
+					// Parse the data source name from the database URI and use that information to construct everything.
+					dsn, err := postgres.ParseDSN(dbURI)
+					if err != nil {
+						return err
+					}
+
 					// Create the database first, as we will need to connect to the database when invoking sqlc
 					// to generate go codes.
-					fmt.Printf("Creating Database %s\n", db)
+					fmt.Printf("Creating Database %s\n", dsn.DatabaseName)
 					err = execQuery(
-						"postgres://postgres:postgres@localhost:5432?sslmode=disable",
-						fmt.Sprintf("CREATE DATABASE %s;", db),
+						fmt.Sprintf("postgres://%s:%s@%s:%s?sslmode=%s", dsn.Username, dsn.Password, dsn.Host, dsn.Port, dsn.SSLMode),
+						fmt.Sprintf("CREATE DATABASE %s;", dsn.DatabaseName),
 					)
 					if err != nil {
 						return fmt.Errorf("failed to create database: %w", err)
@@ -168,29 +188,19 @@ func run(args []string) error {
 
 					// Applying schema to the database, we need to peek into the sqlc configuration for the schema name.
 					fmt.Println("Applying schema...")
-					sqlcConfig := SQLCConfig{
-						fileName: flags.SQLCConfig,
-					}
-					out, err := os.ReadFile(filepath.Join(db, flags.SQLCConfig))
-					if err != nil {
-						return err
-					}
-					if err := yaml.Unmarshal(out, &sqlcConfig); err != nil {
-						return err
-					}
-					out, err = os.ReadFile(filepath.Join(db, sqlcConfig.SQL[0].Schema))
+					out, err = os.ReadFile(schemaFile)
 					if err != nil {
 						return err
 					}
 					err = execQuery(
-						fmt.Sprintf("postgres://postgres:postgres@localhost:5432/%s?sslmode=disable", db),
+						dbURI,
 						string(out),
 					)
 					if err != nil {
 						return err
 					}
 
-					if err := os.Chdir(filepath.Join(currentDir, db)); err != nil {
+					if err := os.Chdir(filepath.Join(currentDir, dir)); err != nil {
 						return fmt.Errorf("failed to change directory to the database dir: %w", err)
 					}
 					sqlcExec := exec.Command("sqlc", "generate", "-f", flags.SQLCConfig)
@@ -199,7 +209,7 @@ func run(args []string) error {
 					if err := sqlcExec.Run(); err != nil {
 						return fmt.Errorf("failed to execute sqlc: %w", err)
 					}
-					if err := genTemplate(db, sqlcConfig); err != nil {
+					if err := genTemplate(dsn, sqlcConfig); err != nil {
 						return err
 					}
 				}
@@ -224,7 +234,7 @@ func run(args []string) error {
 		if len(args) > 1 {
 			dbName = args[1]
 		}
-		databases, err := DatabaseList(dbName, flags, ".")
+		dirs, err := SchemaDirs(dbName, flags, ".")
 		if err != nil {
 			return err
 		}
@@ -233,9 +243,9 @@ func run(args []string) error {
 			return err
 		}
 
-		for _, db := range databases {
-			sqlcConfig := bytes.ReplaceAll(out, []byte("database_name"), []byte(db))
-			if err := os.WriteFile(filepath.Join(db, "sqlc.yaml"), sqlcConfig, 0o666); err != nil {
+		for _, dir := range dirs {
+			sqlcConfig := bytes.ReplaceAll(out, []byte("database_name"), []byte(dir))
+			if err := os.WriteFile(filepath.Join(dir, "sqlc.yaml"), sqlcConfig, 0o666); err != nil {
 				return err
 			}
 		}
@@ -272,8 +282,8 @@ func parseFlags(args []string) (f Flags, err error) {
 	return
 }
 
-func genTemplate(dbName string, config SQLCConfig) error {
-	fmt.Printf("Generating template for database %s\n", dbName)
+func genTemplate(dsn postgres.DSN, config SQLCConfig) error {
+	fmt.Printf("Generating template for database %s\n", dsn.DatabaseName)
 	// Retrieve the version of sqlc via sqlc CLI.
 	cmd := exec.Command("sqlc", "version")
 	out, err := cmd.Output()
@@ -308,19 +318,14 @@ func genTemplate(dbName string, config SQLCConfig) error {
 		return err
 	}
 
-	dsn, err := postgres.ParseDSN(config.SQL[0].Database.URI)
-	if err != nil {
-		return err
-	}
-
 	td := TemplateData{
-		DatabaseName:       dbName,
+		DatabaseName:       dsn.DatabaseName,
 		SQLCVersion:        sqlcVersion,
 		SQLCConfig:         config.fileName,
 		SQLCOutputFileName: config.SQL[0].Gen.Go.OutputDBFileName,
 		GoPackageName:      config.SQL[0].Gen.Go.Package,
 		SQLPackageName:     config.SQL[0].Gen.Go.SQLPackage,
-		PathToSchema:       filepath.Join("database", dbName, config.SQL[0].Schema),
+		PathToSchema:       filepath.Join("database", dsn.DatabaseName, config.SQL[0].Schema),
 		DatabaseConn: TemplateDataDatabaseConn{
 			Username:     dsn.Username,
 			Password:     dsn.Password,
@@ -434,7 +439,6 @@ import (
 )
 
 var (
-	testQueries *Queries
 	testCtx context.Context
 	testHelper *TestHelper
 )
@@ -451,8 +455,7 @@ func TestMain(m *testing.M) {
 }
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
-	testHelper := NewTestHelper()
-	testQueries, err = testHelper.PrepareTest(ctx)
+	testHelper, err = NewTestHelper(ctx)
 	if err != nil {
 		code = 1
 		return
@@ -467,6 +470,7 @@ func run(ctx context.Context, m *testing.M) (code int, err error) {
 	code = m.Run()
 	return
 }
+
 `
 
 const testHelper = `// Code is generated by the helper script. DO NOT EDIT.
@@ -478,28 +482,49 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/albertwidi/pkg/postgres"
+
 	testingpkg "github.com/albertwidi/pkg/testing"
 	"github.com/albertwidi/pkg/testing/pgtest"
 )
 
 type TestHelper struct {
 	dbName string
+	testQueries *Queries
 	conn *postgres.Postgres
 	pgtestHelper *pgtest.PGTest
+	// forks is the list of forked helper throughout the test. We need to track the lis of forked helper as we want
+	// to track the resource of helper and close them properly.
+	forks []*TestHelper
+	// fork is a mark that the test helper had been forked, thus several expections should be made when
+	// doing several operation like closing connections.
+	fork bool
+	closeMu sync.Mutex
+	closed bool
 }
 
-func NewTestHelper() *TestHelper {
-	return &TestHelper{
+func NewTestHelper(ctx context.Context) (*TestHelper, error) {
+	th :=&TestHelper{
 		dbName: "{{ .DatabaseName }}",
 		pgtestHelper: pgtest.New(),
 	}
+	q, err := th.prepareTest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	th.testQueries = q
+	return th, nil
 }
 
-// PrepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
+func (th *TestHelper) Queries() *Queries{
+	return th.testQueries
+}
+
+// prepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
 // to the database that can be used for testing purposes.
-func (th *TestHelper) PrepareTest(ctx context.Context) (*Queries, error) {
+func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 	// Configuration for creating and preparing the database.
 	config := postgres.ConnectConfig{
 		Driver:   "pgx",
@@ -512,7 +537,7 @@ func (th *TestHelper) PrepareTest(ctx context.Context) (*Queries, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName); err != nil {
+	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName, false); err != nil {
 		return nil, err
 	}
 	// Close the connection as we no-longer need it. We need it only to create the database.
@@ -546,6 +571,12 @@ func (th *TestHelper) PrepareTest(ctx context.Context) (*Queries, error) {
 
 // Close closes all connections from the test helper.
 func (th *TestHelper) Close() error {
+	th.closeMu.Lock()
+	defer th.closeMu.Unlock()
+	if th.closed {
+		return nil
+	}
+
 	var err error
 	if th.conn != nil {
 		errClose := th.conn.Close()
@@ -553,20 +584,54 @@ func (th *TestHelper) Close() error {
 			err = errors.Join(err, errClose)
 		}
 	}
-	errClose := th.pgtestHelper.Close()
-	if errClose != nil {
-		errors.Join(err ,errClose)
+	// If not a fork, then we should close all the connections in the test helper as it will closes all connections
+	// to the forked schemas. But in fork, we should avoid this as we don't want to control this from forked test helper.
+	if !th.fork {
+		errClose := th.pgtestHelper.Close()
+		if errClose != nil {
+			errors.Join(err ,errClose)
+		}
+		// Closes all the forked helper, this closes the postgres connection in each helper.
+		for _, forkedHelper := range th.forks {
+			if err := forkedHelper.Close(); err != nil {
+				return err
+			}
+		}
+		// Drop the database after test so we will always have a fresh database when we start the test.
+		config := th.conn.Config()
+		config.DBName = ""
+		pg, err := postgres.Connect(context.Background(), config)
+		if err != nil {
+			return err
+		}
+		defer pg.Close()
+		return pgtest.DropDatabase(context.Background(), pg, th.dbName)
+	}
+	if err == nil {
+		th.closed = true
 	}
 	return err
 }
 
 // ForkPostgresSchema forks the sourceSchema with the underlying connection inside the Queries. The function will return a new connection
 // with default search_path into the new schema. The schema name currently is random and cannot be defined by the user.
-func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*Queries, error) {
+func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*TestHelper, error) {
+	if th.fork {
+		return nil, errors.New("cannot fork the schema from a forked test helper, please use the original test helper")
+	}
 	pg , err:= th.pgtestHelper.ForkSchema(ctx, q.db, sourceSchema)
 	if err != nil {
 		return nil, err
 	}
-	return New(pg), nil
+	newTH := &TestHelper{
+		dbName: th.dbName,
+		conn: pg,
+		testQueries: New(pg),
+		pgtestHelper: th.pgtestHelper,
+		fork: true,
+	}
+	// Append the forks to the origin
+	th.forks = append(th.forks, newTH)
+	return newTH, nil
 }
 `

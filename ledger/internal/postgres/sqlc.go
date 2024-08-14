@@ -4,7 +4,7 @@
 //   version    : v1.26.0
 //   config     : sqlc.yaml
 //   sql_package: pgx/v5
-//   database   : ledger
+//   database   : go_example
 
 package postgres
 
@@ -19,7 +19,7 @@ type Queries struct {
 	db *postgres.Postgres
 }
 
-// New returns a new queries instance of ledger database.
+// New returns a new queries instance of go_example database.
 func New(db *postgres.Postgres) *Queries {
 	return &Queries{db: db}
 }

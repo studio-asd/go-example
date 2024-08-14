@@ -176,7 +176,7 @@ func TestDatabaseList(t *testing.T) {
 					}
 				}
 			}
-			databases, err := DatabaseList(test.dbName, test.flags, tmpDir)
+			dirs, err := SchemaDirs(test.dbName, test.flags, tmpDir)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -185,14 +185,14 @@ func TestDatabaseList(t *testing.T) {
 			// we will always have extra dirs from the go test.
 			for _, ex := range test.expect {
 				var found bool
-				for _, db := range databases {
+				for _, db := range dirs {
 					if ex == db {
 						found = true
 						break
 					}
 				}
 				if !found {
-					t.Fatalf("database with name %s not found, %v", ex, databases)
+					t.Fatalf("directory with name %s not found, %v", ex, dirs)
 				}
 			}
 		})

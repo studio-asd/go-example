@@ -9,13 +9,12 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/ledger"
+	"github.com/albertwidi/go-example/services/ledger"
 )
 
 type CreateLedgerAccount struct {
 	AccountID       string
 	ParentAccountID string
-	AccountType     string
 	AccountStatus   string
 	AllowNegative   bool
 	Currency        *currency.Currency
@@ -45,7 +44,6 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 			AccountID:       c.AccountID,
 			ParentAccountID: c.ParentAccountID,
 			AccountStatus:   ledger.AccountStatusActive,
-			AccountType:     AccountType(c.AccountType),
 			CurrencyID:      c.Currency.ID,
 			CreatedAt:       c.CreatedAt,
 		}); err != nil {
@@ -53,7 +51,6 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 		}
 		if err := q.CreateAccountBalance(ctx, CreateAccountBalanceParams{
 			AccountID:     c.AccountID,
-			AccountType:   AccountType(c.AccountType),
 			AllowNegative: c.AllowNegative,
 			Balance:       decimal.Zero,
 			CurrencyID:    c.Currency.ID,

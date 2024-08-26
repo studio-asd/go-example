@@ -134,9 +134,12 @@ func run(args []string) error {
 		if len(args) > 1 {
 			dbName = args[1]
 		}
-		dirs, err := SchemaDirs(dbName, flags, ".")
+		dirs, _, err := SchemaDirs(dbName, flags, ".")
 		if err != nil {
 			return err
+		}
+		if len(dirs) == 0 {
+			return errors.New("no schema dirs detected")
 		}
 
 		err = executeCommand(
@@ -234,7 +237,7 @@ func run(args []string) error {
 		if len(args) > 1 {
 			dbName = args[1]
 		}
-		dirs, err := SchemaDirs(dbName, flags, ".")
+		dirs, _, err := SchemaDirs(dbName, flags, ".")
 		if err != nil {
 			return err
 		}
@@ -485,9 +488,10 @@ import (
 	"sync"
 
 	"github.com/albertwidi/pkg/postgres"
-
 	testingpkg "github.com/albertwidi/pkg/testing"
 	"github.com/albertwidi/pkg/testing/pgtest"
+
+	"github.com/albertwidi/go-example/internal/env"
 )
 
 type TestHelper struct {
@@ -528,10 +532,10 @@ func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 	// Configuration for creating and preparing the database.
 	config := postgres.ConnectConfig{
 		Driver:   "pgx",
-		Username: "{{ .DatabaseConn.Username }}",
-		Password: "{{ .DatabaseConn.Password }}",
-		Host:     "{{ .DatabaseConn.Host }}",
-		Port:     "{{ .DatabaseConn.Port }}",
+		Username: env.GetEnvOrDefault("TEST_PG_USERNAME", "{{ .DatabaseConn.Username }}"),
+		Password: env.GetEnvOrDefault("TEST_PG_PASSWORD", "{{ .DatabaseConn.Password }}"),
+		Host:     env.GetEnvOrDefault("TEST_PG_HOST", "{{ .DatabaseConn.Host }}"),
+		Port:     env.GetEnvOrDefault("TEST_PG_PORT", "{{ .DatabaseConn.Port }}"),
 	}
 	pgconn, err := postgres.Connect(ctx, config)
 	if err != nil {

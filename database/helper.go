@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,10 +16,16 @@ var skipDirs = []string{
 	".",
 }
 
-func SchemaDirs(dbName string, flags Flags, dir string) (schemaDirs []string, err error) {
+var requiredFiles = []string{
+	"schema.sql",
+	"sqlc.yaml",
+}
+
+// SchemaDris retrurns the list of schema directories detected inside the 'dir' parameter.
+func SchemaDirs(dbName string, flags Flags, dir string) (schemaDirs []string, skippedDirs []string, err error) {
 	if !flags.All {
 		if dbName == "" {
-			return nil, errors.New("database name cannot be empty if --all flag is not used")
+			return nil, nil, errors.New("database name cannot be empty if --all flag is not used")
 		}
 		schemaDirs = append(schemaDirs, dbName)
 		return
@@ -44,21 +49,22 @@ func SchemaDirs(dbName string, flags Flags, dir string) (schemaDirs []string, er
 			return filepath.SkipDir
 		}
 		if slices.Contains(skipDirs, d.Name()) {
+			skippedDirs = append(skippedDirs, d.Name())
 			return nil
 		}
-		// Check whether the 'schema.sql' is exists within the directory.
-		_, err = os.Stat(filepath.Join(d.Name(), "schema.sql"))
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return filepath.SkipDir
+		// Check the required files list, and skip the directory if all required files are not inside the directory.
+		for _, mf := range requiredFiles {
+			_, err = os.Stat(filepath.Join(d.Name(), mf))
+			if err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					skippedDirs = append(skippedDirs, d.Name())
+					return filepath.SkipDir
+				}
+				return err
 			}
-			return err
 		}
 		schemaDirs = append(schemaDirs, d.Name())
 		return nil
 	})
 	return
-}
-
-func CreateschemaDirsAndApplySchema(ctx context.Context) {
 }

@@ -1,7 +1,7 @@
 package service
 
 import (
-	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
+	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
 type Ledger struct {

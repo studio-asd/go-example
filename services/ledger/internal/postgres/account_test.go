@@ -11,7 +11,6 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/ledger"
 )
 
 func TestCreateLedgerAccounts(t *testing.T) {
@@ -33,7 +32,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   string(AccountStatusActive),
 					AllowNegative:   true,
 					Currency:        currency.IDR,
@@ -42,7 +40,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "two",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   string(AccountStatusActive),
 					AllowNegative:   true,
 					Currency:        currency.USD,
@@ -53,7 +50,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   AccountStatusActive,
 					CurrencyID:      1,
 					CreatedAt:       now.Add(time.Second),
@@ -61,7 +57,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "two",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   AccountStatusActive,
 					CurrencyID:      2,
 					CreatedAt:       now.Add(time.Second * 2),
@@ -71,7 +66,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:     "one",
 					AccountStatus: AccountStatusActive,
-					AccountType:   ledger.AccountTypeDeposit,
 					CurrencyID:    1,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -81,7 +75,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:     "two",
 					AccountStatus: AccountStatusActive,
-					AccountType:   ledger.AccountTypeDeposit,
 					CurrencyID:    2,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -97,7 +90,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one_one",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   string(AccountStatusActive),
 					AllowNegative:   true,
 					Currency:        currency.IDR,
@@ -108,7 +100,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one_one",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   AccountStatusActive,
 					CurrencyID:      1,
 					CreatedAt:       now.Add(time.Second * 3),
@@ -118,7 +109,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:     "one_one",
 					AccountStatus: AccountStatusActive,
-					AccountType:   ledger.AccountTypeDeposit,
 					CurrencyID:    1,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -135,7 +125,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   string(AccountStatusActive),
 					AllowNegative:   true,
 					Currency:        currency.IDR,
@@ -144,7 +133,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AccountStatus:   string(AccountStatusActive),
 					AllowNegative:   true,
 					Currency:        currency.USD,

@@ -6,15 +6,6 @@ DROP TABLE IF EXISTS accounts_ledger;
 
 -- types.
 
--- account_type is the type of the accounts based on conditions:
--- 1. Some account can have negative balance due to its nature to fund money to the ledger. For example,
---    the deposit type.
--- 2. Some account can't transfer to the money to certain type. For example, its impossible to
---    transfer money from withdrawal type to user type.
--- 3. Some account can only transfer between parent, child, and another wallet. For example, escrow account.
-DROP TYPE IF EXISTS account_type;
-CREATE TYPE account_type AS ENUM('user', 'deposit', 'withdrawal');
-
 DROP TYPE IF EXISTS account_status;
 CREATE TYPE account_status AS ENUM('active', 'inactive');
 
@@ -23,7 +14,6 @@ CREATE TYPE account_status AS ENUM('active', 'inactive');
 -- accounts is used to store all user accounts.
 CREATE TABLE IF NOT EXISTS accounts(
 	"account_id" varchar PRIMARY KEY,
-	"account_type" account_type NOT NULL,
 	"parent_account_id" varchar NOT NULL,
 	"account_status" account_status NOT NULL,
 	"currency_id" int NOT NULL,
@@ -43,7 +33,6 @@ CREATE TABLE IF NOT EXISTS movements(
 -- balance fast retrieval and for locking the user balance for movement.
 CREATE TABLE IF NOT EXISTS accounts_balance(
 	"account_id" varchar PRIMARY KEY,
-	"account_type" account_type NOT NULL,
 	"currency_id" int NOT NULL,
 	-- allow_negative allows some accounts to have negative balance. For example, for the funding
 	-- account we might allow the account to have negative balance.

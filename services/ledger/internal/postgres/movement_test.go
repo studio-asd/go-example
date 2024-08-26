@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/shopspring/decimal"
 
-	"github.com/albertwidi/go-example/ledger"
+	"github.com/albertwidi/go-example/services/ledger"
 )
 
 // TestMove tests whether the database records are correct when movement happens.
@@ -130,7 +130,6 @@ func TestMove(t *testing.T) {
 			for accountID, balance := range accountsSetup {
 				if err := th.Queries().CreateAccountBalance(testCtx, CreateAccountBalanceParams{
 					AccountID:     accountID,
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       balance,
 					CreatedAt:     createdAt,
@@ -204,28 +203,24 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 			accounts: []CreateAccountBalanceParams{
 				{
 					AccountID:     "one",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "two",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "three",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "four",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
@@ -296,28 +291,24 @@ WHERE ab.account_id = v.account_id;
 			accounts: []CreateAccountBalanceParams{
 				{
 					AccountID:     "one",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(200),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "two",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "three",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),
 				},
 				{
 					AccountID:     "four",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					CreatedAt:     time.Now(),

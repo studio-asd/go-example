@@ -12,8 +12,8 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/ledger"
 	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
+	"github.com/albertwidi/go-example/services/ledger"
 	"github.com/albertwidi/pkg/postgres"
 )
 
@@ -34,7 +34,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 			balances: map[string]ledgerpg.GetAccountsBalanceRow{
 				"one": {
 					AccountID:     "one",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(100),
 					LastLedgerID:  "one_one",
@@ -42,7 +41,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				},
 				"two": {
 					AccountID:     "two",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.Zero,
 					LastLedgerID:  "one_two",
@@ -96,7 +94,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 			balances: map[string]ledgerpg.GetAccountsBalanceRow{
 				"one": {
 					AccountID:     "one",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(200),
 					LastLedgerID:  "one_one",
@@ -104,7 +101,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				},
 				"two": {
 					AccountID:     "two",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.Zero,
 					LastLedgerID:  "one_two",
@@ -112,7 +108,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				},
 				"three": {
 					AccountID:     "three",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.Zero,
 					LastLedgerID:  "one_three",
@@ -189,7 +184,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 			balances: map[string]ledgerpg.GetAccountsBalanceRow{
 				"one": {
 					AccountID:     "one",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(200),
 					LastLedgerID:  "one_one",
@@ -197,7 +191,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				},
 				"two": {
 					AccountID:     "two",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.Zero,
 					LastLedgerID:  "one_two",
@@ -205,7 +198,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				},
 				"three": {
 					AccountID:     "three",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.Zero,
 					LastLedgerID:  "one_three",
@@ -213,7 +205,6 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 				},
 				"four": {
 					AccountID:     "four",
-					AccountType:   ledger.AccountTypeUser,
 					AllowNegative: false,
 					Balance:       decimal.Zero,
 					LastLedgerID:  "one_four",
@@ -378,20 +369,16 @@ func TestEligibleForMovement(t *testing.T) {
 		{
 			name: "same account",
 			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "a",
-				FromAccountType: ledger.AccountTypeUser,
-				ToAccountType:   ledger.AccountTypeUser,
+				FromAccountID: "a",
+				ToAccountID:   "a",
 			},
 			err: ledger.ErrCannotMoveToSelf,
 		},
 		{
 			name: "different account, mismatch currency",
 			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeUser,
-				ToAccountType:   ledger.AccountTypeUser,
+				FromAccountID: "a",
+				ToAccountID:   "b",
 				FromCurrency: &currency.Currency{
 					ID: 1,
 				},
@@ -402,11 +389,22 @@ func TestEligibleForMovement(t *testing.T) {
 			err: ledger.ErrMismatchCurrencies,
 		},
 		{
-			name: "empty account type, from",
+			name: "from account empty",
+			check: checkEligible{
+				ToAccountID: "b",
+				FromCurrency: &currency.Currency{
+					ID: 1,
+				},
+				ToCurrency: &currency.Currency{
+					ID: 1,
+				},
+			},
+			err: ledger.ErrAccountSourceOrDestinationEmpty,
+		},
+		{
+			name: "to account empty",
 			check: checkEligible{
 				FromAccountID: "a",
-				ToAccountID:   "b",
-				ToAccountType: ledger.AccountTypeUser,
 				FromCurrency: &currency.Currency{
 					ID: 1,
 				},
@@ -414,108 +412,13 @@ func TestEligibleForMovement(t *testing.T) {
 					ID: 1,
 				},
 			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
-		},
-		{
-			name: "empty account type, to",
-			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeUser,
-				FromCurrency: &currency.Currency{
-					ID: 1,
-				},
-				ToCurrency: &currency.Currency{
-					ID: 1,
-				},
-			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
-		},
-		{
-			name: "empty account type, both",
-			check: checkEligible{
-				FromAccountID: "a",
-				ToAccountID:   "b",
-				FromCurrency: &currency.Currency{
-					ID: 1,
-				},
-				ToCurrency: &currency.Currency{
-					ID: 1,
-				},
-			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
-		},
-		{
-			name: "forbidden account type, deposit to withdrawal",
-			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeDeposit,
-				ToAccountType:   ledger.AccountTypeWithdrawal,
-				FromCurrency: &currency.Currency{
-					ID: 1,
-				},
-				ToCurrency: &currency.Currency{
-					ID: 1,
-				},
-			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
-		},
-		{
-			name: "forbidden account type, user to deposit",
-			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeUser,
-				ToAccountType:   ledger.AccountTypeDeposit,
-				FromCurrency: &currency.Currency{
-					ID: 1,
-				},
-				ToCurrency: &currency.Currency{
-					ID: 1,
-				},
-			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
-		},
-		{
-			name: "forbidden account type, withdrawal to deposit",
-			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeWithdrawal,
-				ToAccountType:   ledger.AccountTypeDeposit,
-				FromCurrency: &currency.Currency{
-					ID: 1,
-				},
-				ToCurrency: &currency.Currency{
-					ID: 1,
-				},
-			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
-		},
-		{
-			name: "forbidden account type, withdrawal to user",
-			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeWithdrawal,
-				ToAccountType:   ledger.AccountTypeUser,
-				FromCurrency: &currency.Currency{
-					ID: 1,
-				},
-				ToCurrency: &currency.Currency{
-					ID: 1,
-				},
-			},
-			err: ledger.ErrForbiddenAccountTypeTransfer,
+			err: ledger.ErrAccountSourceOrDestinationEmpty,
 		},
 		{
 			name: "ok",
 			check: checkEligible{
-				FromAccountID:   "a",
-				ToAccountID:     "b",
-				FromAccountType: ledger.AccountTypeUser,
-				ToAccountType:   ledger.AccountTypeUser,
+				FromAccountID: "a",
+				ToAccountID:   "b",
 				FromCurrency: &currency.Currency{
 					ID: 1,
 				},

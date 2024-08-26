@@ -176,7 +176,7 @@ func TestDatabaseList(t *testing.T) {
 					}
 				}
 			}
-			dirs, err := SchemaDirs(test.dbName, test.flags, tmpDir)
+			dirs, _, err := SchemaDirs(test.dbName, test.flags, tmpDir)
 			if err != nil {
 				t.Fatal(err)
 			}

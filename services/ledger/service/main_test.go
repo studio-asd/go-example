@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
+	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
 var (
@@ -32,7 +32,6 @@ func run(m *testing.M) (code int, err error) {
 		if err != nil {
 			code = 1
 		}
-		return
 	}()
 
 	if !testing.Short() {

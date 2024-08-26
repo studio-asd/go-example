@@ -10,9 +10,10 @@ import (
 	"sync"
 
 	"github.com/albertwidi/pkg/postgres"
-
 	testingpkg "github.com/albertwidi/pkg/testing"
 	"github.com/albertwidi/pkg/testing/pgtest"
+
+	"github.com/albertwidi/go-example/internal/env"
 )
 
 type TestHelper struct {
@@ -53,10 +54,10 @@ func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 	// Configuration for creating and preparing the database.
 	config := postgres.ConnectConfig{
 		Driver:   "pgx",
-		Username: "postgres",
-		Password: "postgres",
-		Host:     "localhost",
-		Port:     "5432",
+		Username: env.GetEnvOrDefault("TEST_PG_USERNAME", "postgres"),
+		Password: env.GetEnvOrDefault("TEST_PG_PASSWORD", "postgres"),
+		Host:     env.GetEnvOrDefault("TEST_PG_HOST", "localhost"),
+		Port:     env.GetEnvOrDefault("TEST_PG_PORT", "5432"),
 	}
 	pgconn, err := postgres.Connect(ctx, config)
 	if err != nil {

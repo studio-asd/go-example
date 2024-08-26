@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/ledger"
+	"github.com/albertwidi/go-example/services/ledger"
 )
 
 func TestCreateAccount(t *testing.T) {

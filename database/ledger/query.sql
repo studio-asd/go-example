@@ -3,31 +3,28 @@ INSERT INTO accounts(
 	account_id,
 	parent_account_id,
 	account_status,
-	account_type,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6);
+) VALUES($1,$2,$3,$4,$5);
 
 -- name: CreateAccountBalance :exec
 INSERT INTO accounts_balance(
 	account_id,
-	account_type,
 	allow_negative,
 	balance,
 	last_ledger_id,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6,$7);
+) VALUES($1,$2,$3,$4,$5,$6);
 
 -- name: GetAccounts :many
-SELECT * 
-FROM accounts 
+SELECT *
+FROM accounts
 WHERE account_id = ANY($1::varchar[])
 ORDER BY created_at;
 
 -- name: GetAccountsBalance :many
 SELECT ab.account_id,
-	ab.account_type,
 	ab.allow_negative,
 	ab.balance,
 	ab.currency_id,

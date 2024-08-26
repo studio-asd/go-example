@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/albertwidi/pkg/postgres"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/ledger"
 	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/albertwidi/go-example/services/ledger"
 )
 
 type Movement struct {
@@ -48,12 +48,10 @@ func movementEntriesToLedgerEntries(movementID string, balances map[string]ledge
 			return ledger.MovementLedgerEntries{}, err
 		}
 		if err := checkEligibleForMovement(checkEligible{
-			FromAccountID:   entry.FromAccountID,
-			ToAccountID:     entry.ToAccountID,
-			FromAccountType: string(balances[entry.FromAccountID].AccountType),
-			ToAccountType:   string(balances[entry.ToAccountID].AccountType),
-			FromCurrency:    currFrom,
-			ToCurrency:      currTo,
+			FromAccountID: entry.FromAccountID,
+			ToAccountID:   entry.ToAccountID,
+			FromCurrency:  currFrom,
+			ToCurrency:    currTo,
 		}); err != nil {
 			return ledger.MovementLedgerEntries{}, fmt.Errorf("%w: please check entry at index [%d]", err, idx)
 		}
@@ -196,10 +194,18 @@ func (l *Ledger) Transact(ctx context.Context, tx CreateTransaction, fn func(ctx
 		if err := q.Move(ctx, le); err != nil {
 			return err
 		}
-		if err := q.Do(ctx, fn); err != nil {
+		errC := make(chan error, 1)
+		// Call do in a subsequent concurrent call because we don't know how long Do will block.
+		go func() {
+			errC <- q.Do(ctx, fn)
+		}()
+		// Wait until the parent context is done or the do function returns with an error.
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-errC:
 			return err
 		}
-		return nil
 	}); err != nil {
 		return err
 	}
@@ -209,8 +215,6 @@ func (l *Ledger) Transact(ctx context.Context, tx CreateTransaction, fn func(ctx
 type checkEligible struct {
 	FromAccountID     string
 	ToAccountID       string
-	FromAccountType   string
-	ToAccountType     string
 	FromAccountStatus int32
 	ToAccountStatus   int32
 	FromCurrency      *currency.Currency
@@ -219,6 +223,9 @@ type checkEligible struct {
 
 // checkEligibleForMovement checks whether the movement is allowed.
 func checkEligibleForMovement(ce checkEligible) error {
+	if ce.FromAccountID == "" || ce.ToAccountID == "" {
+		return ledger.ErrAccountSourceOrDestinationEmpty
+	}
 	// Prevent from transfering to self.
 	if ce.FromAccountID == ce.ToAccountID {
 		return ledger.ErrCannotMoveToSelf
@@ -226,27 +233,6 @@ func checkEligibleForMovement(ce checkEligible) error {
 	// Prevent to transfering different currencies between account.
 	if ce.FromCurrency.ID != ce.ToCurrency.ID {
 		return ledger.ErrMismatchCurrencies
-	}
-	// Check the transfer from/to account types.
-	// The account type cannot be empty, this should not happen, but just in case.
-	if ce.FromAccountType == "" || ce.ToAccountType == "" {
-		return fmt.Errorf("%w: account type cannot be empty", ledger.ErrForbiddenAccountTypeTransfer)
-	}
-	switch ce.FromAccountType {
-	case ledger.AccountTypeDeposit:
-		// The deposit account cannot transfer money to withdrawal account as they will be used for source and final
-		// destination of users money.
-		if ce.ToAccountType == ledger.AccountTypeWithdrawal {
-			return fmt.Errorf("%w: account type %s to %s", ledger.ErrForbiddenAccountTypeTransfer, ce.FromAccountType, ce.ToAccountType)
-		}
-	case ledger.AccountTypeUser:
-		// Cannot transfer from user to deposit account as the deposit account is the source of money.
-		if ce.ToAccountType == ledger.AccountTypeDeposit {
-			return fmt.Errorf("%w: account type %s to %s", ledger.ErrForbiddenAccountTypeTransfer, ce.FromAccountType, ce.ToAccountType)
-		}
-	case ledger.AccountTypeWithdrawal:
-		// Cannot transfer from withdrawal to anything.
-		return fmt.Errorf("%w: cannot use %s as the source account", ledger.ErrForbiddenAccountTypeTransfer, ce.FromAccountType)
 	}
 	return nil
 }

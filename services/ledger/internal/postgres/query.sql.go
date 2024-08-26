@@ -18,17 +18,15 @@ INSERT INTO accounts(
 	account_id,
 	parent_account_id,
 	account_status,
-	account_type,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6)
+) VALUES($1,$2,$3,$4,$5)
 `
 
 type CreateAccountParams struct {
 	AccountID       string
 	ParentAccountID string
 	AccountStatus   AccountStatus
-	AccountType     AccountType
 	CurrencyID      int32
 	CreatedAt       time.Time
 }
@@ -38,7 +36,6 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) er
 		arg.AccountID,
 		arg.ParentAccountID,
 		arg.AccountStatus,
-		arg.AccountType,
 		arg.CurrencyID,
 		arg.CreatedAt,
 	)
@@ -48,18 +45,16 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) er
 const createAccountBalance = `-- name: CreateAccountBalance :exec
 INSERT INTO accounts_balance(
 	account_id,
-	account_type,
 	allow_negative,
 	balance,
 	last_ledger_id,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6,$7)
+) VALUES($1,$2,$3,$4,$5,$6)
 `
 
 type CreateAccountBalanceParams struct {
 	AccountID     string
-	AccountType   AccountType
 	AllowNegative bool
 	Balance       decimal.Decimal
 	LastLedgerID  string
@@ -70,7 +65,6 @@ type CreateAccountBalanceParams struct {
 func (q *Queries) CreateAccountBalance(ctx context.Context, arg CreateAccountBalanceParams) error {
 	_, err := q.db.Exec(ctx, createAccountBalance,
 		arg.AccountID,
-		arg.AccountType,
 		arg.AllowNegative,
 		arg.Balance,
 		arg.LastLedgerID,
@@ -107,8 +101,8 @@ func (q *Queries) CreateMovements(ctx context.Context, arg CreateMovementsParams
 }
 
 const getAccounts = `-- name: GetAccounts :many
-SELECT account_id, account_type, parent_account_id, account_status, currency_id, created_at, updated_at 
-FROM accounts 
+SELECT account_id, parent_account_id, account_status, currency_id, created_at, updated_at
+FROM accounts
 WHERE account_id = ANY($1::varchar[])
 ORDER BY created_at
 `
@@ -124,7 +118,6 @@ func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]Account
 		var i Account
 		if err := rows.Scan(
 			&i.AccountID,
-			&i.AccountType,
 			&i.ParentAccountID,
 			&i.AccountStatus,
 			&i.CurrencyID,
@@ -143,7 +136,6 @@ func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]Account
 
 const getAccountsBalance = `-- name: GetAccountsBalance :many
 SELECT ab.account_id,
-	ab.account_type,
 	ab.allow_negative,
 	ab.balance,
 	ab.currency_id,
@@ -159,7 +151,6 @@ WHERE ab.account_id = ANY($1::varchar[])
 
 type GetAccountsBalanceRow struct {
 	AccountID     string
-	AccountType   AccountType
 	AllowNegative bool
 	Balance       decimal.Decimal
 	CurrencyID    int32
@@ -180,7 +171,6 @@ func (q *Queries) GetAccountsBalance(ctx context.Context, dollar_1 []string) ([]
 		var i GetAccountsBalanceRow
 		if err := rows.Scan(
 			&i.AccountID,
-			&i.AccountType,
 			&i.AllowNegative,
 			&i.Balance,
 			&i.CurrencyID,

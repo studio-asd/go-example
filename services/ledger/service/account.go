@@ -12,8 +12,8 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/ledger"
-	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
+	"github.com/albertwidi/go-example/services/ledger"
+	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
 type Account struct {
@@ -59,7 +59,6 @@ func (l *Ledger) CreateAccount(ctx context.Context, req CreateAccount) error {
 		AccountID:       req.ID,
 		ParentAccountID: req.ParentID,
 		AccountStatus:   req.Status,
-		AccountType:     req.AccountType,
 		AllowNegative:   req.AllowNegative,
 		Currency:        req.Currency,
 	}
@@ -74,7 +73,6 @@ func (l *Ledger) CreateAccount(ctx context.Context, req CreateAccount) error {
 					// This means the account_id will always be 'test_deposit_{CURRENCY_NAME}'.
 					AccountID:       fmt.Sprintf("test_deposit_%s", curr.Name),
 					ParentAccountID: "",
-					AccountType:     ledger.AccountTypeDeposit,
 					AllowNegative:   true,
 					Currency:        curr,
 				})
@@ -114,13 +112,12 @@ func (l *Ledger) GetAccounts(ctx context.Context, ids ...string) ([]Account, err
 			return nil, err
 		}
 		accounts[idx] = Account{
-			ID:          acc.AccountID,
-			ParentID:    acc.ParentAccountID,
-			Currency:    c,
-			AccountType: string(acc.AccountType),
-			Status:      string(acc.AccountStatus),
-			CreatedAt:   acc.CreatedAt,
-			UpdatedAt:   acc.UpdatedAt.Time,
+			ID:        acc.AccountID,
+			ParentID:  acc.ParentAccountID,
+			Currency:  c,
+			Status:    string(acc.AccountStatus),
+			CreatedAt: acc.CreatedAt,
+			UpdatedAt: acc.UpdatedAt.Time,
 		}
 	}
 	return accounts, nil

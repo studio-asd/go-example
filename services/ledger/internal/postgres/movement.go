@@ -13,7 +13,7 @@ import (
 	"github.com/albertwidi/pkg/postgres"
 	"github.com/shopspring/decimal"
 
-	"github.com/albertwidi/go-example/ledger"
+	"github.com/albertwidi/go-example/services/ledger"
 )
 
 // Move moves balance from one account to another based on the movement entries.
@@ -110,6 +110,8 @@ type AccountLastBalanceInfo struct {
 	LastLedgerID    string
 }
 
+// selectAccountsBalanceForMovement do SELECT FOR UPDATE to the account_balances and lock specific account_id balance. The function also returns the update statements
+// for all accounts so we can also tests whether the update statement is contstructed as we expected or not.
 func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes map[string]ledger.AccountMovementSummary, createdAt time.Time, accounts []string) (string, map[string]AccountLastBalanceInfo, error) {
 	if len(accounts) == 0 {
 		return "", nil, errors.New("account_id is required to select accounts balance for movement")

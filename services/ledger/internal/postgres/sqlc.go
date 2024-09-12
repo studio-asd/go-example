@@ -32,6 +32,17 @@ func (q *Queries) WithTransact(ctx context.Context, iso sql.IsolationLevel, fn f
 	})
 }
 
+// ensureInTransact ensures the queries are running inside the transaction scope, if the queries is not running inside the a transaction
+// the function will trigger WithTransact method. The function doesn't guarantee the subsequent function to have the same isolation level.
+//
+// As this is only a helper function, please don't use this function if a certain level of isolation is needed.
+func (q *Queries) ensureInTransact(ctx context.Context, iso sql.IsolationLevel, fn func(ctx context.Context, q *Queries) error) error {
+	if !q.db.InTransaction() {
+		return q.WithTransact(ctx, iso, fn)
+	}
+	return fn(ctx, q)
+}
+
 // Do executes queries inside the function fn and allowed other modules to execute queries inside the same transaction scope.
 func (q *Queries) Do(ctx context.Context, fn func(ctx context.Context, pg *postgres.Postgres) error ) error {
 	return fn(ctx, q.db)

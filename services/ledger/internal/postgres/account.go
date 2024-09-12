@@ -32,10 +32,7 @@ func (q *Queries) CreateLedgerAccounts(ctx context.Context, c ...CreateLedgerAcc
 		}
 		return err
 	}
-	if !q.db.InTransaction() {
-		return q.WithTransact(ctx, sql.LevelReadCommitted, fn)
-	}
-	return fn(ctx, q)
+	return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
 }
 
 func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount) error {
@@ -62,11 +59,7 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 		}
 		return nil
 	}
-	// If somehow transaction is not used, then wraps the intructions with database transaction.
-	if !q.db.InTransaction() {
-		return q.WithTransact(ctx, sql.LevelReadCommitted, fn)
-	}
-	return fn(ctx, q)
+	return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
 }
 
 // GetAccountsBalanceMappByAccID returns the account balance of accounts using map and account_id as its key. The function can be used to quickly look into

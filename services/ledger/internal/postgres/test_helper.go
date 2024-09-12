@@ -51,28 +51,18 @@ func (th *TestHelper) Queries() *Queries{
 // prepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
 // to the database that can be used for testing purposes.
 func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
-	// Configuration for creating and preparing the database.
-	config := postgres.ConnectConfig{
-		Driver:   "pgx",
-		Username: env.GetEnvOrDefault("TEST_PG_USERNAME", "postgres"),
-		Password: env.GetEnvOrDefault("TEST_PG_PASSWORD", "postgres"),
-		Host:     env.GetEnvOrDefault("TEST_PG_HOST", "localhost"),
-		Port:     env.GetEnvOrDefault("TEST_PG_PORT", "5432"),
-	}
-	pgconn, err := postgres.Connect(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName, false); err != nil {
-		return nil, err
-	}
-	// Close the connection as we no-longer need it. We need it only to create the database.
-	if err := pgconn.Close(); err != nil {
+	pgDSN := env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/")
+	if err := pgtest.CreateDatabase(ctx, pgDSN, th.dbName, false); err != nil {
 		return nil, err
 	}
 
 	// Create a new connection with the correct database name.
+	config, err := postgres.NewConfigFromDSN(pgDSN)
+	if err != nil {
+		return nil, err
+	}
 	config.DBName = th.dbName
+	// Connect to the PostgreSQL with the configuration.
 	testConn, err := postgres.Connect(context.Background(), config)
 	if err != nil {
 		return nil, err

@@ -17,6 +17,11 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// Don't invoke the integration test if short flag is used.
+	if testing.Short() {
+		return
+	}
+
 	var cancel context.CancelFunc
 	testCtx, cancel = context.WithTimeout(context.Background(), time.Minute*5)
 	code, err := run(testCtx, m)

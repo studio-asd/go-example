@@ -19,9 +19,9 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
-	"gopkg.in/yaml.v3"
 
 	"github.com/albertwidi/pkg/postgres"
+	"github.com/albertwidi/pkg/testing/pgtest"
 )
 
 //go:embed sqlc.yaml
@@ -158,18 +158,14 @@ func run(args []string) error {
 					return err
 				}
 				for _, dir := range dirs {
-					sqlcConfig := SQLCConfig{
-						fileName: flags.SQLCConfig,
-					}
 					// Read the sqlc configuration as we are using the sqlc configuration as the source of truth for database creation
 					// and schema location.
-					out, err := os.ReadFile(filepath.Join(dir, flags.SQLCConfig))
+					sqlcConfig, err := ReadSQLCConfiguration(dir, flags.SQLCConfig)
 					if err != nil {
 						return err
 					}
-					if err := yaml.Unmarshal(out, &sqlcConfig); err != nil {
-						return err
-					}
+					sqlcConfig.fileName = flags.SQLCConfig
+
 					schemaFile := filepath.Join(dir, sqlcConfig.SQL[0].Schema)
 					dbURI := sqlcConfig.SQL[0].Database.URI
 					// Parse the data source name from the database URI and use that information to construct everything.
@@ -181,17 +177,18 @@ func run(args []string) error {
 					// Create the database first, as we will need to connect to the database when invoking sqlc
 					// to generate go codes.
 					fmt.Printf("Creating Database %s\n", dsn.DatabaseName)
-					err = execQuery(
-						fmt.Sprintf("postgres://%s:%s@%s:%s?sslmode=%s", dsn.Username, dsn.Password, dsn.Host, dsn.Port, dsn.SSLMode),
-						fmt.Sprintf("CREATE DATABASE %s;", dsn.DatabaseName),
-					)
-					if err != nil {
-						return fmt.Errorf("failed to create database: %w", err)
+					if err := pgtest.CreateDatabase(
+						context.Background(),
+						dbURI,
+						dsn.DatabaseName,
+						true,
+					); err != nil {
+						return err
 					}
 
 					// Applying schema to the database, we need to peek into the sqlc configuration for the schema name.
 					fmt.Println("Applying schema...")
-					out, err = os.ReadFile(schemaFile)
+					out, err := os.ReadFile(schemaFile)
 					if err != nil {
 						return err
 					}
@@ -422,6 +419,17 @@ func (q *Queries) WithTransact(ctx context.Context, iso sql.IsolationLevel, fn f
 	})
 }
 
+// ensureInTransact ensures the queries are running inside the transaction scope, if the queries is not running inside the a transaction
+// the function will trigger WithTransact method. The function doesn't guarantee the subsequent function to have the same isolation level.
+//
+// As this is only a helper function, please don't use this function if a certain level of isolation is needed.
+func (q *Queries) ensureInTransact(ctx context.Context, iso sql.IsolationLevel, fn func(ctx context.Context, q *Queries) error) error {
+	if !q.db.InTransaction() {
+		return q.WithTransact(ctx, iso, fn)
+	}
+	return fn(ctx, q)
+}
+
 // Do executes queries inside the function fn and allowed other modules to execute queries inside the same transaction scope.
 func (q *Queries) Do(ctx context.Context, fn func(ctx context.Context, pg *postgres.Postgres) error ) error {
 	return fn(ctx, q.db)
@@ -447,6 +455,11 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	// Don't invoke the integration test if short flag is used.
+	if testing.Short() {
+		return
+	}
+
 	var cancel context.CancelFunc
 	testCtx, cancel = context.WithTimeout(context.Background(), time.Minute*5)
 	code, err := run(testCtx, m)
@@ -529,28 +542,18 @@ func (th *TestHelper) Queries() *Queries{
 // prepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
 // to the database that can be used for testing purposes.
 func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
-	// Configuration for creating and preparing the database.
-	config := postgres.ConnectConfig{
-		Driver:   "pgx",
-		Username: env.GetEnvOrDefault("TEST_PG_USERNAME", "{{ .DatabaseConn.Username }}"),
-		Password: env.GetEnvOrDefault("TEST_PG_PASSWORD", "{{ .DatabaseConn.Password }}"),
-		Host:     env.GetEnvOrDefault("TEST_PG_HOST", "{{ .DatabaseConn.Host }}"),
-		Port:     env.GetEnvOrDefault("TEST_PG_PORT", "{{ .DatabaseConn.Port }}"),
-	}
-	pgconn, err := postgres.Connect(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-	if err := pgtest.CreateDatabase(ctx, pgconn, th.dbName, false); err != nil {
-		return nil, err
-	}
-	// Close the connection as we no-longer need it. We need it only to create the database.
-	if err := pgconn.Close(); err != nil {
+	pgDSN := env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/")
+	if err := pgtest.CreateDatabase(ctx, pgDSN, th.dbName, false); err != nil {
 		return nil, err
 	}
 
 	// Create a new connection with the correct database name.
+	config, err := postgres.NewConfigFromDSN(pgDSN)
+	if err != nil {
+		return nil, err
+	}
 	config.DBName = th.dbName
+	// Connect to the PostgreSQL with the configuration.
 	testConn, err := postgres.Connect(context.Background(), config)
 	if err != nil {
 		return nil, err

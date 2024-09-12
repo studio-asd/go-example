@@ -12,8 +12,8 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/internal/currency"
-	ledgerpg "github.com/albertwidi/go-example/ledger/internal/postgres"
 	"github.com/albertwidi/go-example/services/ledger"
+	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
 type Movement struct {

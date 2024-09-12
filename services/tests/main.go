@@ -12,7 +12,13 @@ type Config struct {
 	// PostgresURI defines the PostgreSQL connection. The configuration will define to where
 	// the we will connect the PostgreSQL. We will rewrite all host, port, username and password
 	// for the underlying configurations like sqlc to match with the configuration URI.
+	//
+	// The default is 'postgres://postgres:postgres@localhost:5432/'.
 	PostgresURI string
+	// DatabaseDir is the database directory relative from the repository root.
+	//
+	// The default is 'database'.
+	DatabaseDir string
 }
 
 var conf Config
@@ -28,7 +34,13 @@ func main() {
 
 func run() error {
 	flag.Parse()
-	flag.StringVar(&conf.PostgresURI, "postgres.uri", "postgres://postgres:postgres@localhost:5432/", "postgres://postgres:postgres@localhost:5432/")
+	flag.StringVar(
+		&conf.PostgresURI,
+		"postgres.uri",
+		"postgres://postgres:postgres@localhost:5432/",
+		"postgres URI, for example: postgres://postgres:postgres@localhost:5432/",
+	)
+	flag.StringVar(&conf.DatabaseDir, "database.dir", "database", "database directory relative from root repository")
 
 	dsn, err := postgres.ParseDSN(conf.PostgresURI)
 	if err != nil {

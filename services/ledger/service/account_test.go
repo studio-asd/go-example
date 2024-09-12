@@ -66,6 +66,10 @@ func TestCreateAccount(t *testing.T) {
 			if diff := cmp.Diff(test.expectAcc, accs[0]); diff != "" {
 				t.Fatalf("Account (-want/+got):\n%s", diff)
 			}
+			// This means it has some funds inside the account, so we need to check the account balance as well.
+			if !test.ca.WithFunds.Amount.IsZero() {
+				ls.GetAccountsBalance(context.Background(), test.ca.ID)
+			}
 		})
 	}
 }

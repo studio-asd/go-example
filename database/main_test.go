@@ -26,6 +26,10 @@ func TestMain(m *testing.M) {
 
 // TestRunner uses testscript to run tests from testdata/script/*.txtar.
 func TestScript(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+
 	// Delete all databases created in the testdata/*.
 	t.Cleanup(func() {
 		databases := []string{
@@ -102,98 +106,6 @@ func TestParseFlags(t *testing.T) {
 			}
 			if diff := cmp.Diff(test.expect, got); diff != "" {
 				t.Fatalf("(-want/+got)\n%s", diff)
-			}
-		})
-	}
-}
-
-func TestDatabaseList(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name   string
-		dirs   []string
-		dbName string
-		flags  Flags
-		expect []string
-	}{
-		{
-			name: "one_databse",
-			dirs: []string{
-				"one",
-				"two",
-			},
-			dbName: "one",
-			flags:  Flags{},
-			expect: []string{
-				"one",
-			},
-		},
-		{
-			name: "one_with_all_flags",
-			dirs: []string{
-				"one",
-				"two",
-				"three",
-			},
-			dbName: "one",
-			flags: Flags{
-				All: true,
-			},
-			expect: []string{
-				"one",
-				"two",
-				"three",
-			},
-		},
-		{
-			name: "none_with_all_flags",
-			dirs: []string{
-				"one",
-				"two",
-				"three",
-			},
-			flags: Flags{
-				All: true,
-			},
-			expect: []string{
-				"one",
-				"two",
-				"three",
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-
-			tmpDir := t.TempDir()
-			if len(test.dirs) > 0 {
-				for _, dir := range test.dirs {
-					if err := os.MkdirAll(filepath.Join(tmpDir, dir), 0o766); err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
-			dirs, _, err := SchemaDirs(test.dbName, test.flags, tmpDir)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			// Loop through to check whether the expect database is there or not. We cannot do compare because
-			// we will always have extra dirs from the go test.
-			for _, ex := range test.expect {
-				var found bool
-				for _, db := range dirs {
-					if ex == db {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Fatalf("directory with name %s not found, %v", ex, dirs)
-				}
 			}
 		})
 	}

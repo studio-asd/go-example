@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package go_example.api.ledger.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/ledger/v1";
+
+import "buf/validate/validate.proto";
+
+message TransactRequest {
+    string idempotency_key = 1 [(buf.validate.field).required = true];
+    repeated MovementEntry movement_entries = 2 [(buf.validate.field).required = true];
+}
+
+message TransactResponse {
+    string movement_id = 1;
+    repeated string ledger_ids = 2;
+}
+
+message MovementEntry {
+    string from_account_id = 1 [(buf.validate.field).required = true];
+    string to_account_id = 2 [(buf.validate.field).required = true];
+    string amount = 3 [(buf.validate.field).required = true];
+}

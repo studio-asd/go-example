@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package go_example.api.ledger.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/ledger/v1";
+
+import "google/api/annotations.proto";
+
+import "api/ledger/v1/ledger.proto";
+
+service LedgerService {
+    rpc Transact(TransactRequest) returns (TransactResponse) {
+        option (google.api.http) = {
+            post: "/v1/transact",
+            body: "*"
+        };
+    }
+}

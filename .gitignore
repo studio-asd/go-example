@@ -2,3 +2,6 @@
 ./build
 cover.out
 playground
+
+# Directory for protobuf generation.
+proto/gengo

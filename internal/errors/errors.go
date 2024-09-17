@@ -12,12 +12,14 @@ import (
 // list of standard violations for protovalidate.
 const (
 	protovalidateViolationRequired = "required"
+	protovalidateViolationEmail    = "validate.email"
+	protovalidateViolationIP       = "validate.ip"
 )
 
 type Kind int
 
 const (
-	KindUnknown = iota + 1
+	KindUnknown = iota
 	KindBadRequest
 	KindInternalError
 )
@@ -30,6 +32,17 @@ func (k Kind) HTTPCode() int {
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
+	}
+}
+
+func (k Kind) String() string {
+	switch k {
+	case KindBadRequest:
+		return "Bad Request"
+	case KindInternalError:
+		return "Internal Error"
+	default:
+		return "Internal Error"
 	}
 }
 
@@ -91,9 +104,12 @@ func Wrap(err error, v ...any) *Errors {
 	if As(err, &validateErr) {
 		if len(validateErr.Violations) > 0 {
 			e.constraintID = validateErr.Violations[0].GetConstraintId()
-			if e.kind == KindUnknown {
+			// Only set the kind if Kind is not set and constraint is not empty.
+			if e.kind == KindUnknown && e.constraintID != "" {
 				switch e.constraintID {
-				case protovalidateViolationRequired:
+				case protovalidateViolationRequired,
+					protovalidateViolationEmail,
+					protovalidateViolationIP:
 					e.kind = KindBadRequest
 				}
 			}

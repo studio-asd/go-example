@@ -56,6 +56,7 @@ generate: $(DOCKERFILE) $(GEN_DIR)
 	@rm -rf $(GEN_DIR) 2>/dev/null
 
 PROTO_DIRS := \
+	testdata/v1 \
 	ledger/v1
 
 $(PROTO_DIRS):

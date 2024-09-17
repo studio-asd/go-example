@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package go_example.api.testdata.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/testdata/v1";
+
+import "buf/validate/validate.proto";
+
+message TestRequest {
+    string test_required = 1 [(buf.validate.field).required = true];
+    string test_string = 2;
+    int32 test_int  = 3;
+    string test_email = 4 [(buf.validate.field).cel = {
+        id: "validate.email"
+        message: "must be a valid email"
+        expression: "this.isEmail()"
+    }];
+    string test_ip = 5 [(buf.validate.field).cel = {
+        id: "validate.ip"
+        message: "must be a valid ip"
+        expression: "this.isIp()"
+    }];
+}

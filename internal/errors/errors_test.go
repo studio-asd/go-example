@@ -4,8 +4,67 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/bufbuild/protovalidate-go"
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/proto"
+
+	testdatav1 "github.com/albertwidi/go-example/proto/api/testdata/v1"
 )
+
+func TestProtoValidateErr(t *testing.T) {
+	validator, err := protovalidate.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name        string
+		message     proto.Message
+		kind        Kind
+		contraintID string
+	}{
+		{
+			name:        "required",
+			message:     &testdatav1.TestRequest{},
+			kind:        KindBadRequest,
+			contraintID: protovalidateViolationRequired,
+		},
+		{
+			name: "email",
+			message: &testdatav1.TestRequest{
+				TestRequired: "required",
+				TestEmail:    "not_an_email",
+			},
+			kind:        KindBadRequest,
+			contraintID: protovalidateViolationEmail,
+		},
+		{
+			name: "ip",
+			message: &testdatav1.TestRequest{
+				TestRequired: "required",
+				TestEmail:    "email@gmail.com",
+				TestIp:       "lalala",
+			},
+			kind:        KindBadRequest,
+			contraintID: protovalidateViolationIP,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := validator.Validate(test.message)
+			if err != nil {
+				errs := Wrap(err)
+				if errs.constraintID != test.contraintID {
+					t.Fatalf("expecting constraint id %s but got %s", test.contraintID, errs.constraintID)
+				}
+				if errs.Kind() != test.kind {
+					t.Fatalf("expecting kind %s but got %s", test.kind, errs.Kind())
+				}
+			}
+		})
+	}
+}
 
 func TestNewFields(t *testing.T) {
 	tests := []struct {

@@ -5,15 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-
-	"github.com/bufbuild/protovalidate-go"
-)
-
-// list of standard violations for protovalidate.
-const (
-	protovalidateViolationRequired = "required"
-	protovalidateViolationEmail    = "validate.email"
-	protovalidateViolationIP       = "validate.ip"
 )
 
 type Kind int
@@ -96,24 +87,6 @@ func Wrap(err error, v ...any) *Errors {
 		e = internalErrs
 	} else {
 		e = &Errors{err: err}
-	}
-
-	// Check the protovalidate violations and check/map the violations. We only retrieve the first
-	// violation as we expect us to always use FailFast option.
-	var validateErr *protovalidate.ValidationError
-	if As(err, &validateErr) {
-		if len(validateErr.Violations) > 0 {
-			e.constraintID = validateErr.Violations[0].GetConstraintId()
-			// Only set the kind if Kind is not set and constraint is not empty.
-			if e.kind == KindUnknown && e.constraintID != "" {
-				switch e.constraintID {
-				case protovalidateViolationRequired,
-					protovalidateViolationEmail,
-					protovalidateViolationIP:
-					e.kind = KindBadRequest
-				}
-			}
-		}
 	}
 
 	for idx := range v {

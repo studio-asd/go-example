@@ -8,6 +8,7 @@ import (
 	"github.com/bufbuild/protovalidate-go"
 
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
+	"github.com/albertwidi/pkg/postgres"
 )
 
 var validator *protovalidate.Validator
@@ -31,7 +32,8 @@ func New() *API {
 	return &API{}
 }
 
-func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest) (*ledgerv1.TransactResponse, error) {
+// Transact moves money from accounts to accounts within the transaction scope.
+func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn func(context.Context, *postgres.Postgres)) (*ledgerv1.TransactResponse, error) {
 	if err := validator.Validate(req); err != nil {
 		var validationErr *protovalidate.ValidationError
 		if errors.As(err, &validationErr) {

@@ -9,7 +9,7 @@ import (
 
 func TestTransact(t *testing.T) {
 	a := New()
-	_, err := a.Transact(context.Background(), &ledgerv1.TransactRequest{})
+	_, err := a.Transact(context.Background(), &ledgerv1.TransactRequest{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

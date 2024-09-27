@@ -77,9 +77,59 @@ func (a *API) SomeAPI(ctx context.Context, req *serviceapiv1.FirstRequest) (*ser
 
 The layer
 
+```text
+|--------|   |
+|  API   |   |  Client Facing
+|--------|   |
+|  Data  |   |  Internal Package Facing
+|--------|   v
+```
+
+Folder wise, we always structure them like this:
+
+```text
+-| services
+      -| service_a
+            |- api
+                |- api.go
+                |- api_test.go
+            |- internal
+                |- postgres
+                      |- postgres.go
+                      |- postgres_test.go
+```
+
+1. Services is the parent folder for all services.
+2. Inside the services, we can create a service folder. For example, `service_a`.
+3. Inside of the `service_a`, we expose all functions to the internal program via `api`.
+4. The `service_a` should not expose its internal packages that private to the package. Thus `internal` folder will be used.
+5. The data layer usually located inside the `internal` folder of a service to prevent direct usage by other packages.
+
+### Monolith Services Interaction
+
+
 
 ### API Layer
 
-### Database Layer
+API layer is used to expose application programming interface(API) to the client. The client can be another package or
+an end user by using `grpc-gateway`.
+
+The business logic is also placed inside the API layer as we don't want to create more layers(for now) that might make
+us harder to continue build and test the program.
+
+**Proto For API Interface**
+
+You might asks on why we use `proto` as the interface to pass the data to the `api` layer. We are doing this because
+we want to ensure we are providing exactly the same interface when we interact internally and also externally. Some of
+our internal APIs/functions might also need to hit the exact same API that we expose to public, this consistency makes
+it easier to do both things consistently.
+
+### Data/Database Layer
+
+The data/database layer is a layer that interacts directly with the storage system. The package is intended to be used
+internally within the parent package and should not used directly by other packages.
+
+In this layer, we expect less to none business logic involved as this will make separation of concern to be broken
+between `api` and `data` layer.
 
 ## Error Handling

@@ -69,3 +69,11 @@ func (v *Validator) Validate(message proto.Message) error {
 		},
 	)
 }
+
+func WithFailFast(failFast bool) protovalidate.ValidatorOption {
+	return protovalidate.WithFailFast(failFast)
+}
+
+func WithMessages(messages ...proto.Message) protovalidate.ValidatorOption {
+	return protovalidate.WithMessages(messages...)
+}

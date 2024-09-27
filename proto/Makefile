@@ -51,17 +51,37 @@ generate: $(DOCKERFILE) $(GEN_DIR)
         --go-grpc_out=$(GEN_DIR) \
         --grpc-gateway_out=$(GEN_DIR) \
         --grpc-gateway_opt logtostderr=true \
-        $(target)/*.proto"
-	@cp -r $(GEN_DIR)/github.com/albertwidi/go-example/proto/api/* ./api
+        $(proto_folder)/$(target)/*.proto"
+	@cp -r $(GEN_DIR)/github.com/albertwidi/go-example/proto/$(proto_folder)/* ./$(proto_folder)
 	@rm -rf $(GEN_DIR) 2>/dev/null
 
-PROTO_DIRS := \
+LAH_DIRS := api \
+	testdata
+
+$(LAH_DIRS):
+	@echo "ASD"
+
+api_dirs := \
 	testdata/v1 \
 	ledger/v1
 
-$(PROTO_DIRS):
-	@echo "Generating protobuf files for $@..."
-	@$(MAKE) generate target=api/$@
-	@sleep 0.2
+testdata_dirs := \
+	protovalidate/v1
 
-genall: $(PROTO_DIRS)
+define GEN_DIRS
+	$(foreach dir,$($(1)_dirs),$(MAKE) generate proto_folder=$(1) target=$(dir))
+endef
+
+$(api_dirs):
+	@echo "Generating protobuf files for api/$@..."
+	@$(MAKE) generate proto_folder=api target=$@
+	@sleep 0.2
+	$(call GEN_DIRS,$@)
+
+# $(TESTDATA_DIRS):
+# 	@echo "Generating protobuf files for testdata/$@..."
+# 	@$(MAKE) generate proto_folder=testdata target=$@
+# 	@sleep 0.2
+
+genall: $(api_dirs)
+	@echo "LAH"

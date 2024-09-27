@@ -1,12 +1,10 @@
-package service
+package api
 
 import (
-	"context"
 	"errors"
 	"strconv"
 	"testing"
 
-	"github.com/albertwidi/pkg/postgres"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/uuid"
@@ -18,7 +16,7 @@ import (
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
-func TestMovementEntriesToLedgerEntries(t *testing.T) {
+func TestCreateLedgerEntries(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -332,7 +330,7 @@ func TestMovementEntriesToLedgerEntries(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			le, err := movementEntriesToLedgerEntries(test.movementID, test.balances, test.entries...)
+			le, err := createLedgerEntries(test.movementID, test.balances, test.entries...)
 			if err != test.err {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}
@@ -439,48 +437,4 @@ func TestEligibleForMovement(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestTransact(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-	t.Parallel()
-
-	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
-	if err != nil {
-		t.Fatal(err)
-	}
-	tl := New(tq.Queries())
-
-	newTableQuery := "CREATE TABLE IF NOT EXISTS trasact_test(id int PRIMARY KEY);"
-	err = tq.Queries().Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
-		_, err := pg.Exec(ctx, newTableQuery)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Run("transact_success", func(t *testing.T) {
-		t.Parallel()
-
-		fn := func(ctx context.Context, pg *postgres.Postgres) error {
-			insertQuery := "INSERT INTO transact_test VALUES(1);"
-			_, err := pg.Exec(ctx, insertQuery)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		tl.Transact(context.Background(), CreateTransaction{
-			UniqueID: uuid.NewString(),
-			Entries:  []MovementEntry{},
-		}, fn)
-	})
-
-	t.Run("transact_failed", func(t *testing.T) {
-		t.Parallel()
-	})
 }

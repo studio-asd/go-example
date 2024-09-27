@@ -38,8 +38,8 @@ func (c *Currency) NewDecimal(v string) (decimal.Decimal, error) {
 
 // NormalizeDecimal truncates the decimal towards the allowed exponent for the currency.
 func (c *Currency) NormalizeDecimal(d decimal.Decimal) decimal.Decimal {
-	if c.Exp > d.Exponent() {
-		d = d.Truncate(c.Exp * -1)
+	if c.Exp < d.Exponent()*-1 {
+		d = d.Truncate(c.Exp)
 	}
 	return d
 }

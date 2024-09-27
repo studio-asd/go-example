@@ -3,11 +3,11 @@ package protovalidate
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/albertwidi/go-example/internal/errors"
-	testdatav1 "github.com/albertwidi/go-example/proto/api/testdata/v1"
-	"github.com/google/go-cmp/cmp"
+	testdatav1 "github.com/albertwidi/go-example/proto/testdata/protovalidate/v1"
 )
 
 func TestValidate(t *testing.T) {

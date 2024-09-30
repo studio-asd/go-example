@@ -420,12 +420,16 @@ func (q *Queries) WithTransact(ctx context.Context, iso sql.IsolationLevel, fn f
 }
 
 // ensureInTransact ensures the queries are running inside the transaction scope, if the queries is not running inside the a transaction
-// the function will trigger WithTransact method. The function doesn't guarantee the subsequent function to have the same isolation level.
-//
-// As this is only a helper function, please don't use this function if a certain level of isolation is needed.
+// the function will trigger WithTransact method. While the function doesn't guarantee the subsequent function to have the same isolation
+// level, but this function will return an error if the expectations and the current isolation level is incompatible.
 func (q *Queries) ensureInTransact(ctx context.Context, iso sql.IsolationLevel, fn func(ctx context.Context, q *Queries) error) error {
-	if !q.db.InTransaction() {
+	inTransaction, isoLevel := q.db.InTransaction()
+	if !inTransaction {
 		return q.WithTransact(ctx, iso, fn)
+	}
+	// Don't accept different isolation level between transactions as we will be getting different results.
+	if iso != isoLevel {
+		return fmt.Errorf("different expectations of isolation level. Got %s but expecting %s", isoLevel, iso)
 	}
 	return fn(ctx, q)
 }

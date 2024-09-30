@@ -105,9 +105,86 @@ Folder wise, we always structure them like this:
 4. The `service_a` should not expose its internal packages that private to the package. Thus `internal` folder will be used.
 5. The data layer usually located inside the `internal` folder of a service to prevent direct usage by other packages.
 
-### Monolith Services Interaction
+### Services Interaction
 
+1. Direct
 
+A `direct` communication between services happen when a service calls a function/api of another service. Even though the behavior
+can be different from one APIs to another(as some APIs might do things asynchronously), but a direct function/api call still counted
+as a direct communication.
+
+**Database Transaction Block**
+
+A `service` able to open an API that directly interacts with `database transaction` scope. This allowed other services to ensure
+data consistency between two services.
+
+Usually, a service will open an API like this to ensure `transaction` can be used when the API/function is being called.
+
+```go
+type API struct {
+	q *servicePg.Queries
+}
+
+func (a *API) FuncWithTxInside(ctx context.Context, req Request, fn func(context.Context, *postgres.Postgres) error) (Response, error) {
+	err := a.q.WithTransact(ctx context.Context, sql.LevelReadCommitted, func(ctx context.Context, q *servicePg.Queries) error {
+		// Do some queries here.
+		// ...
+
+		// Invoke the function passed by another service/functions. We think it is better to invoke the function inside
+		// a goroutine as we don't know how much time the function need to spend and there is no guarantee it will respect
+		// the context cancellation.
+		errC := make(chan error, 1)
+		// Set a separate timeout for the transaction scope as we want to function to returns its results within the service SLA.
+		ctxTx, cancel := context.WithTimeout(ctx, time.Second * 5)
+		defer cancel()
+		go func() {
+			// Do is a special function that exposes *postgres.Postgres. This means the function on the other side can do this:
+			//
+			// func DoSomethingInTxScope(ctx context.Context, pg *postgres.Postgres) error {
+			//   	q := servicePg.New(pg)
+			//		// Do something with the query object.
+			// }
+			errC <- q.Do(ctxTx, fn)
+		}()
+		// Wait for the context to be done or error to return.
+		select {
+			case <- ctxTx.Done():
+				return ctxTx.Err()
+			case err := <- errC:
+				if err != nil {
+					return err
+				}
+		}
+		return nil
+	})
+	if err != nil {
+		return Response{}, err
+	}
+}
+```
+
+It might be more straightforward if we explain it with a picture:
+
+```text
+    |---------|
+    |service_a|
+    |---------|
+         |
+ call, passing "fn"
+   as foreign_fn
+         |
+         v
+|-----------------|
+|    service_b    |
+|-----------------|
+|    tx_session   |
+|-----------------|
+| |-------------| |
+| |  local_fn   | |
+| | foreign_fn  | |
+| |-------------| |
+|-----------------|
+```
 
 ### API Layer
 

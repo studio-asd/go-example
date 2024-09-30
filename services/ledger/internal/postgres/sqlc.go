@@ -11,6 +11,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/albertwidi/pkg/postgres"
 )
@@ -37,8 +38,13 @@ func (q *Queries) WithTransact(ctx context.Context, iso sql.IsolationLevel, fn f
 //
 // As this is only a helper function, please don't use this function if a certain level of isolation is needed.
 func (q *Queries) ensureInTransact(ctx context.Context, iso sql.IsolationLevel, fn func(ctx context.Context, q *Queries) error) error {
-	if !q.db.InTransaction() {
+	inTransaction, isoLevel := q.db.InTransaction()
+	if !inTransaction {
 		return q.WithTransact(ctx, iso, fn)
+	}
+	// Don't accept different isolation level between transactions as we will be getting different results.
+	if iso != isoLevel {
+		return fmt.Errorf("different expectations of isolation level. Got %s but expecting %s", isoLevel, iso)
 	}
 	return fn(ctx, q)
 }

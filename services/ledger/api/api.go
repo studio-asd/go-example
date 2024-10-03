@@ -2,9 +2,11 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/albertwidi/pkg/postgres"
 
+	"github.com/albertwidi/go-example/internal/await"
 	"github.com/albertwidi/go-example/internal/protovalidate"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
@@ -36,9 +38,56 @@ func New(queries *ledgerpg.Queries) *API {
 }
 
 // Transact moves money from accounts to accounts within the transaction scope.
-func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn func(context.Context, *postgres.Postgres)) (*ledgerv1.TransactResponse, error) {
+func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn func(context.Context, *postgres.Postgres) error) (*ledgerv1.TransactResponse, error) {
 	if err := validator.Validate(req); err != nil {
 		return nil, err
 	}
-	return nil, nil
+
+	accounts := make([]string, len(req.GetMovementEntries())*2)
+	entries := req.GetMovementEntries()
+	for idx, entry := range entries {
+		accounts[idx] = entry.FromAccountId
+		accounts[idx+1] = entry.ToAccountId
+	}
+
+	accountsBalance, err := a.queries.GetAccountsBalanceMappedByAccID(ctx, accounts...)
+	if err != nil {
+		return nil, err
+	}
+	ledgerEntries, err := createLedgerEntries(accountsBalance, entries...)
+	if err != nil {
+		return nil, err
+	}
+
+	// If the additional function scope is not nil, then we should invoke the function inside a time-bounded
+	// goroutine as we don't know how much time the function will spent. So we need to ensure the function runs
+	// inside the Transact SLA.
+	if fn != nil {
+		timeoutSLA := time.Second * 3
+		err = await.Do(ctx, timeoutSLA, func(ctx context.Context) error {
+			if err := a.queries.Move(ctx, ledgerEntries); err != nil {
+				return err
+			}
+			if err := a.queries.Do(ctx, fn); err != nil {
+				return err
+			}
+			return nil
+		})
+	} else {
+		if err := a.queries.Move(ctx, ledgerEntries); err != nil {
+			return nil, err
+		}
+	}
+	// Construct the response. As the movement id and ledger ids are constructed beforehand, we only consruct the response
+	// after we know all operations is a success to not wasting compute resource.
+	response := &ledgerv1.TransactResponse{
+		MovementId: ledgerEntries.MovementID,
+	}
+	for _, le := range ledgerEntries.LedgerEntries {
+		response.LedgerIds = append(response.LedgerIds, le.LedgerID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
 }

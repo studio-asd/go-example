@@ -10,8 +10,9 @@ import (
 type Kind int
 
 const (
-	KindUnknown = iota
+	KindUnknown Kind = iota
 	KindBadRequest
+	KindUnauthorized
 	KindInternalError
 )
 

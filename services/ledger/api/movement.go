@@ -16,8 +16,10 @@ import (
 
 // createLedgerEntries converts the initial movement entries to ledger entries, check and
 // summarize them into a correct entries.
-func createLedgerEntries(movementID string, balances map[string]ledgerpg.GetAccountsBalanceRow, entries ...*ledgerv1.MovementEntry) (ledger.MovementLedgerEntries, error) {
+func createLedgerEntries(balances map[string]ledgerpg.GetAccountsBalanceRow, entries ...*ledgerv1.MovementEntry) (ledger.MovementLedgerEntries, error) {
+	movementID := uuid.NewString()
 	le := ledger.MovementLedgerEntries{
+		MovementID: movementID,
 		// Create the entries with length of (entries*2) as we need the entry of DEBIT and CREDIT for each movement.
 		LedgerEntries:   make([]ledger.LedgerEntry, len(entries)*2),
 		AccountsSummary: make(map[string]ledger.AccountMovementSummary),

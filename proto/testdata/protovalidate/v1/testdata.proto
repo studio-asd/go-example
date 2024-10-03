@@ -14,7 +14,12 @@ message TestRequest {
         message: "must be a valid email"
         expression: "this.isEmail()"
     }];
-    string test_ip = 5 [(buf.validate.field).cel = {
+    string test_another_email = 5 [(buf.validate.field).cel = {
+        id: "validate.email"
+        message: "must be a valid email"
+        expression: "this.isEmail()"
+    }];
+    string test_ip = 6 [(buf.validate.field).cel = {
         id: "validate.ip"
         message: "must be a valid ip"
         expression: "this.isIp()"

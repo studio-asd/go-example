@@ -1,11 +1,68 @@
 package errors
 
 import (
+	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestWrap(t *testing.T) {
+	t.Run("error_is", func(t *testing.T) {
+		var testErrType = errors.New("a standard error")
+
+		tests := []struct {
+			name   string
+			err    error
+			args   []any
+			expect error
+		}{
+			{
+				name:   "standard error",
+				err:    testErrType,
+				args:   nil,
+				expect: testErrType,
+			},
+			{
+				name:   "wrapped error with error args",
+				err:    New("a wrapped error"),
+				args:   []any{testErrType},
+				expect: testErrType,
+			},
+			{
+				name:   "wrapped error with join error(custom, standard)",
+				err:    Join(New("a wrapped error"), testErrType),
+				args:   nil,
+				expect: testErrType,
+			},
+			{
+				name:   "wrapped error with join fmt_error(custom, standard)",
+				err:    Join(New("a wrapped error"), fmt.Errorf("error %w", testErrType)),
+				args:   nil,
+				expect: testErrType,
+			},
+			// This does not work as we are wrapping the standard error type to the custom one. We need to insert the
+			// standard error into the custom error chain(somehow).
+			// {
+			// 	name:   "wrapped error with join error(standard, custom)",
+			// 	err:    Join(testErrType, New("a wrapped error")),
+			// 	args:   nil,
+			// 	expect: testErrType,
+			// },
+		}
+
+		for _, test := range tests {
+			t.Run(test.name, func(t *testing.T) {
+				err := Wrap(test.err, test.args...)
+				if !Is(err, test.expect) {
+					t.Fatalf("expecting error %v but got %v", test.expect, err)
+				}
+			})
+		}
+	})
+}
 
 func TestNewFields(t *testing.T) {
 	tests := []struct {

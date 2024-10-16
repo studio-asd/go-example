@@ -7,14 +7,26 @@ env HOME=$WORK
 cd ./database
 exec go mod init github.com/testing/testing
 exec go mod tidy
-exec go run . copyconf --all
+exec go run . copyconf --all --replace
 
 cmp orders/sqlc.yaml ../golden-orders-sqlc.yaml
 cmp users/sqlc.yaml ../golden-users-sqlc.yaml
 
+-- database/orders/schema.sql --
+
+CREATE TABLE IF NOT EXISTS orders(
+    id varchar PRIMARY KEY
+)
+
 -- database/orders/sqlc.yaml --
 
 test: true
+
+-- database/users/schema.sql --
+
+CREATE TABLE IF NOT EXISTS users(
+    id varchar PRIMARY KEY
+)
 
 -- database/users/sqlc.yaml --
 

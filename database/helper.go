@@ -29,7 +29,7 @@ func SchemaDirs(dbName string, flags Flags, dir string) (schemaDirs []string, sk
 		if dbName == "" {
 			return nil, nil, errors.New("database name cannot be empty if --all flag is not used")
 		}
-		if slices.Contains(skippedDirs, dbName) {
+		if slices.Contains(skipDirs, dbName) {
 			skippedDirs = append(skippedDirs, dbName)
 			return
 		}

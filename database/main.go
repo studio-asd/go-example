@@ -29,6 +29,7 @@ var embeddedFiles embed.FS
 
 type Flags struct {
 	All        bool
+	Replace    bool
 	DBName     string
 	SQLCConfig string
 }
@@ -242,12 +243,29 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
+		fmt.Println("DIRS", dirs)
 
 		for _, dir := range dirs {
+			// Replace the "database_name" with the directory name or the database name.
 			sqlcConfig := bytes.ReplaceAll(out, []byte("database_name"), []byte(dir))
-			if err := os.WriteFile(filepath.Join(dir, "sqlc.yaml"), sqlcConfig, 0o666); err != nil {
+
+			f, err := os.OpenFile(filepath.Join(dir, "sqlc.yaml"), os.O_RDWR|os.O_CREATE, 0o666)
+			if err != nil {
 				return err
 			}
+			wd, _ := os.Getwd()
+			fmt.Println(wd)
+
+			// if flags.Replace || err == os.ErrNotExist {
+			fmt.Println("WRITING CONFIGURATION")
+			_, err = f.Write(sqlcConfig)
+			if err != nil {
+				return err
+			}
+			return f.Close()
+			// }
+			// fmt.Println("SKIPPING CONFIGURATION")
+			// return f.Close()
 		}
 	}
 	return err
@@ -273,6 +291,7 @@ func parseFlags(args []string) (f Flags, err error) {
 	// Parse all the flags needed for code generation.
 	fset := flag.NewFlagSet("global_flags", flag.ExitOnError)
 	fset.BoolVar(&f.All, "all", false, "all flag to decide whether we want to generates for all or not")
+	fset.BoolVar(&f.Replace, "replace", false, "replace flag to decide whether we want to replace the existing file with newly generated one")
 	fset.StringVar(&f.DBName, "db_name", "", "database name")
 	fset.StringVar(&f.SQLCConfig, "sqlc_config", "sqlc.yaml", "sqlc.yaml configuration")
 

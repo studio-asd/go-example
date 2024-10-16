@@ -1,3 +1,6 @@
+test:
+	go test -v -race ./...
+
 copyconf:
 	go run -v . copyconf --all
 

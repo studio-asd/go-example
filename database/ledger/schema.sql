@@ -17,16 +17,16 @@ CREATE TABLE IF NOT EXISTS accounts(
 	"parent_account_id" varchar NOT NULL,
 	"account_status" account_status NOT NULL,
 	"currency_id" int NOT NULL,
-	"created_at" timestamptz NOT NULL,
-	"updated_at" timestamptz
+	"created_at" timestamp NOT NULL,
+	"updated_at" timestamp
 );
 
 -- movements is used to store all movement records.
 CREATE TABLE IF NOT EXISTS movements(
 	"movement_id" varchar PRIMARY KEY,
     "idempotency_key" varchar UNIQUE NOT NULL,
-	"created_at" timestamptz NOT NULL,
-	"updated_at" timestamptz
+	"created_at" timestamp NOT NULL,
+	"updated_at" timestamp
 );
 
 -- accounts_balance is used to store the latest state of user's balance. This table will be used for user
@@ -39,8 +39,8 @@ CREATE TABLE IF NOT EXISTS accounts_balance(
 	"allow_negative" boolean NOT NULL,
 	"balance" numeric NOT NULL,
 	"last_ledger_id" varchar NOT NULL,
-	"created_at" timestamptz NOT NULL,
-	"updated_at" timestamptz
+	"created_at" timestamp NOT NULL,
+	"updated_at" timestamp
 );
 
 -- accounts_ledger is used to store all ledger changes for a specific account. A single transaction
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS accounts_ledger(
 	"amount" numeric NOT NULL,
 	-- previous_ledger_id will be used to track the sequence of the ledger entries of a user.
 	"previous_ledger_id" varchar NOT NULL,
-	"created_at" timestamptz NOT NULL,
+	"created_at" timestamp NOT NULL,
 	"timestamp" bigint NOT NULL,
 	-- client_id is an identifier that the client can use in case they want to link their ids to per-ledger-row. With this, there are
 	-- many cases they can use with the ledger.

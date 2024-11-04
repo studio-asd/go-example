@@ -38,9 +38,29 @@ CREATE TABLE IF NOT EXISTS accounts_balance(
 	-- account we might allow the account to have negative balance.
 	"allow_negative" boolean NOT NULL,
 	"balance" numeric NOT NULL,
+	"last_movement_id" varchar NOT NULL,
 	"last_ledger_id" varchar NOT NULL,
 	"created_at" timestamp NOT NULL,
 	"updated_at" timestamp
+);
+
+-- accounts_balance_history is a historical balance changes for an account based on movement_id. The historical
+-- balance is per movement_id and not per ledger_id because we pre-calculates everything inside the system. And because
+-- we are building the ledger optimistically, the historical amount can changed by the time we calculate because
+-- we are not locking the balance up-front(as this will be expensive). So it makes more sense to create the history
+-- based on movement_id because we will do that in bulk rather than ledger_id.
+--
+-- This table can be used for various things like retrieving opening and ending balance of an account at a given time.
+CREATE TABLE IF NOT EXISTS accounts_balance_history(
+    "movement_id" varchar PRIMARY KEY,
+    "account_id" varchar NOT NULL,
+    "balance" numeric NOT NULL,
+    "previous_balance" numeric NOT NULL,
+    "previous_movement_id" varchar NOT NULL,
+    -- at_ledger_id is a marker on where we should find the exact balance inside the ledger. The last ledger_id for the
+    -- same movement_id and account_id should pointing into the same balance as it is pointing to the same ledger_id.
+    "at_ledger_id" varchar NOT NULL,
+    "created_at" timestamp NOT NULL
 );
 
 -- accounts_ledger is used to store all ledger changes for a specific account. A single transaction
@@ -56,6 +76,7 @@ CREATE TABLE IF NOT EXISTS accounts_ledger(
     "ledger_id" varchar PRIMARY KEY,
 	"movement_id" varchar NOT NULL,
 	"account_id" varchar NOT NULL,
+	-- movement_seuqnce is the ordered sequence of movement inside a movement_id.
 	"movement_sequence" int NOT NULL,
 	"currency_id" int NOT NULL,
 	"amount" numeric NOT NULL,

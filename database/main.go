@@ -416,6 +416,7 @@ package {{ .GoPackageName }}
 
 import (
 	"context"
+	"fmt"
 	"database/sql"
 
 	"github.com/albertwidi/pkg/postgres"
@@ -466,6 +467,7 @@ package {{ .GoPackageName }}
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"os"
 	"testing"
@@ -478,6 +480,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	flag.Parse()
 	// Don't invoke the integration test if short flag is used.
 	if testing.Short() {
 		return

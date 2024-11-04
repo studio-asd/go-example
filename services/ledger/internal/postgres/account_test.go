@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -167,6 +168,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 
 			gotAcc, err := tq.GetAccounts(context.Background(), accounts)
 			if err != nil {
+				fmt.Println("HERE WHAT")
 				t.Fatal(err)
 			}
 			if diff := cmp.Diff(test.expectAccounts, gotAcc); diff != "" {

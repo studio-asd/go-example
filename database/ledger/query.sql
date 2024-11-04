@@ -13,9 +13,10 @@ INSERT INTO accounts_balance(
 	allow_negative,
 	balance,
 	last_ledger_id,
+	last_movement_id,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6);
+) VALUES($1,$2,$3,$4,$5,$6,$7);
 
 -- name: GetAccounts :many
 SELECT *
@@ -29,6 +30,7 @@ SELECT ab.account_id,
 	ab.balance,
 	ab.currency_id,
 	ab.last_ledger_id,
+	ab.last_movement_id,
 	ab.created_at,
 	ab.updated_at,
 	ac.account_status

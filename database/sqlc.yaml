@@ -86,6 +86,24 @@ sql:
               import: "database/sql"
               type: "NullTime"
             nullable: true
+          - db_type: "timestamp"
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "timestamp"
+            go_type:
+              import: "database/sql"
+              type: "NullTime"
+            nullable: true
+          - db_type: "pg_catalog.timestamp"
+            go_type:
+              import: "time"
+              type: "Time"
+          - db_type: "pg_catalog.timestamp"
+            go_type:
+              import: "database/sql"
+              type: "NullTime"
+            nullable: true
     database:
       uri: "postgres://postgres:postgres@localhost:5432/database_name?sslmode=disable"
     rules:

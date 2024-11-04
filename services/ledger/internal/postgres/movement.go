@@ -37,6 +37,14 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		"created_at",
 		"timestamp",
 	}
+	accountsBalanceHistoryColumns := []string{
+		"movement_id",
+		"account_id",
+		"balance",
+		"previous_balance",
+		"previous_movement_id",
+		"created_at",
+	}
 
 	// Below here, we will do everything inside the database transaction. So its important to keep in mind, whatever we are doing here it gotta have to
 	// be fast. As we are locking the users balances here, the user won't be able to create new movement if the account is still being locked in the
@@ -45,6 +53,19 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		updateBalanceQuery, lastBalancesInfo, err := selectAccountsBalanceForMovement(ctx, q, le.AccountsSummary, le.CreatedAt, le.Accounts)
 		if err != nil {
 			return err
+		}
+		// Create the bulk insert parameters for accounts_balance_history. This is imporatnt as we want to record the histories
+		// of the balance based on the movement and not per ledger-record basis.
+		bulkInsertBalanceHistoryParams := make([]any, len(accountsBalanceHistoryColumns)*len(accountsBalanceHistoryColumns))
+		counter := 0
+		for accID, info := range lastBalancesInfo {
+			beginIndex := len(accountsBalanceHistoryColumns) * counter
+			bulkInsertBalanceHistoryParams[beginIndex] = le.MovementID
+			bulkInsertBalanceHistoryParams[beginIndex+1] = accID
+			bulkInsertBalanceHistoryParams[beginIndex+2] = info.NewBalance
+			bulkInsertBalanceHistoryParams[beginIndex+3] = info.PreviousBalance
+			bulkInsertBalanceHistoryParams[beginIndex+4] = info.PreviousMovementID
+			bulkInsertBalanceHistoryParams[beginIndex+5] = le.CreatedAt
 		}
 
 		// Build the bulk insert parameters for ledger. We are doing the bulk insert as we need to insert the ledger for both DEBIT and CREDIT for each
@@ -85,6 +106,16 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			slog.Debug("faield to update balance", slog.String("query", updateBalanceQuery))
 			return fmt.Errorf("failed to update balances: %w", err)
 		}
+		// Insert to the accounts balance history.
+		if err := q.db.BulkInsert(
+			ctx,
+			"accounts_balance_history",
+			accountsBalanceHistoryColumns,
+			bulkInsertBalanceHistoryParams,
+			"",
+		); err != nil {
+			fmt.Errorf("failed to insert accounts balance history: %w", err)
+		}
 		// Insert to the accounts ledger.
 		if err := q.db.BulkInsert(
 			ctx,
@@ -104,10 +135,12 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 // The information is needed when moving money from one account to another as we need to know the latest
 // state of the account before moving its balance.
 type AccountLastBalanceInfo struct {
-	AccountID       string
-	PreviousBalance decimal.Decimal
-	NewBalance      decimal.Decimal
-	LastLedgerID    string
+	AccountID          string
+	PreviousBalance    decimal.Decimal
+	PreviousLedgerID   string
+	PreviousMovementID string
+	NewBalance         decimal.Decimal
+	LastLedgerID       string
 }
 
 // selectAccountsBalanceForMovement do SELECT FOR UPDATE to the account_balances and lock specific account_id balance. The function also returns the update statements
@@ -122,6 +155,7 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 		"allow_negative",
 		"balance",
 		"last_ledger_id",
+		"last_movement_id",
 	).
 		From("accounts_balance").
 		Where(squirrel.Eq{"account_id": accounts}).
@@ -154,12 +188,14 @@ WHERE ab.account_id = v.account_id;
 			&ab.AllowNegative,
 			&ab.Balance,
 			&ab.LastLedgerID,
+			&ab.LastMovementID,
 		); err != nil {
 			return err
 		}
 
 		var newBalance decimal.Decimal
-		// If the last ledger id is still the same under lock, then we should use the ending balance given, as there are no transactions being recorded concurrently for this account.
+		// If the last ledger id is still the same under lock, then we should use the ending balance given, as there are no
+		// transactions being recorded concurrently for this account.
 		if changes[ab.AccountID].LastLedgerID == ab.LastLedgerID {
 			newBalance = changes[ab.AccountID].EndingBalance
 		} else {
@@ -171,10 +207,12 @@ WHERE ab.account_id = v.account_id;
 		}
 		// Store the accounts information before we change it.
 		accountsLastInfo[ab.AccountID] = AccountLastBalanceInfo{
-			AccountID:       ab.AccountID,
-			PreviousBalance: ab.Balance,
-			NewBalance:      newBalance,
-			LastLedgerID:    changes[ab.AccountID].NextLedgerID,
+			AccountID:          ab.AccountID,
+			PreviousBalance:    ab.Balance,
+			PreviousLedgerID:   ab.LastLedgerID,
+			PreviousMovementID: ab.LastMovementID,
+			NewBalance:         newBalance,
+			LastLedgerID:       changes[ab.AccountID].NextLedgerID,
 		}
 
 		// Create the VALUES of update balance query. For example:

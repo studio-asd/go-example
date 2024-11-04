@@ -5,6 +5,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"flag"
 	"log"
 	"os"
 	"testing"
@@ -17,6 +18,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	flag.Parse()
 	// Don't invoke the integration test if short flag is used.
 	if testing.Short() {
 		return
@@ -48,4 +50,3 @@ func run(ctx context.Context, m *testing.M) (code int, err error) {
 	code = m.Run()
 	return
 }
-

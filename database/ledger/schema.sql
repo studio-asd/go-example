@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS accounts_ledger;
 
 -- types.
 
-DROP TYPE IF EXISTS account_status;
+DROP TYPE IF EXISTS account_status CASCADE;
 CREATE TYPE account_status AS ENUM('active', 'inactive');
 
 -- tables and index.
@@ -53,13 +53,14 @@ CREATE TABLE IF NOT EXISTS accounts_balance(
 -- This table can be used for various things like retrieving opening and ending balance of an account at a given time.
 CREATE TABLE IF NOT EXISTS accounts_balance_history(
     "movement_id" varchar PRIMARY KEY,
+    -- ledger_id is the id of where the balance is being summarized, the SUM of the balance in the accounts_ledger should be
+    -- the same if we sumarize everything up to this ledger_id.
+    "ledger_id" varchar NOT NULL,
     "account_id" varchar NOT NULL,
     "balance" numeric NOT NULL,
     "previous_balance" numeric NOT NULL,
     "previous_movement_id" varchar NOT NULL,
-    -- at_ledger_id is a marker on where we should find the exact balance inside the ledger. The last ledger_id for the
-    -- same movement_id and account_id should pointing into the same balance as it is pointing to the same ledger_id.
-    "at_ledger_id" varchar NOT NULL,
+    "previous_ledger_id" varchar NOT NULL,
     "created_at" timestamp NOT NULL
 );
 
@@ -83,7 +84,6 @@ CREATE TABLE IF NOT EXISTS accounts_ledger(
 	-- previous_ledger_id will be used to track the sequence of the ledger entries of a user.
 	"previous_ledger_id" varchar NOT NULL,
 	"created_at" timestamp NOT NULL,
-	"timestamp" bigint NOT NULL,
 	-- client_id is an identifier that the client can use in case they want to link their ids to per-ledger-row. With this, there are
 	-- many cases they can use with the ledger.
 	--

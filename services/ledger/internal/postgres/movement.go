@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -15,6 +14,15 @@ import (
 
 	"github.com/albertwidi/go-example/services/ledger"
 )
+
+// bulkUpdate is a custom type to pass the bulk update parameters around functions. The type is customized
+// based on the existing parameters inside of the Postgres package.
+type bulkUpdate struct {
+	Table   string
+	Columns []string
+	Types   []string
+	Values  [][]any
+}
 
 // Move moves balance from one account to another based on the movement entries.
 //
@@ -50,7 +58,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 	// be fast. As we are locking the users balances here, the user won't be able to create new movement if the account is still being locked in the
 	// database transaction.
 	err := q.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *Queries) error {
-		updateBalanceQuery, lastBalancesInfo, err := selectAccountsBalanceForMovement(ctx, q, le.AccountsSummary, le.CreatedAt, le.Accounts)
+		bulkUpdateParams, lastBalancesInfo, err := selectAccountsBalanceForMovement(ctx, q, le.AccountsSummary, le.CreatedAt, le.Accounts)
 		if err != nil {
 			return err
 		}
@@ -101,9 +109,17 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 
 		// Update the affected users balance. We updated the balance first because it will affects less row than inserting the records to ledger.
 		// So if something bad happens, it will be more effecicient to rollback.
-		_, err = q.db.Exec(ctx, updateBalanceQuery)
-		if err != nil {
-			slog.Debug("faield to update balance", slog.String("query", updateBalanceQuery))
+		if err := q.db.BulkUpdate(
+			ctx,
+			bulkUpdateParams.Table,
+			bulkUpdateParams.Columns,
+			bulkUpdateParams.Types,
+			bulkUpdateParams.Values,
+		); err != nil {
+			for _, v := range bulkUpdateParams.Values {
+				fmt.Println("LEN ", len(v))
+			}
+			slog.Info(fmt.Sprintf("%+v", bulkUpdateParams))
 			return fmt.Errorf("failed to update balances: %w", err)
 		}
 		// Insert to the accounts balance history.
@@ -145,9 +161,9 @@ type AccountLastBalanceInfo struct {
 
 // selectAccountsBalanceForMovement do SELECT FOR UPDATE to the account_balances and lock specific account_id balance. The function also returns the update statements
 // for all accounts so we can also tests whether the update statement is contstructed as we expected or not.
-func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes map[string]ledger.AccountMovementSummary, createdAt time.Time, accounts []string) (string, map[string]AccountLastBalanceInfo, error) {
+func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes map[string]ledger.AccountMovementSummary, createdAt time.Time, accounts []string) (bulkUpdate, map[string]AccountLastBalanceInfo, error) {
 	if len(accounts) == 0 {
-		return "", nil, errors.New("account_id is required to select accounts balance for movement")
+		return bulkUpdate{}, nil, errors.New("account_id is required to select accounts balance for movement")
 	}
 
 	selectForUpdate, selectForUpdateArgs, err := squirrel.Select(
@@ -163,21 +179,27 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 		PlaceholderFormat(squirrel.Dollar).
 		ToSql()
 	if err != nil {
-		return "", nil, err
+		return bulkUpdate{}, nil, err
 	}
-
-	// updateBalanceQuery updates balances of all accounts based on the update information foer each account.
-	// The (VALUES %s) will be translated to (balance, movement_id, movement_sequence, account_id, updated_at) of each account.
-	// For example: (VALUES (100, '1', 1, '1', '2024-01-01'), (200, '2', 1, '2', '2024-01-01')).
-	var updateBalanceValues []string
-	updateBalanceQuery := `
-UPDATE accounts_balance AS ab SET
-	balance = v.balance,
-	last_ledger_id = v.last_ledger_id,
-	updated_at = v.updated_at
-FROM (VALUES %s) AS v(balance, last_ledger_id, account_id, updated_at)
-WHERE ab.account_id = v.account_id;
-`
+	// Construct the bulk update parameters so we can execute the bulk update in a single transaction.
+	bulkUpdate := bulkUpdate{
+		Table: "accounts_balance",
+		Columns: []string{
+			"account_id",
+			"balance",
+			"last_ledger_id",
+			"updated_at",
+		},
+		Types: []string{
+			"VARCHAR",
+			"NUMERIC",
+			"VARCHAR",
+			"TIMESTAMP",
+		},
+	}
+	// The values first array must have the same length of the columns, so we will create it with columns
+	// as the base length.
+	bulkUpdate.Values = make([][]any, len(bulkUpdate.Columns))
 
 	accountsLastInfo := make(map[string]AccountLastBalanceInfo)
 	// accounts is the new information of the accounts which we want to change. We will use this to create UPDATE query.
@@ -214,21 +236,15 @@ WHERE ab.account_id = v.account_id;
 			NewBalance:         newBalance,
 			LastLedgerID:       changes[ab.AccountID].NextLedgerID,
 		}
-
-		// Create the VALUES of update balance query. For example:
-		// VALUES("100", "movement_id", "1", "account_id", "2024-01-01"),
-		// 	("200", "movement_id", "1", "account_id2", "2024-01-01")
-		updateBalanceValue := "(" + strings.Join([]string{
-			newBalance.String(),
-			"'" + changes[ab.AccountID].NextLedgerID + "'",
-			"'" + ab.AccountID + "'",
-			"to_timestamp('" + createdAt.Format(time.DateTime) + "', 'yyyy-mm-dd hh24:mi:ss')",
-		}, ",") + ")"
-		updateBalanceValues = append(updateBalanceValues, updateBalanceValue)
+		// Append the values to the bulk update parameters as we want to updates all the balances at the same time.
+		bulkUpdate.Values[0] = append(bulkUpdate.Values[0], ab.AccountID)
+		bulkUpdate.Values[1] = append(bulkUpdate.Values[1], newBalance.String())
+		bulkUpdate.Values[2] = append(bulkUpdate.Values[2], changes[ab.AccountID].NextLedgerID)
+		bulkUpdate.Values[3] = append(bulkUpdate.Values[3], createdAt)
 		return nil
 	}, selectForUpdateArgs...)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to select for update: %w", err)
+		return bulkUpdate, nil, fmt.Errorf("failed to select for update: %w", err)
 	}
-	return fmt.Sprintf(updateBalanceQuery, strings.Join(updateBalanceValues, ",")), accountsLastInfo, nil
+	return bulkUpdate, accountsLastInfo, nil
 }

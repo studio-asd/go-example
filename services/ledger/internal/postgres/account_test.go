@@ -17,7 +17,7 @@ import (
 func TestCreateLedgerAccounts(t *testing.T) {
 	t.Parallel()
 
-	now := time.Now()
+	now := time.Now().UTC()
 	tests := []struct {
 		name                  string
 		createAccounts        []CreateLedgerAccount

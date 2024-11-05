@@ -17,10 +17,7 @@ import (
 func TestMove(t *testing.T) {
 	t.Parallel()
 
-	createdAt, err := time.Parse(time.RFC3339, "2024-03-25T00:01:10+07:00")
-	if err != nil {
-		t.Fatal(err)
-	}
+	createdAt := time.Now().UTC()
 	timestamp := createdAt.Unix()
 
 	// accountsSetup is a set of accounts for test setup/fixtures.
@@ -187,14 +184,14 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 	}
 
 	tests := []struct {
-		name                     string
-		movementID               string
-		createdAt                time.Time
-		accounts                 []CreateAccountBalanceParams
-		accountChanges           map[string]ledger.AccountMovementSummary
-		expectLastBalanceInfo    map[string]AccountLastBalanceInfo
-		expectUpdateBalanceQuery string
-		selectForUpdateErr       error
+		name                   string
+		movementID             string
+		createdAt              time.Time
+		accounts               []CreateAccountBalanceParams
+		accountChanges         map[string]ledger.AccountMovementSummary
+		expectLastBalanceInfo  map[string]AccountLastBalanceInfo
+		expectBulkUpdateParams bulkUpdate
+		selectForUpdateErr     error
 	}{
 		{
 			name:       "simple update",
@@ -274,14 +271,47 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 					LastLedgerID:    "four",
 				},
 			},
-			expectUpdateBalanceQuery: `
-UPDATE accounts_balance AS ab SET
-	balance = v.balance,
-	last_ledger_id = v.last_ledger_id,
-	updated_at = v.updated_at
-FROM (VALUES (200,'one','one','2024-03-25 00:01:10'),(200,'two','two','2024-03-25 00:01:10'),(200,'three','three','2024-03-25 00:01:10'),(0,'four','four','2024-03-25 00:01:10')) AS v(balance, last_ledger_id, account_id, updated_at)
-WHERE ab.account_id = v.account_id;
-`,
+			expectBulkUpdateParams: bulkUpdate{
+				Table: "accounts_balance",
+				Columns: []string{
+					"account_id",
+					"balance",
+					"last_ledger_id",
+					"updated_at",
+				},
+				Types: []string{
+					"VARCHAR",
+					"NUMERIC",
+					"VARCHAR",
+					"TIMESTAMP",
+				},
+				Values: [][]any{
+					{
+						"one",
+						"two",
+						"three",
+						"four",
+					},
+					{
+						"200",
+						"200",
+						"200",
+						"0",
+					},
+					{
+						"one",
+						"two",
+						"three",
+						"four",
+					},
+					{
+						createdAt,
+						createdAt,
+						createdAt,
+						createdAt,
+					},
+				},
+			},
 			selectForUpdateErr: nil,
 		},
 		{
@@ -361,27 +391,27 @@ WHERE ab.account_id = v.account_id;
 			}
 
 			var (
-				updateBalanceQuery string
-				gotInfo            map[string]AccountLastBalanceInfo
+				bulkUpdateParams bulkUpdate
+				gotInfo          map[string]AccountLastBalanceInfo
 			)
 			// Test inside the transaction as we are doing SELECT FOR UPDATE.
 			gotErr := th.Queries().WithTransact(context.Background(), sql.LevelReadUncommitted, func(ctx context.Context, q *Queries) error {
-				updateBalanceQuery, gotInfo, err = selectAccountsBalanceForMovement(ctx, q, test.accountChanges, test.createdAt, accounts)
+				bulkUpdateParams, gotInfo, err = selectAccountsBalanceForMovement(ctx, q, test.accountChanges, test.createdAt, accounts)
 				return err
 			})
 			if !errors.Is(gotErr, test.selectForUpdateErr) {
 				t.Fatalf("expecting error %v but got %v", test.selectForUpdateErr, gotErr)
+			}
+			if gotErr != nil {
+				return
 			}
 			for accID, info := range test.expectLastBalanceInfo {
 				if diff := cmp.Diff(info, gotInfo[accID]); diff != "" {
 					t.Fatalf("%s: (-want/+got)\n%s", accID, diff)
 				}
 			}
-			if diff := cmp.Diff(test.expectUpdateBalanceQuery, updateBalanceQuery); diff != "" {
-				t.Fatalf("(-want/+got)\n%s\n---\n%s\n---\n%s", diff, test.expectUpdateBalanceQuery, updateBalanceQuery)
-			}
-			if test.expectUpdateBalanceQuery != updateBalanceQuery {
-				t.Fatalf("expecting query\n%s\nbut got\n%s", test.expectUpdateBalanceQuery, updateBalanceQuery)
+			if diff := cmp.Diff(test.expectBulkUpdateParams, bulkUpdateParams); diff != "" {
+				t.Fatalf("bulkUpdateParams: (-want/+got)\n%s", diff)
 			}
 		})
 	}

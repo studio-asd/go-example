@@ -21,13 +21,13 @@ type TestHelper struct {
 	testQueries *Queries
 	conn *postgres.Postgres
 	pgtestHelper *pgtest.PGTest
+	mu sync.Mutex
 	// forks is the list of forked helper throughout the test. We need to track the lis of forked helper as we want
 	// to track the resource of helper and close them properly.
 	forks []*TestHelper
 	// fork is a mark that the test helper had been forked, thus several expections should be made when
 	// doing several operation like closing connections.
 	fork bool
-	closeMu sync.Mutex
 	closed bool
 }
 
@@ -87,8 +87,8 @@ func (th *TestHelper) prepareTest(ctx context.Context) (*Queries, error) {
 
 // Close closes all connections from the test helper.
 func (th *TestHelper) Close() error {
-	th.closeMu.Lock()
-	defer th.closeMu.Unlock()
+	th.mu.Lock()
+	defer th.mu.Unlock()
 	if th.closed {
 		return nil
 	}
@@ -132,6 +132,8 @@ func (th *TestHelper) Close() error {
 // ForkPostgresSchema forks the sourceSchema with the underlying connection inside the Queries. The function will return a new connection
 // with default search_path into the new schema. The schema name currently is random and cannot be defined by the user.
 func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*TestHelper, error) {
+	th.mu.Lock()
+	defer th.mu.Unlock()
 	if th.fork {
 		return nil, errors.New("cannot fork the schema from a forked test helper, please use the original test helper")
 	}

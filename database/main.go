@@ -525,6 +525,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"testing"
 
 	"github.com/albertwidi/pkg/postgres"
 	testingpkg "github.com/albertwidi/pkg/testing"
@@ -549,6 +550,9 @@ type TestHelper struct {
 }
 
 func NewTestHelper(ctx context.Context) (*TestHelper, error) {
+	if !testing.Testing() {
+		return nil, errors.New("can only be used in test")
+	}
 	th :=&TestHelper{
 		dbName: "{{ .DatabaseName }}",
 		pgtestHelper: pgtest.New(),
@@ -655,7 +659,7 @@ func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, source
 	th.mu.Lock()
 	defer th.mu.Unlock()
 	if th.closed {
-		return errors.New("cannot create a fork from closed test helper")
+		return nil, errors.New("cannot create a fork from closed test helper")
 	}
 	pg , err:= th.pgtestHelper.ForkSchema(ctx, q.db, sourceSchema)
 	if err != nil {
@@ -671,5 +675,20 @@ func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, source
 	// Append the forks to the origin
 	th.forks = append(th.forks, newTH)
 	return newTH, nil
+}
+
+// DefaultSearchPath returns the default PostgreSQL search path. This helper function invoke the pg.DefaultSearchPath
+// to do this. This function added to avoid the user/client to go deeper to the postgres object to invoke this function.
+func (th *TestHelper) DefaultSearchPath() string {
+	return th.conn.DefaultSearchPath()
+}
+
+// CloseFunc is a helper function to close the test helper via testing.T.Cleanup.
+func (th *TestHelper) CloseFunc(t *testing.T) func() {
+	return func() {
+		if err := th.Close(); err != nil {
+			t.Log(err)
+		}
+	}
 }
 `

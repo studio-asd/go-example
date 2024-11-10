@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS accounts_balance(
 --
 -- This table can be used for various things like retrieving opening and ending balance of an account at a given time.
 CREATE TABLE IF NOT EXISTS accounts_balance_history(
-    "movement_id" varchar PRIMARY KEY,
+    "history_id" bigint GENERATED ALWAYS AS IDENTITY,
+    "movement_id" varchar NOT NULL,
     -- ledger_id is the id of where the balance is being summarized, the SUM of the balance in the accounts_ledger should be
     -- the same if we sumarize everything up to this ledger_id.
     "ledger_id" varchar NOT NULL,

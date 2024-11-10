@@ -19,6 +19,8 @@ type CreateLedgerAccount struct {
 	AllowNegative   bool
 	Currency        *currency.Currency
 	CreatedAt       time.Time
+	// balance can only be set internally for testing purpose.
+	balance decimal.Decimal
 }
 
 func (q *Queries) CreateLedgerAccounts(ctx context.Context, c ...CreateLedgerAccount) error {
@@ -36,8 +38,8 @@ func (q *Queries) CreateLedgerAccounts(ctx context.Context, c ...CreateLedgerAcc
 }
 
 func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount) error {
-	fn := func(ctx context.Context, q *Queries) error {
-		if err := q.CreateAccount(ctx, CreateAccountParams{
+	fn := func(ctx context.Context, qr *Queries) error {
+		if err := qr.CreateAccount(ctx, CreateAccountParams{
 			AccountID:       c.AccountID,
 			ParentAccountID: c.ParentAccountID,
 			AccountStatus:   ledger.AccountStatusActive,
@@ -46,10 +48,10 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 		}); err != nil {
 			return err
 		}
-		if err := q.CreateAccountBalance(ctx, CreateAccountBalanceParams{
+		if err := qr.CreateAccountBalance(ctx, CreateAccountBalanceParams{
 			AccountID:     c.AccountID,
 			AllowNegative: c.AllowNegative,
-			Balance:       decimal.Zero,
+			Balance:       c.balance,
 			CurrencyID:    c.Currency.ID,
 			// LastLedgerID is always empty at first.
 			LastLedgerID: "",
@@ -72,7 +74,9 @@ func (q *Queries) GetAccountsBalanceMappedByAccID(ctx context.Context, accounts 
 			&i.AccountID,
 			&i.AllowNegative,
 			&i.Balance,
+			&i.CurrencyID,
 			&i.LastLedgerID,
+			&i.LastMovementID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.AccountStatus,

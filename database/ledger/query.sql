@@ -59,11 +59,11 @@ INSERT INTO movements(
 SELECT ledger_id,
 	movement_id,
 	movement_sequence,
+	account_id,
 	amount,
 	previous_ledger_id,
 	created_at,
-	timestamp,
 	client_id
 FROM accounts_ledger
 WHERE movement_id = $1
-ORDER BY timestamp;
+ORDER BY created_at;

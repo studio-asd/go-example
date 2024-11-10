@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/Masterminds/squirrel"
@@ -43,14 +42,15 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		"previous_ledger_id",
 		"client_id",
 		"created_at",
-		"timestamp",
 	}
 	accountsBalanceHistoryColumns := []string{
 		"movement_id",
+		"ledger_id",
 		"account_id",
 		"balance",
 		"previous_balance",
 		"previous_movement_id",
+		"previous_ledger_id",
 		"created_at",
 	}
 
@@ -64,16 +64,19 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		}
 		// Create the bulk insert parameters for accounts_balance_history. This is imporatnt as we want to record the histories
 		// of the balance based on the movement and not per ledger-record basis.
-		bulkInsertBalanceHistoryParams := make([]any, len(accountsBalanceHistoryColumns)*len(accountsBalanceHistoryColumns))
+		bulkInsertBalanceHistoryParams := make([]any, len(accountsBalanceHistoryColumns)*len(lastBalancesInfo))
 		counter := 0
 		for accID, info := range lastBalancesInfo {
 			beginIndex := len(accountsBalanceHistoryColumns) * counter
 			bulkInsertBalanceHistoryParams[beginIndex] = le.MovementID
-			bulkInsertBalanceHistoryParams[beginIndex+1] = accID
-			bulkInsertBalanceHistoryParams[beginIndex+2] = info.NewBalance
-			bulkInsertBalanceHistoryParams[beginIndex+3] = info.PreviousBalance
-			bulkInsertBalanceHistoryParams[beginIndex+4] = info.PreviousMovementID
-			bulkInsertBalanceHistoryParams[beginIndex+5] = le.CreatedAt
+			bulkInsertBalanceHistoryParams[beginIndex+1] = info.NextLedgerID
+			bulkInsertBalanceHistoryParams[beginIndex+2] = accID
+			bulkInsertBalanceHistoryParams[beginIndex+3] = info.NewBalance
+			bulkInsertBalanceHistoryParams[beginIndex+4] = info.PreviousBalance
+			bulkInsertBalanceHistoryParams[beginIndex+5] = info.PreviousMovementID
+			bulkInsertBalanceHistoryParams[beginIndex+6] = info.PreviousLedgerID
+			bulkInsertBalanceHistoryParams[beginIndex+7] = le.CreatedAt
+			counter++
 		}
 
 		// Build the bulk insert parameters for ledger. We are doing the bulk insert as we need to insert the ledger for both DEBIT and CREDIT for each
@@ -84,7 +87,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			// exact previous identifier. This will always be the case for the first entry of an account movement. When this happen, then we will fill the entry
 			// data with the information of when the lock/SELECT FOR UPDATE happened.
 			if entry.PreviousLedgerID == "" {
-				entry.PreviousLedgerID = lastBalancesInfo[entry.AccountID].LastLedgerID
+				entry.PreviousLedgerID = lastBalancesInfo[entry.AccountID].NextLedgerID
 			}
 			// Set the client id if the client_id is not null.
 			clientID := sql.NullString{}
@@ -104,7 +107,6 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			bulkInsertLedgerParams[offset+6] = entry.PreviousLedgerID
 			bulkInsertLedgerParams[offset+7] = clientID
 			bulkInsertLedgerParams[offset+8] = entry.CreatedAt
-			bulkInsertLedgerParams[offset+9] = entry.Timestamp
 		}
 
 		// Update the affected users balance. We updated the balance first because it will affects less row than inserting the records to ledger.
@@ -116,10 +118,6 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			bulkUpdateParams.Types,
 			bulkUpdateParams.Values,
 		); err != nil {
-			for _, v := range bulkUpdateParams.Values {
-				fmt.Println("LEN ", len(v))
-			}
-			slog.Info(fmt.Sprintf("%+v", bulkUpdateParams))
 			return fmt.Errorf("failed to update balances: %w", err)
 		}
 		// Insert to the accounts balance history.
@@ -130,7 +128,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			bulkInsertBalanceHistoryParams,
 			"",
 		); err != nil {
-			fmt.Errorf("failed to insert accounts balance history: %w", err)
+			return fmt.Errorf("failed to insert accounts balance history: %w", err)
 		}
 		// Insert to the accounts ledger.
 		if err := q.db.BulkInsert(
@@ -156,7 +154,7 @@ type AccountLastBalanceInfo struct {
 	PreviousLedgerID   string
 	PreviousMovementID string
 	NewBalance         decimal.Decimal
-	LastLedgerID       string
+	NextLedgerID       string
 }
 
 // selectAccountsBalanceForMovement do SELECT FOR UPDATE to the account_balances and lock specific account_id balance. The function also returns the update statements
@@ -234,7 +232,7 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 			PreviousLedgerID:   ab.LastLedgerID,
 			PreviousMovementID: ab.LastMovementID,
 			NewBalance:         newBalance,
-			LastLedgerID:       changes[ab.AccountID].NextLedgerID,
+			NextLedgerID:       changes[ab.AccountID].NextLedgerID,
 		}
 		// Append the values to the bulk update parameters as we want to updates all the balances at the same time.
 		bulkUpdate.Values[0] = append(bulkUpdate.Values[0], ab.AccountID)

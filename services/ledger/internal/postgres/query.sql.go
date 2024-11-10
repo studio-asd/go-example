@@ -199,24 +199,24 @@ const getAccountsLedgerByMovementID = `-- name: GetAccountsLedgerByMovementID :m
 SELECT ledger_id,
 	movement_id,
 	movement_sequence,
+	account_id,
 	amount,
 	previous_ledger_id,
 	created_at,
-	timestamp,
 	client_id
 FROM accounts_ledger
 WHERE movement_id = $1
-ORDER BY timestamp
+ORDER BY created_at
 `
 
 type GetAccountsLedgerByMovementIDRow struct {
 	LedgerID         string
 	MovementID       string
 	MovementSequence int32
+	AccountID        string
 	Amount           decimal.Decimal
 	PreviousLedgerID string
 	CreatedAt        time.Time
-	Timestamp        int64
 	ClientID         sql.NullString
 }
 
@@ -233,10 +233,10 @@ func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID 
 			&i.LedgerID,
 			&i.MovementID,
 			&i.MovementSequence,
+			&i.AccountID,
 			&i.Amount,
 			&i.PreviousLedgerID,
 			&i.CreatedAt,
-			&i.Timestamp,
 			&i.ClientID,
 		); err != nil {
 			return nil, err

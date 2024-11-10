@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"testing"
 
 	"github.com/albertwidi/pkg/postgres"
 	testingpkg "github.com/albertwidi/pkg/testing"
@@ -32,6 +33,9 @@ type TestHelper struct {
 }
 
 func NewTestHelper(ctx context.Context) (*TestHelper, error) {
+	if !testing.Testing() {
+		return nil, errors.New("can only be used in test")
+	}
 	th :=&TestHelper{
 		dbName: "go_example",
 		pgtestHelper: pgtest.New(),
@@ -132,10 +136,13 @@ func (th *TestHelper) Close() error {
 // ForkPostgresSchema forks the sourceSchema with the underlying connection inside the Queries. The function will return a new connection
 // with default search_path into the new schema. The schema name currently is random and cannot be defined by the user.
 func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, sourceSchema string) (*TestHelper, error) {
-	th.mu.Lock()
-	defer th.mu.Unlock()
 	if th.fork {
 		return nil, errors.New("cannot fork the schema from a forked test helper, please use the original test helper")
+	}
+	th.mu.Lock()
+	defer th.mu.Unlock()
+	if th.closed {
+		return nil, errors.New("cannot create a fork from closed test helper")
 	}
 	pg , err:= th.pgtestHelper.ForkSchema(ctx, q.db, sourceSchema)
 	if err != nil {
@@ -151,4 +158,19 @@ func (th *TestHelper) ForkPostgresSchema(ctx context.Context, q *Queries, source
 	// Append the forks to the origin
 	th.forks = append(th.forks, newTH)
 	return newTH, nil
+}
+
+// DefaultSearchPath returns the default PostgreSQL search path. This helper function invoke the pg.DefaultSearchPath
+// to do this. This function added to avoid the user/client to go deeper to the postgres object to invoke this function.
+func (th *TestHelper) DefaultSearchPath() string {
+	return th.conn.DefaultSearchPath()
+}
+
+// CloseFunc is a helper function to close the test helper via testing.T.Cleanup.
+func (th *TestHelper) CloseFunc(t *testing.T) func() {
+	return func() {
+		if err := th.Close(); err != nil {
+			t.Log(err)
+		}
+	}
 }

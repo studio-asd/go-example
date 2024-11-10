@@ -76,11 +76,14 @@ type AccountsBalance struct {
 }
 
 type AccountsBalanceHistory struct {
+	HistoryID          sql.NullInt64
 	MovementID         string
+	LedgerID           string
 	AccountID          string
 	Balance            decimal.Decimal
 	PreviousBalance    decimal.Decimal
 	PreviousMovementID string
+	PreviousLedgerID   string
 	CreatedAt          time.Time
 }
 
@@ -93,7 +96,6 @@ type AccountsLedger struct {
 	Amount           decimal.Decimal
 	PreviousLedgerID string
 	CreatedAt        time.Time
-	Timestamp        int64
 	ClientID         sql.NullString
 }
 

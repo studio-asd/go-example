@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/shopspring/decimal"
 
+	"github.com/albertwidi/go-example/internal/currency"
 	"github.com/albertwidi/go-example/services/ledger"
 )
 
@@ -31,8 +32,8 @@ func TestMove(t *testing.T) {
 	tests := []struct {
 		name                  string
 		entries               ledger.MovementLedgerEntries
-		expectAccountsBalance map[string]AccountsBalance
-		expectAccountsLedger  []AccountsLedger
+		expectAccountsBalance map[string]GetAccountsBalanceRow
+		expectAccountsLedger  []GetAccountsLedgerByMovementIDRow
 	}{
 		{
 			name: "simple entry",
@@ -70,12 +71,14 @@ func TestMove(t *testing.T) {
 				Accounts:  []string{"1", "2"},
 				CreatedAt: createdAt,
 			},
-			expectAccountsBalance: map[string]AccountsBalance{
+			expectAccountsBalance: map[string]GetAccountsBalanceRow{
 				"1": {
 					AccountID:     "1",
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(0),
+					CurrencyID:    1,
 					LastLedgerID:  "one",
+					AccountStatus: AccountStatusActive,
 					CreatedAt:     createdAt,
 					UpdatedAt:     sql.NullTime{Time: createdAt, Valid: true},
 				},
@@ -83,12 +86,14 @@ func TestMove(t *testing.T) {
 					AccountID:     "2",
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(200),
+					CurrencyID:    1,
 					LastLedgerID:  "two",
+					AccountStatus: AccountStatusActive,
 					CreatedAt:     createdAt,
 					UpdatedAt:     sql.NullTime{Time: createdAt, Valid: true},
 				},
 			},
-			expectAccountsLedger: []AccountsLedger{
+			expectAccountsLedger: []GetAccountsLedgerByMovementIDRow{
 				{
 					LedgerID:         "one",
 					MovementID:       "one",
@@ -97,7 +102,6 @@ func TestMove(t *testing.T) {
 					Amount:           decimal.NewFromInt(-100),
 					PreviousLedgerID: "",
 					CreatedAt:        createdAt,
-					Timestamp:        timestamp + 1,
 					ClientID:         sql.NullString{},
 				},
 				{
@@ -108,7 +112,6 @@ func TestMove(t *testing.T) {
 					Amount:           decimal.NewFromInt(100),
 					PreviousLedgerID: "",
 					CreatedAt:        createdAt,
-					Timestamp:        timestamp + 2,
 					ClientID:         sql.NullString{},
 				},
 			},
@@ -119,16 +122,19 @@ func TestMove(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+			th, err := testHelper.ForkPostgresSchema(testCtx, testHelper.Queries(), "public")
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(th.CloseFunc(t))
+			q := th.Queries()
 
 			for accountID, balance := range accountsSetup {
-				if err := th.Queries().CreateAccountBalance(testCtx, CreateAccountBalanceParams{
+				if err := q.CreateLedgerAccount(testCtx, CreateLedgerAccount{
 					AccountID:     accountID,
 					AllowNegative: false,
-					Balance:       balance,
+					balance:       balance,
+					Currency:      currency.IDR,
 					CreatedAt:     createdAt,
 				}); err != nil {
 					t.Fatal(err)
@@ -139,32 +145,26 @@ func TestMove(t *testing.T) {
 			for key := range test.expectAccountsBalance {
 				accountsID = append(accountsID, key)
 			}
-			if err := th.Queries().Move(testCtx, test.entries); err != nil {
+			if err := q.Move(testCtx, test.entries); err != nil {
 				t.Fatal(err)
 			}
-
 			// Check whether the accounts balances are correct..
-			balances, err := th.Queries().GetAccountsBalance(testCtx, accountsID)
+			balances, err := q.GetAccountsBalanceMappedByAccID(testCtx, accountsID...)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			for _, accb := range test.expectAccountsBalance {
-				var found bool
-				for _, b := range balances {
-					if accb.AccountID == b.AccountID {
-						found = true
-						if diff := cmp.Diff(accb, b); diff != "" {
-							t.Fatalf("(-want/+got)\n%s", diff)
-						}
-						break
-					}
+				b, ok := balances[accb.AccountID]
+				if !ok {
+					t.Fatalf("account id %s is not exists within balance search\nbalances: %v", accb.AccountID, balances)
 				}
-				if !found {
-					t.Fatalf("account id %s is not exists within balance search", accb.AccountID)
+				if diff := cmp.Diff(accb, b); diff != "" {
+					t.Fatalf("(-want/+got)\n%s", diff)
 				}
 			}
 			// Check whether the ledger entries are correct.
-			entries, err := th.Queries().GetAccountsLedgerByMovementID(testCtx, test.entries.MovementID)
+			entries, err := q.GetAccountsLedgerByMovementID(testCtx, test.entries.MovementID)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -250,25 +250,25 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 					AccountID:       "one",
 					PreviousBalance: decimal.NewFromInt(100),
 					NewBalance:      decimal.NewFromInt(200),
-					LastLedgerID:    "one",
+					NextLedgerID:    "one",
 				},
 				"two": {
 					AccountID:       "two",
 					PreviousBalance: decimal.NewFromInt(100),
 					NewBalance:      decimal.NewFromInt(200),
-					LastLedgerID:    "two",
+					NextLedgerID:    "two",
 				},
 				"three": {
 					AccountID:       "three",
 					PreviousBalance: decimal.NewFromInt(100),
 					NewBalance:      decimal.NewFromInt(200),
-					LastLedgerID:    "three",
+					NextLedgerID:    "three",
 				},
 				"four": {
 					AccountID:       "four",
 					PreviousBalance: decimal.NewFromInt(100),
 					NewBalance:      decimal.NewFromInt(0),
-					LastLedgerID:    "four",
+					NextLedgerID:    "four",
 				},
 			},
 			expectBulkUpdateParams: bulkUpdate{

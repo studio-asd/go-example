@@ -62,10 +62,12 @@ func TestMove(t *testing.T) {
 					"1": {
 						BalanceChanges: decimal.NewFromInt(-100),
 						NextLedgerID:   "one",
+						EndingBalance:  decimal.Zero,
 					},
 					"2": {
 						BalanceChanges: decimal.NewFromInt(100),
 						NextLedgerID:   "two",
+						EndingBalance:  decimal.NewFromInt(200),
 					},
 				},
 				Accounts:  []string{"1", "2"},
@@ -100,7 +102,7 @@ func TestMove(t *testing.T) {
 					AccountID:        "1",
 					MovementSequence: 1,
 					Amount:           decimal.NewFromInt(-100),
-					PreviousLedgerID: "",
+					PreviousLedgerID: "one",
 					CreatedAt:        createdAt,
 					ClientID:         sql.NullString{},
 				},
@@ -110,7 +112,7 @@ func TestMove(t *testing.T) {
 					AccountID:        "2",
 					MovementSequence: 1,
 					Amount:           decimal.NewFromInt(100),
-					PreviousLedgerID: "",
+					PreviousLedgerID: "two",
 					CreatedAt:        createdAt,
 					ClientID:         sql.NullString{},
 				},
@@ -169,7 +171,7 @@ func TestMove(t *testing.T) {
 				t.Fatal(err)
 			}
 			if diff := cmp.Diff(test.expectAccountsLedger, entries); diff != "" {
-				t.Fatalf("(-want/+got)\n%s", diff)
+				t.Fatalf("accounts_ledger: (-want/+got)\n%s", diff)
 			}
 		})
 	}

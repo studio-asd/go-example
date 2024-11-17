@@ -9,6 +9,9 @@ DROP TABLE IF EXISTS accounts_ledger;
 DROP TYPE IF EXISTS account_status CASCADE;
 CREATE TYPE account_status AS ENUM('active', 'inactive');
 
+DROP TYPE IF EXISTS movement_status CASCADE;
+CREATE TYPE movement_status AS ENUM('finished', 'reversed');
+
 -- tables and index.
 
 -- accounts is used to store all user accounts.
@@ -17,16 +20,17 @@ CREATE TABLE IF NOT EXISTS accounts(
 	"parent_account_id" varchar NOT NULL,
 	"account_status" account_status NOT NULL,
 	"currency_id" int NOT NULL,
-	"created_at" timestamp NOT NULL,
-	"updated_at" timestamp
+	"created_at" timestamptz NOT NULL,
+	"updated_at" timestamptz
 );
 
 -- movements is used to store all movement records.
 CREATE TABLE IF NOT EXISTS movements(
 	"movement_id" varchar PRIMARY KEY,
     "idempotency_key" varchar UNIQUE NOT NULL,
-	"created_at" timestamp NOT NULL,
-	"updated_at" timestamp
+	"movement_status" movement_status NOT NULL,
+	"created_at" timestamptz NOT NULL,
+	"updated_at" timestamptz
 );
 
 -- accounts_balance is used to store the latest state of user's balance. This table will be used for user
@@ -40,8 +44,8 @@ CREATE TABLE IF NOT EXISTS accounts_balance(
 	"balance" numeric NOT NULL,
 	"last_movement_id" varchar NOT NULL,
 	"last_ledger_id" varchar NOT NULL,
-	"created_at" timestamp NOT NULL,
-	"updated_at" timestamp
+	"created_at" timestamptz NOT NULL,
+	"updated_at" timestamptz
 );
 
 -- accounts_balance_history is a historical balance changes for an account based on movement_id. The historical
@@ -62,7 +66,7 @@ CREATE TABLE IF NOT EXISTS accounts_balance_history(
     "previous_balance" numeric NOT NULL,
     "previous_movement_id" varchar NOT NULL,
     "previous_ledger_id" varchar NOT NULL,
-    "created_at" timestamp NOT NULL
+    "created_at" timestamptz NOT NULL
 );
 
 -- accounts_ledger is used to store all ledger changes for a specific account. A single transaction
@@ -84,7 +88,7 @@ CREATE TABLE IF NOT EXISTS accounts_ledger(
 	"amount" numeric NOT NULL,
 	-- previous_ledger_id will be used to track the sequence of the ledger entries of a user.
 	"previous_ledger_id" varchar NOT NULL,
-	"created_at" timestamp NOT NULL,
+	"created_at" timestamptz NOT NULL,
 	-- client_id is an identifier that the client can use in case they want to link their ids to per-ledger-row. With this, there are
 	-- many cases they can use with the ledger.
 	--

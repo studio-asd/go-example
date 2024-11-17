@@ -55,6 +55,48 @@ func (ns NullAccountStatus) Value() (driver.Value, error) {
 	return string(ns.AccountStatus), nil
 }
 
+type MovementStatus string
+
+const (
+	MovementStatusFinished MovementStatus = "finished"
+	MovementStatusReversed MovementStatus = "reversed"
+)
+
+func (e *MovementStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MovementStatus(s)
+	case string:
+		*e = MovementStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MovementStatus: %T", src)
+	}
+	return nil
+}
+
+type NullMovementStatus struct {
+	MovementStatus MovementStatus
+	Valid          bool // Valid is true if MovementStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMovementStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.MovementStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MovementStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMovementStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MovementStatus), nil
+}
+
 type Account struct {
 	AccountID       string
 	ParentAccountID string
@@ -102,6 +144,7 @@ type AccountsLedger struct {
 type Movement struct {
 	MovementID     string
 	IdempotencyKey string
+	MovementStatus MovementStatus
 	CreatedAt      time.Time
 	UpdatedAt      sql.NullTime
 }

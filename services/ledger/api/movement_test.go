@@ -330,7 +330,7 @@ func TestCreateLedgerEntries(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			le, err := createLedgerEntries(test.movementID, test.balances, test.entries...)
+			le, err := createLedgerEntries(test.balances, test.entries...)
 			if err != test.err {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}

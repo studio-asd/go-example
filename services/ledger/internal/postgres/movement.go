@@ -130,6 +130,15 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		); err != nil {
 			return fmt.Errorf("failed to insert accounts balance history: %w", err)
 		}
+		// Insert to the movement.
+		if err := q.CreateMovement(ctx, CreateMovementParams{
+			MovementID:     le.MovementID,
+			IdempotencyKey: le.IdempotencyKey,
+			MovementStatus: MovementStatusFinished,
+			CreatedAt:      le.CreatedAt,
+		}); err != nil {
+			return fmt.Errorf("failed to create movement: %w", err)
+		}
 		// Insert to the accounts ledger.
 		if err := q.db.BulkInsert(
 			ctx,

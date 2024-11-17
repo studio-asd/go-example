@@ -11,6 +11,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,8 +107,17 @@ func run(args []string) error {
 		return err
 	}
 
+	var postgresAvailable bool
+	_, err = net.DialTimeout("tcp", "127.0.0.1:5432", time.Second)
+	if err == nil {
+		postgresAvailable = true
+	}
+
 	composeLogs := bytes.NewBuffer(nil)
 	composeUpFunc := func(ctx context.Context) error {
+		if postgresAvailable {
+			return nil
+		}
 		execComposeUp := exec.CommandContext(ctx, "docker", "compose", "up", "-d")
 		execComposeUp.Stdout = os.Stdout
 		execComposeUp.Stderr = os.Stderr
@@ -122,6 +132,9 @@ func run(args []string) error {
 		return err
 	}
 	composeDownFunc := func(ctx context.Context) error {
+		if postgresAvailable {
+			return nil
+		}
 		execComposeDown := exec.CommandContext(ctx, "docker", "compose", "down", "--remove-orphans")
 		execComposeDown.Stdout = os.Stdout
 		execComposeDown.Stderr = os.Stderr

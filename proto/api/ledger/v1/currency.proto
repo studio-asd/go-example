@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package go_example.api.ledger.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/ledger/v1";
+
+message CurrencyListResponse {
+    repeated Currency currencies = 1;
+}
+
+message Currency {
+    int32 id = 1;
+    string name = 2;
+    int32 exponent = 3;
+}

@@ -97,13 +97,49 @@ Folder wise, we always structure them like this:
                 |- postgres
                       |- postgres.go
                       |- postgres_test.go
+                |- internal_types.go
 ```
 
 1. Services is the parent folder for all services.
 2. Inside the services, we can create a service folder. For example, `service_a`.
 3. Inside of the `service_a`, we expose all functions to the internal program via `api`.
 4. The `service_a` should not expose its internal packages that private to the package. Thus `internal` folder will be used.
-5. The data layer usually located inside the `internal` folder of a service to prevent direct usage by other packages.
+5. The data layer and internal types usually located inside the `internal` folder of a service to prevent direct usage by other packages.
+
+### Internal Package
+
+Go programming language has a concept called [internal package](https://docs.google.com/document/d/1e8kOo3r51b2BWtTs_1uADIA5djfXhPT36s6eHVRIvaU/edit?tab=t.0) release in
+Go [1.4](https://go.dev/doc/go1.4#internalpackages). The internal package allowed the user to structure program with clean boundaries and disallow other
+packages outside of the owner's subtree to import the package.
+
+As we are building a program that contains several domains/services, it is important for each domain/services to not directly importing "internal" packages
+such as `postgres` directly. As the data layer of a domain/service is only belong to that domain and should not be accessible directly from other services.
+Additionally, we can also share a data structure that only belongs to that domain and exposes types that can be used externally outside of the internal package.
+
+For example, this is possible:
+
+```text
+|- service_a
+      |- api
+          |- api.go -------------------|
+      |- internal                      |
+          |- postgres  <---------------| can import
+                |- postgres.go
+```
+
+While this is not:
+
+```text
+|- service_a
+      |- api
+          |- api.go
+      |- internal
+          |- postgres <------------|
+                |- postgres.go     |
+|- service_b                       | cannot import
+      |- api                       |
+          |- api.go ---------------|
+```
 
 ### Services Interaction
 

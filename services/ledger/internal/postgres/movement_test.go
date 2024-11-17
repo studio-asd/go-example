@@ -32,6 +32,7 @@ func TestMove(t *testing.T) {
 	tests := []struct {
 		name                  string
 		entries               ledger.MovementLedgerEntries
+		expectMovement        Movement
 		expectAccountsBalance map[string]GetAccountsBalanceRow
 		expectAccountsLedger  []GetAccountsLedgerByMovementIDRow
 	}{
@@ -72,6 +73,13 @@ func TestMove(t *testing.T) {
 				},
 				Accounts:  []string{"1", "2"},
 				CreatedAt: createdAt,
+			},
+			expectMovement: Movement{
+				MovementID:     "one",
+				IdempotencyKey: "one",
+				MovementStatus: MovementStatusFinished,
+				CreatedAt:      createdAt,
+				UpdatedAt:      sql.NullTime{},
 			},
 			expectAccountsBalance: map[string]GetAccountsBalanceRow{
 				"1": {

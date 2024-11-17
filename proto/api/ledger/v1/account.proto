@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package go_example.api.ledger.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/ledger/v1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+message CreateLedgerAccountsRequest {
+    message CreateAccount {
+        string parent_account_id = 1;
+        bool allow_negative = 2 [(buf.validate.field).required = true];
+        int32 currency_id = 3 [(buf.validate.field).required = true];
+    }
+    repeated CreateAccount accounts = 1;
+}
+
+message CreateLedgerAccountsResponse {
+    message CreateAccountResponse {
+        string account_id = 1;
+        google.protobuf.Timestamp created_at = 2;
+    }
+    repeated CreateAccountResponse accounts = 1;
+}

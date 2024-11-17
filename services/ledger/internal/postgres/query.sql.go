@@ -77,26 +77,29 @@ func (q *Queries) CreateAccountBalance(ctx context.Context, arg CreateAccountBal
 	return err
 }
 
-const createMovements = `-- name: CreateMovements :exec
+const createMovement = `-- name: CreateMovement :exec
 INSERT INTO movements(
 	movement_id,
 	idempotency_key,
+	movement_status,
 	created_at,
 	updated_at
-) VALUES($1,$2,$3,$4)
+) VALUES($1,$2,$3,$4,$5)
 `
 
-type CreateMovementsParams struct {
+type CreateMovementParams struct {
 	MovementID     string
 	IdempotencyKey string
+	MovementStatus MovementStatus
 	CreatedAt      time.Time
 	UpdatedAt      sql.NullTime
 }
 
-func (q *Queries) CreateMovements(ctx context.Context, arg CreateMovementsParams) error {
-	_, err := q.db.Exec(ctx, createMovements,
+func (q *Queries) CreateMovement(ctx context.Context, arg CreateMovementParams) error {
+	_, err := q.db.Exec(ctx, createMovement,
 		arg.MovementID,
 		arg.IdempotencyKey,
+		arg.MovementStatus,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -249,6 +252,24 @@ func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID 
 	return items, nil
 }
 
+const getMovement = `-- name: GetMovement :one
+SELECT movement_id, idempotency_key, movement_status, created_at, updated_at FROM movements
+WHERE movement_id = $1
+`
+
+func (q *Queries) GetMovement(ctx context.Context, movementID string) (Movement, error) {
+	row := q.db.QueryRow(ctx, getMovement, movementID)
+	var i Movement
+	err := row.Scan(
+		&i.MovementID,
+		&i.IdempotencyKey,
+		&i.MovementStatus,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getMovementByIdempotencyKey = `-- name: GetMovementByIdempotencyKey :one
 SELECT movement_id,
     idempotency_key,
@@ -258,9 +279,16 @@ FROM movements
 WHERE idempotency_key = $1
 `
 
-func (q *Queries) GetMovementByIdempotencyKey(ctx context.Context, idempotencyKey string) (Movement, error) {
+type GetMovementByIdempotencyKeyRow struct {
+	MovementID     string
+	IdempotencyKey string
+	CreatedAt      time.Time
+	UpdatedAt      sql.NullTime
+}
+
+func (q *Queries) GetMovementByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetMovementByIdempotencyKeyRow, error) {
 	row := q.db.QueryRow(ctx, getMovementByIdempotencyKey, idempotencyKey)
-	var i Movement
+	var i GetMovementByIdempotencyKeyRow
 	err := row.Scan(
 		&i.MovementID,
 		&i.IdempotencyKey,

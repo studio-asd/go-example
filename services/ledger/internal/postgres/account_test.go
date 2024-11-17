@@ -33,7 +33,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   string(AccountStatusActive),
+					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.IDR,
 					CreatedAt:       now.Add(time.Second),
@@ -41,7 +41,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "two",
 					ParentAccountID: "",
-					AccountStatus:   string(AccountStatusActive),
+					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.USD,
 					CreatedAt:       now.Add(time.Second * 2),
@@ -91,7 +91,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one_one",
 					ParentAccountID: "",
-					AccountStatus:   string(AccountStatusActive),
+					AccountStatus:   AccountStatusInactive,
 					AllowNegative:   true,
 					Currency:        currency.IDR,
 					CreatedAt:       now.Add(time.Second * 3),
@@ -101,7 +101,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one_one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
+					AccountStatus:   AccountStatusInactive,
 					CurrencyID:      1,
 					CreatedAt:       now.Add(time.Second * 3),
 				},
@@ -109,7 +109,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			expectAccountsBalance: []GetAccountsBalanceRow{
 				{
 					AccountID:     "one_one",
-					AccountStatus: AccountStatusActive,
+					AccountStatus: AccountStatusInactive,
 					CurrencyID:    1,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -126,7 +126,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   string(AccountStatusActive),
+					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.IDR,
 					CreatedAt:       now.Add(time.Second),
@@ -134,7 +134,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   string(AccountStatusActive),
+					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.USD,
 					CreatedAt:       now.Add(time.Second * 2),

@@ -47,13 +47,18 @@ SELECT movement_id,
 FROM movements
 WHERE idempotency_key = $1;
 
--- name: CreateMovements :exec
+-- name: CreateMovement :exec
 INSERT INTO movements(
 	movement_id,
 	idempotency_key,
+	movement_status,
 	created_at,
 	updated_at
-) VALUES($1,$2,$3,$4);
+) VALUES($1,$2,$3,$4,$5);
+
+-- name: GetMovement :one
+SELECT * FROM movements
+WHERE movement_id = $1;
 
 -- name: GetAccountsLedgerByMovementID :many
 SELECT ledger_id,

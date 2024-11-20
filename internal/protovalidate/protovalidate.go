@@ -60,8 +60,11 @@ func (v *Validator) Validate(message proto.Message) error {
 	if !ok {
 		kind = errors.KindUnknown
 	}
+	// The errorMessage to the user will be "violation_message for vioation_field_path". The field path will be quite verbose
+	// for the user, but we think it should be fine.
+	errorMessage := violation.GetMessage() + " for " + violation.GetFieldPath()
 	return errors.New(
-		violation.GetMessage(),
+		errorMessage,
 		kind,
 		errors.Fields{
 			"protovalidate.constraint_id", violation.GetConstraintId(),

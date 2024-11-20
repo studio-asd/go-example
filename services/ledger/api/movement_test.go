@@ -20,16 +20,18 @@ func TestCreateLedgerEntries(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name       string
-		movementID string
-		balances   map[string]ledgerpg.GetAccountsBalanceRow
-		entries    []*ledgerv1.MovementEntry
-		expect     ledger.MovementLedgerEntries
-		err        error
+		name           string
+		movementID     string
+		idempotencyKey string
+		balances       map[string]ledgerpg.GetAccountsBalanceRow
+		entries        []*ledgerv1.MovementEntry
+		expect         ledger.MovementLedgerEntries
+		err            error
 	}{
 		{
-			name:       "one account to another account",
-			movementID: "one",
+			name:           "one account to another account",
+			movementID:     "one",
+			idempotencyKey: "one",
 			balances: map[string]ledgerpg.GetAccountsBalanceRow{
 				"one": {
 					AccountID:     "one",
@@ -54,6 +56,8 @@ func TestCreateLedgerEntries(t *testing.T) {
 				},
 			},
 			expect: ledger.MovementLedgerEntries{
+				MovementID:     "one",
+				IdempotencyKey: "one",
 				LedgerEntries: []ledger.LedgerEntry{
 					{
 						MovementID:       "one",
@@ -88,8 +92,9 @@ func TestCreateLedgerEntries(t *testing.T) {
 			err: nil,
 		},
 		{
-			name:       "one account to another accounts",
-			movementID: "one",
+			name:           "one account to another accounts",
+			movementID:     "one",
+			idempotencyKey: "two",
 			balances: map[string]ledgerpg.GetAccountsBalanceRow{
 				"one": {
 					AccountID:     "one",
@@ -126,6 +131,8 @@ func TestCreateLedgerEntries(t *testing.T) {
 				},
 			},
 			expect: ledger.MovementLedgerEntries{
+				MovementID:     "one",
+				IdempotencyKey: "two",
 				LedgerEntries: []ledger.LedgerEntry{
 					{
 						MovementID:       "one",
@@ -178,8 +185,9 @@ func TestCreateLedgerEntries(t *testing.T) {
 			err: nil,
 		},
 		{
-			name:       "many accounts to many accounts",
-			movementID: "one",
+			name:           "many accounts to many accounts",
+			movementID:     "one",
+			idempotencyKey: "three",
 			balances: map[string]ledgerpg.GetAccountsBalanceRow{
 				"one": {
 					AccountID:     "one",
@@ -233,6 +241,8 @@ func TestCreateLedgerEntries(t *testing.T) {
 				},
 			},
 			expect: ledger.MovementLedgerEntries{
+				MovementID:     "one",
+				IdempotencyKey: "three",
 				LedgerEntries: []ledger.LedgerEntry{
 					{
 						MovementID:       "one",
@@ -330,7 +340,7 @@ func TestCreateLedgerEntries(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			le, err := createLedgerEntries(test.balances, test.entries...)
+			le, err := createLedgerEntries(test.movementID, test.idempotencyKey, test.balances, test.entries...)
 			if err != test.err {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}

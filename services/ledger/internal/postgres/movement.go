@@ -137,6 +137,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			MovementStatus: MovementStatusFinished,
 			CreatedAt:      le.CreatedAt,
 		}); err != nil {
+			fmt.Println(le.MovementID)
 			return fmt.Errorf("failed to create movement: %w", err)
 		}
 		// Insert to the accounts ledger.

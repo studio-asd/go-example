@@ -7,18 +7,38 @@ import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 message CreateLedgerAccountsRequest {
-    message CreateAccount {
+    message Account {
+        // parent_account_id is the parent account of the id. The parameter can be used to create an associated child account.
         string parent_account_id = 1;
-        bool allow_negative = 2 [(buf.validate.field).required = true];
+        // allow_negative allows the balance of the account to go below 0. We can use this type of account as a deposit account.
+        bool allow_negative = 2;
+        // currency_id is the id of a specific currency associated with the account, one account can only have one currency.
         int32 currency_id = 3 [(buf.validate.field).required = true];
     }
-    repeated CreateAccount accounts = 1;
+    repeated Account accounts = 1 [(buf.validate.field).required = true];
 }
 
 message CreateLedgerAccountsResponse {
-    message CreateAccountResponse {
+    message Account {
         string account_id = 1;
         google.protobuf.Timestamp created_at = 2;
     }
-    repeated CreateAccountResponse accounts = 1;
+    repeated Account accounts = 1;
+}
+
+message GetAccountsBalanceRequest {
+    repeated string account_ids = 1 [(buf.validate.field).required = true];
+}
+
+message GetAccountsBalanceResponse {
+    repeated AccountBalance balances = 1;
+}
+
+message AccountBalance {
+    string account_id = 1;
+    string balance = 2;
+    bool allow_negative = 3;
+    string last_movement_id = 4;
+    string last_ledger_id = 5;
+    google.protobuf.Timestamp updated_at = 6;
 }

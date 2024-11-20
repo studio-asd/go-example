@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -25,7 +26,8 @@ func init() {
 		protovalidate.WithFailFast(true),
 		protovalidate.WithMessages(
 			&ledgerv1.TransactRequest{},
-			&ledgerv1.CreateLedgerAccountsRequest{},
+			&ledgerv1.CreateLedgerAccountsRequest_Account{},
+			&ledgerv1.GetAccountsBalanceRequest{},
 		),
 	)
 	if err != nil {
@@ -60,7 +62,7 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	if err != nil {
 		return nil, err
 	}
-	ledgerEntries, err := createLedgerEntries(accountsBalance, entries...)
+	ledgerEntries, err := createLedgerEntries(uuid.NewString(), req.GetIdempotencyKey(), accountsBalance, entries...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,13 +73,15 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	if fn != nil {
 		timeoutSLA := time.Second * 3
 		err = await.Do(ctx, timeoutSLA, func(ctx context.Context) error {
-			if err := a.queries.Move(ctx, ledgerEntries); err != nil {
-				return err
-			}
-			if err := a.queries.Do(ctx, fn); err != nil {
-				return err
-			}
-			return nil
+			return a.queries.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *ledgerpg.Queries) error {
+				if err := q.Move(ctx, ledgerEntries); err != nil {
+					return err
+				}
+				if err := q.Do(ctx, fn); err != nil {
+					return err
+				}
+				return nil
+			})
 		})
 	} else {
 		if err := a.queries.Move(ctx, ledgerEntries); err != nil {
@@ -109,7 +113,7 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 	// Define the timestamppb here because all of data will have the same timestamp of craeted at.
 	createdAtPb := timestamppb.New(createdAt)
 	resp := &ledgerv1.CreateLedgerAccountsResponse{
-		Accounts: make([]*ledgerv1.CreateLedgerAccountsResponse_CreateAccountResponse, len(request.Accounts)),
+		Accounts: make([]*ledgerv1.CreateLedgerAccountsResponse_Account, len(request.Accounts)),
 	}
 	createReqs := make([]ledgerpg.CreateLedgerAccount, len(request.Accounts))
 
@@ -135,7 +139,7 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 			CreatedAt:       createdAt,
 		}
 		// Create the response upfront so we don't have to loop the accounts all over again.
-		resp.Accounts[idx] = &ledgerv1.CreateLedgerAccountsResponse_CreateAccountResponse{
+		resp.Accounts[idx] = &ledgerv1.CreateLedgerAccountsResponse_Account{
 			AccountId: accID,
 			CreatedAt: createdAtPb,
 		}
@@ -157,6 +161,31 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 	// Save the data to the database.
 	if err := a.queries.CreateLedgerAccounts(ctx, createReqs...); err != nil {
 		return nil, err
+	}
+	return resp, nil
+}
+
+func (a *API) GetAccountsBalance(ctx context.Context, req *ledgerv1.GetAccountsBalanceRequest) (*ledgerv1.GetAccountsBalanceResponse, error) {
+	if err := validator.Validate(req); err != nil {
+		return nil, err
+	}
+
+	resp := &ledgerv1.GetAccountsBalanceResponse{
+		Balances: make([]*ledgerv1.AccountBalance, len(req.GetAccountIds())),
+	}
+	balances, err := a.queries.GetAccountsBalance(ctx, req.AccountIds)
+	if err != nil {
+		return nil, err
+	}
+	for idx, balance := range balances {
+		resp.Balances[idx] = &ledgerv1.AccountBalance{
+			AccountId:      balance.AccountID,
+			Balance:        balance.Balance.String(),
+			AllowNegative:  balance.AllowNegative,
+			LastMovementId: balance.LastMovementID,
+			LastLedgerId:   balance.LastLedgerID,
+			UpdatedAt:      timestamppb.New(balance.UpdatedAt.Time),
+		}
 	}
 	return resp, nil
 }

@@ -145,9 +145,15 @@ While this is not:
 
 1. Direct
 
-A `direct` communication between services happen when a service calls a function/api of another service. Even though the behavior
-can be different from one APIs to another(as some APIs might do things asynchronously), but a direct function/api call still counted
-as a direct communication.
+  A `direct` communication between services happen when a service calls a function/api of another service. Even though the behavior
+  can be different from one APIs to another(as some APIs might do things asynchronously), but a direct function/api call still counted
+  as a direct communication.
+
+2. Indirect
+
+  An `indirect` communication between services might happen via another service. For example `service_a` communicates with `service_b` that
+  internally use `service_c` to do some stuffs. This might happen and is allowed. But please be mindful to as this creates more complex
+  dependencies between services.
 
 **Database Transaction Block**
 
@@ -162,40 +168,34 @@ type API struct {
 }
 
 func (a *API) FuncWithTxInside(ctx context.Context, req Request, fn func(context.Context, *postgres.Postgres) error) (Response, error) {
-	err := a.q.WithTransact(ctx context.Context, sql.LevelReadCommitted, func(ctx context.Context, q *servicePg.Queries) error {
-		// Do some queries here.
-		// ...
+	// If the additional function scope is not nil, then we should invoke the function inside a time-bounded
+	// goroutine as we don't know how much time the function will spent. So we need to ensure the function runs
+	// inside the Transact SLA.
+	if fn != nil {
+		timeoutSLA := time.Second * 3
+		// We use await internal package here to invoke a new time-bounded goroutine.
+		err = await.Do(ctx, timeoutSLA, func(ctx context.Context) error {
+			return a.queries.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *servicePg.Queries) error {
+				// Do something first within the *Queries.
+				// ...
 
-		// Invoke the function passed by another service/functions. We think it is better to invoke the function inside
-		// a goroutine as we don't know how much time the function need to spend and there is no guarantee it will respect
-		// the context cancellation.
-		errC := make(chan error, 1)
-		// Set a separate timeout for the transaction scope as we want to function to returns its results within the service SLA.
-		ctxTx, cancel := context.WithTimeout(ctx, time.Second * 5)
-		defer cancel()
-		go func() {
-			// Do is a special function that exposes *postgres.Postgres. This means the function on the other side can do this:
-			//
-			// func DoSomethingInTxScope(ctx context.Context, pg *postgres.Postgres) error {
-			//   	q := servicePg.New(pg)
-			//		// Do something with the query object.
-			// }
-			errC <- q.Do(ctxTx, fn)
-		}()
-		// Wait for the context to be done or error to return.
-		select {
-			case <- ctxTx.Done():
-				return ctxTx.Err()
-			case err := <- errC:
-				if err != nil {
+				// Do is a special function that exposes *postgres.Postgres. This means the function on the other side can do this:
+				//
+				// func DoSomethingInTxScope(ctx context.Context, pg *postgres.Postgres) error {
+				//   	q := servicePg.New(pg)
+				//		// Do something with the query object.
+				// }
+				if err := q.Do(ctx, fn); err != nil {
 					return err
 				}
-		}
-		return nil
-	})
-	if err != nil {
-		return Response{}, err
+				return nil
+			})
+		})
+	} else {
+		// Do something directly.
+		// ...
 	}
+		return Response{}, nil
 }
 ```
 

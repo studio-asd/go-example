@@ -12,6 +12,7 @@ import (
 
 	"github.com/albertwidi/go-example/internal/currency"
 	"github.com/albertwidi/go-example/services/ledger"
+	internal "github.com/albertwidi/go-example/services/ledger/internal"
 )
 
 // TestMove tests whether the database records are correct when movement happens.
@@ -32,6 +33,7 @@ func TestMove(t *testing.T) {
 	tests := []struct {
 		name                  string
 		entries               ledger.MovementLedgerEntries
+		expectMovementResult  internal.MovementResult
 		expectMovement        Movement
 		expectAccountsBalance map[string]GetAccountsBalanceRow
 		expectAccountsLedger  []GetAccountsLedgerByMovementIDRow
@@ -73,6 +75,28 @@ func TestMove(t *testing.T) {
 				},
 				Accounts:  []string{"1", "2"},
 				CreatedAt: createdAt,
+			},
+			expectMovementResult: internal.MovementResult{
+				MovementID: "one",
+				Balances: map[string]internal.MovementEndingBalance{
+					"1": {
+						AccountID:          "1",
+						NextLedgerID:       "one",
+						NewBalance:         decimal.NewFromInt(0),
+						PreviousBalance:    decimal.NewFromInt(100),
+						PreviousLedgerID:   "",
+						PreviousMovementID: "",
+					},
+					"2": {
+						AccountID:          "2",
+						NextLedgerID:       "two",
+						NewBalance:         decimal.NewFromInt(200),
+						PreviousBalance:    decimal.NewFromInt(100),
+						PreviousLedgerID:   "",
+						PreviousMovementID: "",
+					},
+				},
+				Time: createdAt,
 			},
 			expectMovement: Movement{
 				MovementID:     "one",
@@ -142,6 +166,7 @@ func TestMove(t *testing.T) {
 			for accountID, balance := range accountsSetup {
 				if err := q.CreateLedgerAccount(testCtx, CreateLedgerAccount{
 					AccountID:     accountID,
+					AccountStatus: AccountStatusActive,
 					AllowNegative: false,
 					balance:       balance,
 					Currency:      currency.IDR,
@@ -155,9 +180,14 @@ func TestMove(t *testing.T) {
 			for key := range test.expectAccountsBalance {
 				accountsID = append(accountsID, key)
 			}
-			if err := q.Move(testCtx, test.entries); err != nil {
+			result, err := q.Move(testCtx, test.entries)
+			if err != nil {
 				t.Fatal(err)
 			}
+			if diff := cmp.Diff(test.expectMovementResult, result); diff != "" {
+				t.Fatalf("(-want/+got)\n%s", diff)
+			}
+
 			// Check whether the accounts balances are correct..
 			balances, err := q.GetAccountsBalanceMappedByAccID(testCtx, accountsID...)
 			if err != nil {
@@ -199,7 +229,7 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 		createdAt              time.Time
 		accounts               []CreateAccountBalanceParams
 		accountChanges         map[string]ledger.AccountMovementSummary
-		expectLastBalanceInfo  map[string]AccountLastBalanceInfo
+		expectLastBalanceInfo  map[string]internal.MovementEndingBalance
 		expectBulkUpdateParams bulkUpdate
 		selectForUpdateErr     error
 	}{
@@ -255,7 +285,7 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 					LastLedgerID:   "last",
 				},
 			},
-			expectLastBalanceInfo: map[string]AccountLastBalanceInfo{
+			expectLastBalanceInfo: map[string]internal.MovementEndingBalance{
 				"one": {
 					AccountID:       "one",
 					PreviousBalance: decimal.NewFromInt(100),
@@ -402,7 +432,7 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 
 			var (
 				bulkUpdateParams bulkUpdate
-				gotInfo          map[string]AccountLastBalanceInfo
+				gotInfo          map[string]internal.MovementEndingBalance
 			)
 			// Test inside the transaction as we are doing SELECT FOR UPDATE.
 			gotErr := th.Queries().WithTransact(context.Background(), sql.LevelReadUncommitted, func(ctx context.Context, q *Queries) error {

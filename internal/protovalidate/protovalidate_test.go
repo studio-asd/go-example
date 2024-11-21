@@ -44,16 +44,44 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		{
-			name: "ip",
+			name: "another_email",
 			message: &testdatav1.TestRequest{
 				TestRequired: "required",
-				TestEmail:    "email@gmail.com",
-				TestIp:       "lalala",
+				TestEmail:    "an@gmail.com",
+			},
+			kind: errors.KindBadRequest,
+			fields: errors.Fields{
+				"protovalidate.constraint_id", "validate.email",
+				"protovalidate.field_path", "test_another_email",
+			},
+		},
+		{
+			name: "ip",
+			message: &testdatav1.TestRequest{
+				TestRequired:     "required",
+				TestEmail:        "email@gmail.com",
+				TestAnotherEmail: "another_email@gmail.com",
+				TestIp:           "lalala",
 			},
 			kind: errors.KindBadRequest,
 			fields: errors.Fields{
 				"protovalidate.constraint_id", "validate.ip",
 				"protovalidate.field_path", "test_ip",
+			},
+		},
+		{
+			name: "repeated_string",
+			message: &testdatav1.TestRequest{
+				TestRequired:     "required",
+				TestEmail:        "email@gmail.com",
+				TestAnotherEmail: "another_email@gmail.com",
+				TestIp:           "127.0.0.1",
+				RepeatedString:   []string{"this", "is", "a", "string"},
+			},
+			kind: errors.KindBadRequest,
+			fields: errors.Fields{
+				"protovalidate.constraint_id", "repeated.max_items",
+				"protovalidate.field_path", "repeated_string",
 			},
 		},
 	}

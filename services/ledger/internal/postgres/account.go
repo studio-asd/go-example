@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"testing"
 	"time"
 
 	"github.com/albertwidi/pkg/postgres"
@@ -37,6 +39,10 @@ func (q *Queries) CreateLedgerAccounts(ctx context.Context, c ...CreateLedgerAcc
 }
 
 func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount) error {
+	// We should not allow balance to be set if it used outside of the testing scope.
+	if !c.balance.IsZero() && !testing.Testing() {
+		return errors.New("balance can only be set inside testing")
+	}
 	fn := func(ctx context.Context, qr *Queries) error {
 		if err := qr.CreateAccount(ctx, CreateAccountParams{
 			AccountID:       c.AccountID,

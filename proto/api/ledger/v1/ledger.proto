@@ -4,19 +4,44 @@ package go_example.api.ledger.v1;
 option go_package = "github.com/albertwidi/go-example/proto/api/ledger/v1";
 
 import "buf/validate/validate.proto";
-
-message TransactRequest {
-    string idempotency_key = 1 [(buf.validate.field).required = true];
-    repeated MovementEntry movement_entries = 2 [(buf.validate.field).required = true];
-}
-
-message TransactResponse {
-    string movement_id = 1;
-    repeated string ledger_ids = 2;
-}
+import "google/protobuf/timestamp.proto";
 
 message MovementEntry {
     string from_account_id = 1 [(buf.validate.field).required = true];
     string to_account_id = 2 [(buf.validate.field).required = true];
     string amount = 3 [(buf.validate.field).required = true];
+}
+
+message TransactRequest {
+    string idempotency_key = 1 [(buf.validate.field).required = true];
+    repeated MovementEntry movement_entries = 2 [(buf.validate.field).repeated = {
+        min_items: 1
+        max_items: 100
+    }];
+}
+
+message TransactResponse {
+    message Balance {
+        // account_id is the affected account_id for the balance output of the transaction.
+        string account_id = 1;
+        // ledger_id is the new ledger_id for the new balance.
+        string ledger_id = 2;
+        // new_balance is the latest balance after transaction.
+        string new_balance = 3;
+        // previous_balance is the previous locked balance before transaction is completed.
+        string previous_balance = 4;
+        // previous_ledger_id is the ledger_id for the previous_balance.
+        string previous_ledger_id = 5;
+        // previous_movement is the movement_id for the previous balance.
+        string previous_movement_id = 6;
+    }
+
+    // movement_id is a unqiue identifier for a transact/movement request. All movement entries requested in a single request
+    // will be associated by this movement_id.
+    string movement_id = 1;
+    // ending_balances is the detailed balance changes and the ending state of the balance for each movement.
+    repeated Balance ending_balances = 2;
+    // transact_time is the timestamp for the transaction which also the same with all created_at and updated_at values.
+    // You can also use this field for the time balance updated.
+    google.protobuf.Timestamp transact_time = 3;
 }

@@ -73,3 +73,22 @@ type MovementLedgerEntries struct {
 	Accounts  []string
 	CreatedAt time.Time
 }
+
+// MovementResult returned by the data layer as the result of transaction. The result includes the ending balance as the
+// result of transactions so the client can use the information to immediately reflect the client's/user's ending balance.
+type MovementResult struct {
+	MovementID string
+	// Balances stores the movement ending balance mapped by account_id. The form of map is used because the data structure
+	// is also used internally inside the data layer to easily seek the ending balance information by the account_id.
+	Balances map[string]MovementEndingBalance
+	Time     time.Time
+}
+
+type MovementEndingBalance struct {
+	AccountID          string
+	NewBalance         decimal.Decimal
+	PreviousBalance    decimal.Decimal
+	PreviousLedgerID   string
+	NextLedgerID       string
+	PreviousMovementID string
+}

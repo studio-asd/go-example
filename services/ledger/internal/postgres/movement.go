@@ -12,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/albertwidi/go-example/services/ledger"
+	internal "github.com/albertwidi/go-example/services/ledger/internal"
 )
 
 // bulkUpdate is a custom type to pass the bulk update parameters around functions. The type is customized
@@ -31,7 +32,7 @@ type bulkUpdate struct {
 // 3. From accounts to accounts. Many to many.
 //
 // As long as the SUM total amount in the entries is 0, then it is a valid movement.
-func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) error {
+func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) (internal.MovementResult, error) {
 	accountsLedgerColumns := []string{
 		"ledger_id",
 		"movement_id",
@@ -53,20 +54,21 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		"previous_ledger_id",
 		"created_at",
 	}
+	var result internal.MovementResult
 
 	// Below here, we will do everything inside the database transaction. So its important to keep in mind, whatever we are doing here it gotta have to
 	// be fast. As we are locking the users balances here, the user won't be able to create new movement if the account is still being locked in the
 	// database transaction.
 	err := q.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *Queries) error {
-		bulkUpdateParams, lastBalancesInfo, err := selectAccountsBalanceForMovement(ctx, q, le.AccountsSummary, le.CreatedAt, le.Accounts)
+		bulkUpdateParams, endingBalances, err := selectAccountsBalanceForMovement(ctx, q, le.AccountsSummary, le.CreatedAt, le.Accounts)
 		if err != nil {
 			return err
 		}
 		// Create the bulk insert parameters for accounts_balance_history. This is imporatnt as we want to record the histories
 		// of the balance based on the movement and not per ledger-record basis.
-		bulkInsertBalanceHistoryParams := make([]any, len(accountsBalanceHistoryColumns)*len(lastBalancesInfo))
+		bulkInsertBalanceHistoryParams := make([]any, len(accountsBalanceHistoryColumns)*len(endingBalances))
 		counter := 0
-		for accID, info := range lastBalancesInfo {
+		for accID, info := range endingBalances {
 			beginIndex := len(accountsBalanceHistoryColumns) * counter
 			bulkInsertBalanceHistoryParams[beginIndex] = le.MovementID
 			bulkInsertBalanceHistoryParams[beginIndex+1] = info.NextLedgerID
@@ -87,7 +89,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 			// exact previous identifier. This will always be the case for the first entry of an account movement. When this happen, then we will fill the entry
 			// data with the information of when the lock/SELECT FOR UPDATE happened.
 			if entry.PreviousLedgerID == "" {
-				entry.PreviousLedgerID = lastBalancesInfo[entry.AccountID].NextLedgerID
+				entry.PreviousLedgerID = endingBalances[entry.AccountID].NextLedgerID
 			}
 			// Set the client id if the client_id is not null.
 			clientID := sql.NullString{}
@@ -150,26 +152,20 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) err
 		); err != nil {
 			return fmt.Errorf("failed to insert accounts ledger: %w", err)
 		}
+		// Provide the result information.
+		result = internal.MovementResult{
+			MovementID: le.MovementID,
+			Time:       le.CreatedAt,
+			Balances:   endingBalances,
+		}
 		return nil
 	})
-	return err
-}
-
-// AccountLastBalanceInfo is the latest information from the account balance for a specific account_id balance.
-// The information is needed when moving money from one account to another as we need to know the latest
-// state of the account before moving its balance.
-type AccountLastBalanceInfo struct {
-	AccountID          string
-	PreviousBalance    decimal.Decimal
-	PreviousLedgerID   string
-	PreviousMovementID string
-	NewBalance         decimal.Decimal
-	NextLedgerID       string
+	return result, err
 }
 
 // selectAccountsBalanceForMovement do SELECT FOR UPDATE to the account_balances and lock specific account_id balance. The function also returns the update statements
 // for all accounts so we can also tests whether the update statement is contstructed as we expected or not.
-func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes map[string]ledger.AccountMovementSummary, createdAt time.Time, accounts []string) (bulkUpdate, map[string]AccountLastBalanceInfo, error) {
+func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes map[string]ledger.AccountMovementSummary, createdAt time.Time, accounts []string) (bulkUpdate, map[string]internal.MovementEndingBalance, error) {
 	if len(accounts) == 0 {
 		return bulkUpdate{}, nil, errors.New("account_id is required to select accounts balance for movement")
 	}
@@ -209,7 +205,7 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 	// as the base length.
 	bulkUpdate.Values = make([][]any, len(bulkUpdate.Columns))
 
-	accountsLastInfo := make(map[string]AccountLastBalanceInfo)
+	endingBalances := make(map[string]internal.MovementEndingBalance)
 	// accounts is the new information of the accounts which we want to change. We will use this to create UPDATE query.
 	err = q.db.RunQuery(ctx, selectForUpdate, func(rc *postgres.RowsCompat) error {
 		ab := AccountsBalance{}
@@ -236,7 +232,7 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 			}
 		}
 		// Store the accounts information before we change it.
-		accountsLastInfo[ab.AccountID] = AccountLastBalanceInfo{
+		endingBalances[ab.AccountID] = internal.MovementEndingBalance{
 			AccountID:          ab.AccountID,
 			PreviousBalance:    ab.Balance,
 			PreviousLedgerID:   ab.LastLedgerID,
@@ -254,5 +250,5 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 	if err != nil {
 		return bulkUpdate, nil, fmt.Errorf("failed to select for update: %w", err)
 	}
-	return bulkUpdate, accountsLastInfo, nil
+	return bulkUpdate, endingBalances, nil
 }

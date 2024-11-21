@@ -10,9 +10,11 @@ import (
 // DefaultConstraintsMap defines the default map for constraint_id from protovalidate. The map is based
 // on the internal standard so we can map them further to our internal errors and erorrs.Kind.
 var DefaultConstraintsMap = map[string]errors.Kind{
-	"required":       errors.KindBadRequest,
-	"validate.email": errors.KindBadRequest,
-	"validate.ip":    errors.KindBadRequest,
+	"required":           errors.KindBadRequest,
+	"validate.email":     errors.KindBadRequest,
+	"validate.ip":        errors.KindBadRequest,
+	"repeated.max_items": errors.KindBadRequest,
+	"repeated.min_items": errors.KindBadRequest,
 }
 
 type Validator struct {

@@ -24,4 +24,7 @@ message TestRequest {
         message: "must be a valid ip"
         expression: "this.isIp()"
     }];
+    repeated string repeated_string = 7 [(buf.validate.field).repeated = {
+        max_items: 1
+    }];
 }

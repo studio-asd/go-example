@@ -35,7 +35,7 @@ func run(m *testing.M) (code int, err error) {
 	}()
 
 	if !testing.Short() {
-		testHelper, err = ledgerpg.NewTestHelper(context.Background())
+		testHelper, err = ledgerpg.NewTestHelper(context.Background(), "ledger_api")
 		if err != nil {
 			return
 		}

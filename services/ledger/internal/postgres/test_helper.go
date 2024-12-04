@@ -32,12 +32,12 @@ type TestHelper struct {
 	closed bool
 }
 
-func NewTestHelper(ctx context.Context) (*TestHelper, error) {
+func NewTestHelper(ctx context.Context, dbName string) (*TestHelper, error) {
 	if !testing.Testing() {
 		return nil, errors.New("can only be used in test")
 	}
 	th :=&TestHelper{
-		dbName: "go_example",
+		dbName: dbName,
 		pgtestHelper: pgtest.New(),
 	}
 	q, err := th.prepareTest(ctx)

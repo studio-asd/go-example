@@ -510,7 +510,8 @@ func TestMain(m *testing.M) {
 }
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
-	testHelper, err = NewTestHelper(ctx)
+	dbName := "{{ .DatabaseName }}"
+	testHelper, err = NewTestHelper(ctx, dbName)
 	if err != nil {
 		code = 1
 		return
@@ -562,12 +563,12 @@ type TestHelper struct {
 	closed bool
 }
 
-func NewTestHelper(ctx context.Context) (*TestHelper, error) {
+func NewTestHelper(ctx context.Context, dbName string) (*TestHelper, error) {
 	if !testing.Testing() {
 		return nil, errors.New("can only be used in test")
 	}
 	th :=&TestHelper{
-		dbName: "{{ .DatabaseName }}",
+		dbName: dbName,
 		pgtestHelper: pgtest.New(),
 	}
 	q, err := th.prepareTest(ctx)

@@ -10,6 +10,9 @@ message MovementEntry {
     string from_account_id = 1 [(buf.validate.field).required = true];
     string to_account_id = 2 [(buf.validate.field).required = true];
     string amount = 3 [(buf.validate.field).required = true];
+    // client_id is an identifier passed by the client so the client can find the ledger entry later on using this id.
+    // Its up to the client whether they want to supply this id or not.
+    string client_id = 4;
 }
 
 message TransactRequest {

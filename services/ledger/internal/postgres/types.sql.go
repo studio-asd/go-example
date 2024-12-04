@@ -118,7 +118,7 @@ type AccountsBalance struct {
 }
 
 type AccountsBalanceHistory struct {
-	HistoryID          sql.NullInt64
+	HistoryID          int64
 	MovementID         string
 	LedgerID           string
 	AccountID          string
@@ -130,6 +130,7 @@ type AccountsBalanceHistory struct {
 }
 
 type AccountsLedger struct {
+	InternalID       int64
 	LedgerID         string
 	MovementID       string
 	AccountID        string

@@ -35,7 +35,8 @@ func TestMain(m *testing.M) {
 }
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
-	testHelper, err = NewTestHelper(ctx)
+	dbName := "go_example"
+	testHelper, err = NewTestHelper(ctx, dbName)
 	if err != nil {
 		code = 1
 		return

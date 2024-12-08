@@ -54,6 +54,9 @@ func (s *Server) Init(ctx srun.Context) error {
 	if s.config.Trace.Tracer == nil {
 		s.config.Trace.Tracer = ctx.Tracer
 	}
+	if s.config.Meter.Meter == nil {
+		s.config.Meter.Meter = ctx.Meter
+	}
 	// Register all the services into the server.
 	for _, fn := range s.registerServiceFns {
 		fn(s.server)

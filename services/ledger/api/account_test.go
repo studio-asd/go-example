@@ -15,7 +15,7 @@ import (
 func TestCreateAccounts(t *testing.T) {
 	t.Parallel()
 
-	th, err := testHelper.ForkPostgresSchema(context.Background(), testAPI.queries, "public")
+	th, err := testHelper.ForkPostgresSchema(context.Background(), testAPI.queries)
 	if err != nil {
 		t.Fatal(err)
 	}

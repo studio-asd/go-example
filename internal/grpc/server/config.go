@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	tracenoop "go.opentelemetry.io/otel/trace/noop"
 )
@@ -39,4 +40,5 @@ func (t *TraceConfig) Validate() error {
 }
 
 type MeterConfig struct {
+	Meter metric.Meter
 }

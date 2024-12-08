@@ -156,7 +156,7 @@ func TestMove(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			th, err := testHelper.ForkPostgresSchema(testCtx, testHelper.Queries(), "public")
+			th, err := testHelper.ForkPostgresSchema(testCtx, testHelper.Queries())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -420,7 +420,7 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 				accounts = append(accounts, acc)
 			}
 			// Fork a new connection to a new schema so we can test in parallel.
-			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries())
 			if err != nil {
 				t.Fatal(err)
 			}

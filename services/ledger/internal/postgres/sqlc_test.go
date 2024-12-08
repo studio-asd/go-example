@@ -10,11 +10,13 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/albertwidi/go-example/internal/testing/pghelper"
 )
 
 var (
 	testCtx context.Context
-	testHelper *TestHelper
+	testHelper *pghelper.Helper[*Queries]
 )
 
 func TestMain(m *testing.M) {
@@ -36,7 +38,7 @@ func TestMain(m *testing.M) {
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
 	dbName := "go_example"
-	testHelper, err = NewTestHelper(ctx, dbName)
+	testHelper, err = pghelper.New(ctx, dbName, New)
 	if err != nil {
 		code = 1
 		return

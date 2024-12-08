@@ -150,7 +150,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			var err error
 			tq := testHelper.Queries()
 			if test.isolatedSchema {
-				th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries(), "public")
+				th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries())
 				if err != nil {
 					t.Fatal(err)
 				}

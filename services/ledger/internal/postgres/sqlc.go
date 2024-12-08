@@ -52,3 +52,8 @@ func (q *Queries) ensureInTransact(ctx context.Context, iso sql.IsolationLevel, 
 func (q *Queries) Do(ctx context.Context, fn func(ctx context.Context, pg *postgres.Postgres) error ) error {
 	return fn(ctx, q.db)
 }
+
+// Postgres returns the postgres object.
+func (q *Queries) Postgres() *postgres.Postgres {
+	return q.db
+}

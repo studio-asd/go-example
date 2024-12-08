@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/albertwidi/go-example/internal/testing/pghelper"
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
@@ -15,7 +16,7 @@ var (
 	// All variables below this only available if '-short' is not used, this means we will do integration test.
 	testAPI     *API
 	testQueries *ledgerpg.Queries
-	testHelper  *ledgerpg.TestHelper
+	testHelper  *pghelper.Helper[*ledgerpg.Queries]
 )
 
 func TestMain(m *testing.M) {
@@ -35,7 +36,7 @@ func run(m *testing.M) (code int, err error) {
 	}()
 
 	if !testing.Short() {
-		testHelper, err = ledgerpg.NewTestHelper(context.Background(), "ledger_api")
+		testHelper, err = pghelper.New(context.Background(), "ledger_api", ledgerpg.New)
 		if err != nil {
 			return
 		}

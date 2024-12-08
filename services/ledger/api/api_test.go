@@ -16,7 +16,7 @@ func TestTransact(t *testing.T) {
 	t.Skip()
 	t.Parallel()
 
-	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries, "public")
+	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestTransactCorrectness(t *testing.T) {
 	// Then we will try to move all the 100 to the second account using goroutines, then at the end of the test
 	// we will check whether the first account gone below 0.
 	t.Run("negative not allowed", func(t *testing.T) {
-		th, err := testHelper.ForkPostgresSchema(context.Background(), testAPI.queries, "public")
+		th, err := testHelper.ForkPostgresSchema(context.Background(), testAPI.queries)
 		if err != nil {
 			t.Fatal(err)
 		}

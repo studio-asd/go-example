@@ -97,6 +97,12 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 		MovementId:   ledgerEntries.MovementID,
 		TransactTime: timestamppb.New(result.Time),
 	}
+	for _, entry := range ledgerEntries.LedgerEntries {
+		response.LedgerEntries = append(response.LedgerEntries, &ledgerv1.TransactResponse_LedgerEntry{
+			LedgerId: entry.LedgerID,
+			ClientId: entry.ClientID,
+		})
+	}
 	for _, balance := range result.Balances {
 		response.EndingBalances = append(response.EndingBalances, &ledgerv1.TransactResponse_Balance{
 			AccountId:          balance.AccountID,

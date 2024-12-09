@@ -38,13 +38,27 @@ message TransactResponse {
         // previous_movement is the movement_id for the previous balance.
         string previous_movement_id = 6;
     }
+    message LedgerEntry {
+        string ledger_id = 1;
+        string client_id = 2;
+    }
 
     // movement_id is a unqiue identifier for a transact/movement request. All movement entries requested in a single request
     // will be associated by this movement_id.
     string movement_id = 1;
+    // ledger_entries is entry per ledger row ordered with movement_entry in the transact request. But as one ledger row can only
+    // contains of one account, one movement will be translated into two entries with the same client_id(if exist). For example:
+    //
+    // movement: from A to B for 200
+    //
+    // Will be translated to
+    //
+    // ledger: ledger_id_a A -200 movement_client_id
+    // ledger: ledger_id_b B 200 movement_client_id
+    repeated LedgerEntry ledger_entries = 2;
     // ending_balances is the detailed balance changes and the ending state of the balance for each movement.
-    repeated Balance ending_balances = 2;
+    repeated Balance ending_balances = 3;
     // transact_time is the timestamp for the transaction which also the same with all created_at and updated_at values.
     // You can also use this field for the time balance updated.
-    google.protobuf.Timestamp transact_time = 3;
+    google.protobuf.Timestamp transact_time = 10;
 }

@@ -92,9 +92,9 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) (in
 				entry.PreviousLedgerID = endingBalances[entry.AccountID].NextLedgerID
 			}
 			// Set the client id if the client_id is not null.
-			clientID := sql.NullString{}
+			clientID := sql.Null[string]{}
 			if entry.ClientID != "" {
-				clientID.String = entry.ClientID
+				clientID.V = entry.ClientID
 				clientID.Valid = true
 			}
 			// The beginning of the offset is always (idx * len(accountsLedgerColumns)) because the parameters are concattenated based on the columns length.

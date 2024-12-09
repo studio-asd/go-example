@@ -1,6 +1,6 @@
 module github.com/albertwidi/go-example
 
-go 1.22.0
+go 1.23.1
 
 replace github.com/albertwidi/pkg => ../pkg
 
@@ -15,6 +15,9 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/rogpeppe/go-internal v1.10.0
 	github.com/shopspring/decimal v1.3.1
+	go.opentelemetry.io/otel v1.28.0
+	go.opentelemetry.io/otel/metric v1.28.0
+	go.opentelemetry.io/otel/trace v1.28.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1
 	google.golang.org/grpc v1.66.2
 	google.golang.org/protobuf v1.34.2
@@ -41,13 +44,10 @@ require (
 	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.28.0 // indirect
-	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.28.0 // indirect
-	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/net v0.26.0 // indirect

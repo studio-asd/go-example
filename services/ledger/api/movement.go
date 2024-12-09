@@ -66,6 +66,7 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 			AccountID:        entry.GetFromAccountId(),
 			Amount:           debitAmount,
 			MovementSequence: sequence,
+			ClientID:         entry.GetClientId(),
 			CreatedAt:        createdAt,
 			Timestamp:        createdAt.Unix(),
 		}
@@ -79,6 +80,7 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 			AccountID:        entry.GetToAccountId(),
 			Amount:           amount,
 			MovementSequence: sequence,
+			ClientID:         entry.GetClientId(),
 			CreatedAt:        createdAt,
 			Timestamp:        createdAt.Unix(),
 		}

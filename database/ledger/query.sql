@@ -67,6 +67,7 @@ SELECT ledger_id,
 	account_id,
 	amount,
 	previous_ledger_id,
+	client_id,
 	created_at,
 	client_id
 FROM accounts_ledger

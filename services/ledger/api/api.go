@@ -43,6 +43,11 @@ func New(queries *ledgerpg.Queries) *API {
 	}
 }
 
+// GRPC returns the grpc api implementation of the ledger api.
+func (a *API) GRPC() *GRPC {
+	return newGRPC(a)
+}
+
 // Transact moves money from accounts to accounts within the transaction scope.
 func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn func(context.Context, *postgres.Postgres) error) (*ledgerv1.TransactResponse, error) {
 	if err := validator.Validate(req); err != nil {

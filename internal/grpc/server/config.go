@@ -13,8 +13,10 @@ type Config struct {
 	Address      string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
-	Trace        *TraceConfig
-	Meter        *MeterConfig
+	GRPCGateway  GRPCGateway
+	// Below configurations will automatically applied to the grpc gateway as well.
+	Trace *TraceConfig
+	Meter *MeterConfig
 }
 
 func (c Config) Validate() error {
@@ -41,4 +43,14 @@ func (t *TraceConfig) Validate() error {
 
 type MeterConfig struct {
 	Meter metric.Meter
+}
+
+// GRPCGateway configurations enables grpc-gateway for json-protobuf translation.
+// You can read more about it here: https://grpc-ecosystem.github.io/grpc-gateway/docs/.
+type GRPCGateway struct {
+	Address string
+}
+
+func (g GRPCGateway) Validate() error {
+	return nil
 }

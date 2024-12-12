@@ -19,7 +19,6 @@ type Server struct {
 	registerServiceFns []func(s grpc.ServiceRegistrar)
 
 	stopMu sync.Mutex
-	stopC  chan struct{}
 	readyC chan struct{}
 	// All variables below is assigned after the object is created(in Init, etc).
 	logger   *slog.Logger
@@ -28,7 +27,6 @@ type Server struct {
 }
 
 func New() {
-
 }
 
 func (s *Server) Name() string {

@@ -34,18 +34,23 @@ What does it mean by separated domain? A user facing software have features that
 | |-------------------| |
 | |      Payment      | |
 | |-------------------| |
+|                       |
 | |-------------------| |
 | |       Order       | |
 | |-------------------| |
+|                       |
 | |-------------------| |
 | |     Logistic      | |
 | |-------------------| |
+|                       |
 | |-------------------| |
 | |      Wallet       | |
 | |-------------------| |
+|                       |
 | |-------------------| |
 | |        ...        | |
 | |-------------------| |
+|                       |
 |-----------------------|
 ```
 
@@ -76,7 +81,7 @@ In the example above, for `e-commerce` there are a lot of features they need to 
 |---------------------|
 ```
 
-All of these are separate feature `domain` that need to be maintained by the `e-commerce`. And each of them is called a `domain` because they are doing a completely different things from each domain perspective:
+All of these are separate feature `domain` that need to be maintained by the `e-commerce`. And each of them is called a `domain` because they are doing a completely different things from each domain perspective. If you have ever read the single responsibility principle([SRP](https://en.wikipedia.org/wiki/Single-responsibility_principle)), this is the same concept the we applied here.
 
 1. Order domain is responsible to process customer's order and turn them into a payable invoice.
 2. Logistic domain is reponsible to provide an information about shipping and how the customer's item can be delivered into the destination.
@@ -100,7 +105,7 @@ From the `buy flow` above, we learn that there are ordered sequence of events ex
 |-----------------------------------------------|     |---------------------|
 ```
 
-Each domain are located inside the `services` folder. As you can see in the folder, there are several domain being created there.
+Ok, now how all of those explanations related to what we have in this project? And how those things are reflected? As mentioned above, as we care about each domain responsibility we are trying to build a project structure to ensure those responsibility are still separated but able to communicate with each others. For this reason, each domain are located inside the `services` folder. As you can see in the folder, there are several domain being created there.
 
 ```text
 |- services
@@ -112,7 +117,68 @@ Each domain are located inside the `services` folder. As you can see in the fold
 		   |- internal
 ```
 
-For example, the `ledger` and `wallet` domain are separated domain with different functionalities. But it doesn't mean the `wallet` domain cannot communicate with the `ledger` domain. In fact, the `wallet` domain need `ledger` as dependency. If you are familiar with the terms of micro service, this is a similar concept to that, but we are implementing the concept inside a monolithic software.
+The `ledger` and `wallet` domain are separated domain with different functionalities and responsibility. And because these two domains are exists within one program, they can talk to each other via function calls. But when doing this, each domain need to ensure they are not leaking the implementation detail or the internals of each domain.
+
+Let's create a real example of what exists inside the `go-example` program.
+
+```text
+|-------------------------------------------|
+| |----------------------------------|      |
+| |  |--------|        |----------|  |      |
+| |  | Ledger |------> | Postgres |  |      |
+| |  |--------|        |----------|  |      |
+| |      ^  Ledger Domain   ^        |      |
+| |------|------------------|--------|      |
+|        |                  |               |
+|        | call             |               |
+|        |                  X Not Allowed   |
+|    |--------|             |               |
+|    | Wallet | ------------|               |
+|    |--------|                             |
+|-------------------------------------------|
+```
+
+In this example, `ledger` as a domain has a PostgreSQL database depdeency, and its up to the `ledger` domain on how to use the database to fullfil it needs. Because the PostgreSQL is the dependency of `ledger`, only `ledger` is authorized to write to its own database. Other domain like `wallet` should not be authorized to write to the same database as it will violates the access and responsibility of `ledger` domain.
+
+Some of you might be familiar with the concept of micro service and all of these domain separation and single responsibility is aligned with the concept of micro service. A monolithic software is indeed crafted with micro service inside the software itself, it just they are not communicating via network, they use function as their APIs.
+
+So, how does the `domain` itself protected its own internal implementation inside the `services` structure? If you look again at the structure:
+
+```text
+|- services
+      |- ledger
+           |- api
+		   |- internal <- We have this.
+```
+
+You will find there is an `internal` folder inside each domain/service. Because in Go packages are represented by directory, we can create an internal directory/package in our structure to protect the implementation from another domain/service/package. This capability is added in Go [1.4](https://go.dev/doc/go1.4#internalpackages). By using internal directory, the Go toolchain will not allow another domain/service/package to import the internal implementation of other domain. For example:
+
+This is possible:
+
+```text
+|- ledger
+      |- api
+          |- api.go -------------------|
+      |- internal                      | can import
+          |- postgres  <---------------|
+                |- postgres.go
+```
+
+While this is not:
+
+```text
+|- ledger
+      |- api
+          |- api.go
+      |- internal
+          |- postgres <------------|
+                |- postgres.go     |
+|- wallet                          | cannot import
+      |- api                       |
+          |- api.go ---------------|
+```
+
+But it doesn't mean the `wallet` domain cannot communicate with the `ledger` domain. In fact, the `wallet` domain need `ledger` as dependency. If you are familiar with the terms of micro service, this is a similar concept to that, but we are implementing the concept inside a monolithic software.
 
 And how can you say that the `wallet` domain is dependant to the `ledger` domain? With Go, you can simply import other package from another package. For example here, the `wallet` package will import the `ledger` package to use it:
 

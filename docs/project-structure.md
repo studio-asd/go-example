@@ -99,10 +99,10 @@ From the `buy flow` above, we learn that there are ordered sequence of events ex
 |    |-----------> | Invoice |<--|              |
 |                  |---------|   |  3. pay      |
 |                                |              |
-|                             |---------|       |     |---------------------|
-|                             | Payment |------------>| Banks/Other Payment |
-|                             |---------|       |     |     Channels        |
-|-----------------------------------------------|     |---------------------|
+|                             |---------|       |    |---------------------|
+|                             | Payment |----------->| Banks/Other Payment |
+|                             |---------|       |    |     Channels        |
+|-----------------------------------------------|    |---------------------|
 ```
 
 Ok, now how all of those explanations related to what we have in this project? And how those things are reflected? As mentioned above, as we care about each domain responsibility we are trying to build a project structure to ensure those responsibility are still separated but able to communicate with each others. For this reason, each domain are located inside the `services` folder. As you can see in the folder, there are several domain being created there.
@@ -148,7 +148,7 @@ So, how does the `domain` itself protected its own internal implementation insid
 |- services
       |- ledger
            |- api
-		   |- internal <- We have this.
+               |- internal <- We have this.
 ```
 
 You will find there is an `internal` folder inside each domain/service. Because in Go packages are represented by directory, we can create an internal directory/package in our structure to protect the implementation from another domain/service/package. This capability is added in Go [1.4](https://go.dev/doc/go1.4#internalpackages). By using internal directory, the Go toolchain will not allow another domain/service/package to import the internal implementation of other domain. For example:
@@ -158,9 +158,9 @@ This is possible:
 ```text
 |- ledger
       |- api
-          |- api.go -------------------|
-      |- internal                      | can import
-          |- postgres  <---------------|
+          |- api.go --------------|
+      |- internal                 | can import
+          |- postgres  <----------|
                 |- postgres.go
 ```
 
@@ -178,9 +178,51 @@ While this is not:
           |- api.go ---------------|
 ```
 
-But it doesn't mean the `wallet` domain cannot communicate with the `ledger` domain. In fact, the `wallet` domain need `ledger` as dependency. If you are familiar with the terms of micro service, this is a similar concept to that, but we are implementing the concept inside a monolithic software.
+In summary, we only allow the domain/service/package to communicate to each other via their `api` and not directly into the internal implementation.
 
-And how can you say that the `wallet` domain is dependant to the `ledger` domain? With Go, you can simply import other package from another package. For example here, the `wallet` package will import the `ledger` package to use it:
+```text
+|- ledger
+      |- api
+          |- api.go <--------------|
+      |- internal                  |
+          |- postgres              |
+                |- postgres.go     | import
+|- wallet                          |
+      |- api                       |
+          |- api.go ---------------|
+```
+
+### Managing Consistency And Data State Between Domain
+
+When talking about domain separation we already learned about how different domain communicate with each other to produce the wanted end result for the users.
+
+When talking about domain to domain communication, consistency of the data is not the only thing we want to take care about. We also want to ensure the latency is also considered.
+
+```text
+|------------------------------------------------------------------------------------|
+|           |------------------|                      |------------------|           |
+|           |   Wallet Domain  |                      |  Ledger Domain   |           |
+|           |                  |                      |                  |           |
+|   request |    |--------|    |        call          |    |--------|    |           |
+|  ------------->| wallet |------------------------------->| Ledger |    |           |
+|           |    |--------|    |                      |    |--------|    |           |
+|           |        |         |                      |        |         |           |
+|           |        | store   |                      |        | store   |           |
+|           |        v         |                      |        v         |           |
+|           |  |------------|  |                      |  |------------|  |           |
+|           |  | PostgreSQL |  |                      |  | PostgreSQL |  |           |
+|           |  |------------|  |                      |  |------------|  |           |
+|           |------------------|                      |------------------|           |
+|       <--------------------------> <-----------> <------------------------->       |
+|        Time spent in wallet domain    Network    Time spent in ledger domain       |
+|                                    <--------------------------------------->       |
+|                                             Wallet domain waiting                  |
+|       <-------------------------------------------------------------------->       |
+|                                   Total time spent                                 |
+|------------------------------------------------------------------------------------|
+```
+
+Taking latency to the consideration is imporatnt as we want to ensure the "request" is being handled as soon as possible thus we can give the feedback faster to the end user. With higher latency, there is a subsequent problem that need to be handled. As you can see in the above example, the "total time spent" depends on the "time spent in wallet domain" + "network" + "time spent in ledger domain".
 
 ```go
 package api

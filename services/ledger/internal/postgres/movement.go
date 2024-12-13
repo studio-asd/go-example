@@ -59,7 +59,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) (in
 	// Below here, we will do everything inside the database transaction. So its important to keep in mind, whatever we are doing here it gotta have to
 	// be fast. As we are locking the users balances here, the user won't be able to create new movement if the account is still being locked in the
 	// database transaction.
-	err := q.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *Queries) error {
+	err := q.ensureInTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *Queries) error {
 		bulkUpdateParams, endingBalances, err := selectAccountsBalanceForMovement(ctx, q, le.AccountsSummary, le.CreatedAt, le.Accounts)
 		if err != nil {
 			return err

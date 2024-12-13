@@ -59,8 +59,7 @@ CREATE TABLE IF NOT EXISTS security_role_permissions(
 );
 
 CREATE TABLE IF NOT EXISTS security_permissions(
-    -- id is the name of the permission.
-    permission_id bigint GENERATED ALWAYS AS IDENTITY,
+    permission_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     permission_name varchar NOT NULL,
     -- permission_type is the granular type of permission. For example, 'api_endpoint', 'file_access'.
     -- We don't want to use enum for the permission_type because we might want to add much more permission

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/albertwidi/pkg/postgres"
@@ -46,6 +47,18 @@ func New(queries *ledgerpg.Queries) *API {
 // GRPC returns the grpc api implementation of the ledger api.
 func (a *API) GRPC() *GRPC {
 	return newGRPC(a)
+}
+
+// WithTransact allows client to inject a postgres client/connection to the api and ensure the ledger api database to run in
+// the same session of PostgreSQL of other APIs. With this, other APIs can use the ledger api while maintains the consistency
+// inside the database.
+func (a *API) WithTransact(pg *postgres.Postgres) (*API, error) {
+	if ok, _ := pg.InTransaction(); !ok {
+		return nil, errors.New("postgres connection is not in transaction")
+	}
+	return &API{
+		queries: ledgerpg.New(pg),
+	}, nil
 }
 
 // Transact moves money from accounts to accounts within the transaction scope.
@@ -99,24 +112,28 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	// Construct the response. As the movement id and ledger ids are constructed beforehand, we only consruct the response
 	// after we know all operations is a success to not wasting compute resource.
 	response := &ledgerv1.TransactResponse{
-		MovementId:   ledgerEntries.MovementID,
-		TransactTime: timestamppb.New(result.Time),
+		MovementId:     ledgerEntries.MovementID,
+		TransactTime:   timestamppb.New(result.Time),
+		LedgerEntries:  make([]*ledgerv1.TransactResponse_LedgerEntry, len(ledgerEntries.LedgerEntries)),
+		EndingBalances: make([]*ledgerv1.TransactResponse_Balance, len(result.Balances)),
 	}
-	for _, entry := range ledgerEntries.LedgerEntries {
-		response.LedgerEntries = append(response.LedgerEntries, &ledgerv1.TransactResponse_LedgerEntry{
+	for idx, entry := range ledgerEntries.LedgerEntries {
+		response.LedgerEntries[idx] = &ledgerv1.TransactResponse_LedgerEntry{
 			LedgerId: entry.LedgerID,
 			ClientId: entry.ClientID,
-		})
+		}
 	}
+	counter := 0
 	for _, balance := range result.Balances {
-		response.EndingBalances = append(response.EndingBalances, &ledgerv1.TransactResponse_Balance{
+		response.EndingBalances[counter] = &ledgerv1.TransactResponse_Balance{
 			AccountId:          balance.AccountID,
 			LedgerId:           balance.NextLedgerID,
 			NewBalance:         balance.NewBalance.String(),
 			PreviousBalance:    balance.PreviousBalance.String(),
 			PreviousLedgerId:   balance.PreviousLedgerID,
 			PreviousMovementId: balance.PreviousMovementID,
-		})
+		}
+		counter++
 	}
 	return response, nil
 }

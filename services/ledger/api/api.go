@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/albertwidi/pkg/postgres"
@@ -47,18 +46,6 @@ func New(queries *ledgerpg.Queries) *API {
 // GRPC returns the grpc api implementation of the ledger api.
 func (a *API) GRPC() *GRPC {
 	return newGRPC(a)
-}
-
-// WithTransact allows client to inject a postgres client/connection to the api and ensure the ledger api database to run in
-// the same session of PostgreSQL of other APIs. With this, other APIs can use the ledger api while maintains the consistency
-// inside the database.
-func (a *API) WithTransact(pg *postgres.Postgres) (*API, error) {
-	if ok, _ := pg.InTransaction(); !ok {
-		return nil, errors.New("postgres connection is not in transaction")
-	}
-	return &API{
-		queries: ledgerpg.New(pg),
-	}, nil
 }
 
 // Transact moves money from accounts to accounts within the transaction scope.

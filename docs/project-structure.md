@@ -196,7 +196,7 @@ In summary, we only allow the domain/service/package to communicate to each othe
 
 When talking about domain separation we already learned about how different domain communicate with each other to produce the wanted end result for the users.
 
-When talking about domain to domain communication, consistency of the data is not the only thing we want to take care about. We also want to ensure the latency is also considered.
+When talking about domain to domain communication, consistency of the data is not the only thing we want to take care about. We also want to ensure the latency is also considered. For example, there two different domain that talked to each other via "network" call. We can assume these two domain are different services:
 
 ```text
 |------------------------------------------------------------------------------------|
@@ -222,7 +222,14 @@ When talking about domain to domain communication, consistency of the data is no
 |------------------------------------------------------------------------------------|
 ```
 
-Taking latency to the consideration is imporatnt as we want to ensure the "request" is being handled as soon as possible thus we can give the feedback faster to the end user. With higher latency, there is a subsequent problem that need to be handled. As you can see in the above example, the "total time spent" depends on the "time spent in wallet domain" + "network" + "time spent in ledger domain".
+Taking latency to the consideration in every stage is imporatnt:
+
+1. The "request" is handled within the SLA(Service Level Agreement) and ensure a good user experience for the end user. The "request" total latency is "wallet domain" + "network" + "ledger domain" latency.
+2. The "wallet domain" rely heavily on the "ledger domain", so the latency in the "wallet domain" always depends on how fast "ledger domain" can process the request.
+
+Managing latency for the end user is important as user doesn't want to wait too long for their action. A study by Amazon reveals that every 100ms of latency costs them about 1% of sales. This means if you want your user to stay, you need to ensure your is responsive.
+
+But unfortunately, the responsiveness of the application is not the only thing the end user need. The reliability and consistency of the application cannot be sacrificed for speed. It still doesn't matter if your application is fast but user is losing their money. So trade off need to be made, and this why something like [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem) exists.
 
 ```go
 package api

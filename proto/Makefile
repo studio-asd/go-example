@@ -41,6 +41,8 @@ ifeq (,$(DOCKER_IMAGE_ID))
 endif
 endif
 
+# generate use $(DOCKERFILE) and $(GEN_DIR) as dependency. This means the $(DOCKERFILE) command to ensure the image is exists and $(GEN_DIR) to ensure
+# the directory to generated proto files will always be invoked when executing this command.
 generate: $(DOCKERFILE) $(GEN_DIR)
 	@echo "Generating protobuf files for $(proto_folder)/$(target)"
 	@docker run --platform $(DEFAULT_PLATFORM) --rm --volume ${PWD}:/generate \
@@ -60,6 +62,8 @@ api_dirs := \
 	testdata/v1 \
 	ledger/v1
 
+# api_dirs will loop through the api_dirs variable above, so we will invoke every value inside it like we loop through an array.
+# For example, it will invoke $(MAKE) generate proto_folder=api target=testdata/v1.
 $(api_dirs):
 	@$(MAKE) generate proto_folder=api target=$@
 	@sleep 0.2

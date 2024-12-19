@@ -192,7 +192,7 @@ In summary, we only allow the domain/service/package to communicate to each othe
           |- api.go ---------------|
 ```
 
-### Managing Consistency And Data State Between Domain
+### Latency & Consistency of Data State Between Domain
 
 When talking about domain separation we already learned about how different domain communicate with each other to produce the wanted end result for the users.
 

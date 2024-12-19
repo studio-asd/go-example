@@ -205,6 +205,7 @@ SELECT ledger_id,
 	account_id,
 	amount,
 	previous_ledger_id,
+	client_id,
 	created_at,
 	client_id
 FROM accounts_ledger
@@ -219,8 +220,9 @@ type GetAccountsLedgerByMovementIDRow struct {
 	AccountID        string
 	Amount           decimal.Decimal
 	PreviousLedgerID string
-	CreatedAt        time.Time
 	ClientID         sql.NullString
+	CreatedAt        time.Time
+	ClientID_2       sql.NullString
 }
 
 func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID string) ([]GetAccountsLedgerByMovementIDRow, error) {
@@ -239,8 +241,9 @@ func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID 
 			&i.AccountID,
 			&i.Amount,
 			&i.PreviousLedgerID,
-			&i.CreatedAt,
 			&i.ClientID,
+			&i.CreatedAt,
+			&i.ClientID_2,
 		); err != nil {
 			return nil, err
 		}

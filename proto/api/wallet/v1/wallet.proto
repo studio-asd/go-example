@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package go_example.api.wallet.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/wallet/v1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+
+enum TransactionType {
+    TX_TYPE_UNSPECIFIED = 0;
+    TX_TYPE_DEPOSIT = 1;
+    TX_TYPE_TRANSFER = 20;
+    TX_TYPE_WITHDRAWAL = 50;
+}
+
+enum WalletOwner {
+    WALLET_OWNER_UNSPECIFIED = 0;
+    WALLET_OWNER_SYSTEM = 1;
+    WALLET_OWNER_USER = 50;
+}
+
+enum WalletType {
+  WALLET_TYPE_UNSPECIFIED = 0;
+  WALLET_TYPE_MAIN = 1;
+  WALLET_TYPE_SAVINGS = 2;
+  // TYPE_DEPOSIT is used to move money in from oustide of the system to the wallet system. For example transfer
+  // from a Payment Gateway to the wallet ecosystem.
+  WALLET_TYPE_DEPOSIT = 10000;
+  // TYPE_WITHDRAWAL is used to move money to outside of the wallet system. For example transfer to a Payment Gateway.
+  WALLET_TYPE_WITHDRAWAL = 10001;
+}
+
+enum WalletStatus {
+  WALLET_STATUS_UNSPECIFIED = 0;
+  WALLET_STATUS_ACTIVE = 1;
+  WALLET_STATUS_INACTIVE = 30;
+  WALLET_STATUS_SUSPENDED = 50;
+}
+
+enum WithdrawalStatus {
+    STATUS_UNSPECIFIED = 0;
+    STATUS_SCUCESS = 1;
+    STATUS_PENDING = 30;
+    STATUS_CANCELLED = 40;
+    STATUS_FAILED = 50;
+}
+
+enum WithdrawalChannel {
+    CHANNEL_UNSPECIFIED = 0;
+    CHANNEL_BANK = 1;
+    CHANNEL_EWALLET = 2;
+}
+
+message CreateWalletAccountRequest {
+  WalletType wallet_type = 1 [ (buf.validate.field).required = true ];
+  string currency = 2 [ (buf.validate.field).required = true ];
+  string user_id = 3 [ (buf.validate.field).required = true ];
+}
+
+message CreateWalletAccountResponse {
+  string wallet_id = 1;
+  WalletStatus wallet_status = 2;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message GetWalletBalanceRequest {
+  oneof filter_params {
+    option (buf.validate.oneof).required = true;
+    string wallet_id = 1;
+    string user_id = 2;
+  }
+}
+
+message GetWalletBalanceResponse {
+  string wallet_id = 1;
+  string wallet_balance = 2;
+  WalletStatus wallet_status = 3;
+  google.protobuf.Timestamp updated_at = 10;
+}

@@ -21,12 +21,17 @@ enum WalletOwner {
 
 enum WalletType {
   WALLET_TYPE_UNSPECIFIED = 0;
-  WALLET_TYPE_MAIN = 1;
-  WALLET_TYPE_SAVINGS = 2;
-  // TYPE_DEPOSIT is used to move money in from oustide of the system to the wallet system. For example transfer
+  // WALLET_TYPE_INTERMEDIARY is the intermediary wallet and used when we need a transition of status in a transaction.
+  // For example, withdrawal is not immediately success because we need to wait until the withdrawal is a success in the
+  // third party system. In this case, the money is kept in the user's intermediary wallet.
+  WALLET_TYPE_INTERMEDIARY = 1;
+  // WALLET_TYPE_MAIN is the main wallet of the user. Money comes and goes mainly from this wallet.
+  WALLET_TYPE_MAIN = 10;
+  WALLET_TYPE_SAVINGS = 20;
+  // WALLET_TYPE_DEPOSIT is used to move money in from oustide of the system to the wallet system. For example transfer
   // from a Payment Gateway to the wallet ecosystem.
   WALLET_TYPE_DEPOSIT = 10000;
-  // TYPE_WITHDRAWAL is used to move money to outside of the wallet system. For example transfer to a Payment Gateway.
+  // WALLET_TYPE_WITHDRAWAL is used to move money to outside of the wallet system. For example transfer to a Payment Gateway.
   WALLET_TYPE_WITHDRAWAL = 10001;
 }
 

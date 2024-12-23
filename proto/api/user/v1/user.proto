@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package go_example.api.wallet.v1;
+option go_package = "github.com/albertwidi/go-example/proto/api/user/v1";
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";

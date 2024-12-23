@@ -41,6 +41,7 @@ message TransactResponse {
     message LedgerEntry {
         string ledger_id = 1;
         string client_id = 2;
+        int32 movement_sequence = 3;
     }
 
     // movement_id is a unqiue identifier for a transact/movement request. All movement entries requested in a single request
@@ -57,6 +58,7 @@ message TransactResponse {
     // ledger: ledger_id_b B 200 movement_client_id
     repeated LedgerEntry ledger_entries = 2;
     // ending_balances is the detailed balance changes and the ending state of the balance for each movement.
+    // Please NOTE that ending_balances is not sorted and the client need to re-map the ending_balances per account id on their side.
     repeated Balance ending_balances = 3;
     // transact_time is the timestamp for the transaction which also the same with all created_at and updated_at values.
     // You can also use this field for the time balance updated.

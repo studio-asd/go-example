@@ -9,9 +9,9 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/albertwidi/go-example/internal/await"
 	"github.com/albertwidi/go-example/internal/protovalidate"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
+	"github.com/albertwidi/go-example/services"
 	internal "github.com/albertwidi/go-example/services/ledger/internal"
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
@@ -69,30 +69,21 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	if err != nil {
 		return nil, err
 	}
-	var result internal.MovementResult
 
+	var result internal.MovementResult
 	// If the additional function scope is not nil, then we should invoke the function inside a time-bounded
 	// goroutine as we don't know how much time the function will spent. So we need to ensure the function runs
 	// inside the Transact SLA.
-	if fn != nil {
-		timeoutSLA := time.Second * 3
-		err = await.Do(ctx, timeoutSLA, func(ctx context.Context) error {
-			return a.queries.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *ledgerpg.Queries) error {
+	if err := services.NewTransactExec(ctx, a.queries.Postgres(), sql.LevelReadCommitted).
+		Do(
+			func(ctx context.Context, p *postgres.Postgres) error {
 				var err error
-				result, err = q.Move(ctx, ledgerEntries)
-				if err != nil {
-					return err
-				}
-				if err := q.Do(ctx, fn); err != nil {
-					return err
-				}
-				return nil
-			})
-		})
-	} else {
-		result, err = a.queries.Move(ctx, ledgerEntries)
-	}
-	if err != nil {
+				result, err = ledgerpg.New(p).Move(ctx, ledgerEntries)
+				return err
+			},
+			fn,
+			time.Second*3,
+		); err != nil {
 		return nil, err
 	}
 
@@ -108,6 +99,8 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 		response.LedgerEntries[idx] = &ledgerv1.TransactResponse_LedgerEntry{
 			LedgerId: entry.LedgerID,
 			ClientId: entry.ClientID,
+			// Its okay to cast the movement seuqnce to int32 as it won't overflow as we don't allow huge entries.
+			MovementSequence: int32(entry.MovementSequence),
 		}
 	}
 	counter := 0

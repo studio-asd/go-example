@@ -6,14 +6,16 @@ import (
 	"testing"
 
 	"github.com/albertwidi/pkg/postgres"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"google.golang.org/protobuf/testing/protocmp"
 
+	prototesting "github.com/albertwidi/go-example/internal/testing/proto"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
 )
 
 func TestTransact(t *testing.T) {
-	t.Skip()
 	t.Parallel()
 
 	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries)
@@ -31,7 +33,86 @@ func TestTransact(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Run("simple_transact", func(t *testing.T) {
+		resp := createSimpleTestAccounts(t, testAPI)
+
+		depositAccount := resp.GetAccounts()[2].GetAccountId()
+		testAccount := resp.GetAccounts()[0].GetAccountId()
+
+		txResp, err := testAPI.Transact(
+			context.Background(),
+			&ledgerv1.TransactRequest{
+				IdempotencyKey: "test",
+				MovementEntries: []*ledgerv1.MovementEntry{
+					{
+						FromAccountId: depositAccount,
+						ToAccountId:   testAccount,
+						Amount:        "100",
+						ClientId:      "test_client_id",
+					},
+				},
+			},
+			nil,
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Check movementId we copy the movement id to the expected proto.Message.
+		if txResp.GetMovementId() == "" {
+			t.Fatal("movement id is empty")
+		}
+		if err := txResp.TransactTime.CheckValid(); err != nil {
+			t.Fatal(err)
+		}
+		expect := &ledgerv1.TransactResponse{
+			MovementId: txResp.GetMovementId(),
+			LedgerEntries: []*ledgerv1.TransactResponse_LedgerEntry{
+				{
+					LedgerId:         uuid.NewSHA1(uuid.NameSpaceOID, []byte(txResp.GetMovementId()+":"+depositAccount+":"+"1")).String(),
+					ClientId:         "test_client_id",
+					MovementSequence: 1,
+				},
+				{
+					LedgerId:         uuid.NewSHA1(uuid.NameSpaceOID, []byte(txResp.GetMovementId()+":"+testAccount+":"+"1")).String(),
+					ClientId:         "test_client_id",
+					MovementSequence: 1,
+				},
+			},
+			EndingBalances: []*ledgerv1.TransactResponse_Balance{
+				{
+					AccountId:          depositAccount,
+					LedgerId:           uuid.NewSHA1(uuid.NameSpaceOID, []byte(txResp.GetMovementId()+":"+depositAccount+":"+"1")).String(),
+					PreviousLedgerId:   "",
+					PreviousMovementId: "",
+					PreviousBalance:    "0",
+					NewBalance:         "-100",
+				},
+				{
+					AccountId:          testAccount,
+					LedgerId:           uuid.NewSHA1(uuid.NameSpaceOID, []byte(txResp.GetMovementId()+":"+testAccount+":"+"1")).String(),
+					PreviousLedgerId:   "",
+					PreviousMovementId: "",
+					PreviousBalance:    "0",
+					NewBalance:         "100",
+				},
+			},
+			TransactTime: txResp.TransactTime,
+		}
+
+		sortEndingBalances := protocmp.SortRepeatedFields(&ledgerv1.TransactResponse{}, "ending_balances")
+		if diff := cmp.Diff(expect, txResp, sortEndingBalances, protocmp.Transform()); diff != "" {
+			t.Fatalf(
+				"(-want/+got)\n%s\n\nexpect:\n%s\ngot:\n%s",
+				diff,
+				prototesting.ToJson(t, expect),
+				prototesting.ToJson(t, txResp),
+			)
+		}
+	})
+
 	t.Run("transact_foregin_func_success", func(t *testing.T) {
+		t.Skip()
 		t.Parallel()
 
 		fn := func(ctx context.Context, pg *postgres.Postgres) error {
@@ -49,6 +130,7 @@ func TestTransact(t *testing.T) {
 	})
 
 	t.Run("transact_foreign_function_failed", func(t *testing.T) {
+		t.Skip()
 		t.Parallel()
 	})
 }
@@ -82,7 +164,7 @@ func TestTransactCorrectness(t *testing.T) {
 					CurrencyId:    1,
 				},
 			},
-		})
+		}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,4 +240,29 @@ func TestTransactCorrectness(t *testing.T) {
 			t.Fatalf("second account balance is not zero, got %s", resp.Balances[1].String())
 		}
 	})
+}
+
+func createSimpleTestAccounts(t *testing.T, api *API) *ledgerv1.CreateLedgerAccountsResponse {
+	t.Helper()
+	accountsResp, err := api.CreateAccounts(context.Background(), &ledgerv1.CreateLedgerAccountsRequest{
+		Accounts: []*ledgerv1.CreateLedgerAccountsRequest_Account{
+			{
+				AllowNegative: false,
+				CurrencyId:    1,
+			},
+			{
+				AllowNegative: false,
+				CurrencyId:    1,
+			},
+			// The third account is only for deposit.
+			{
+				AllowNegative: true,
+				CurrencyId:    1,
+			},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return accountsResp
 }

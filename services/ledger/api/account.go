@@ -2,21 +2,24 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
+	"github.com/albertwidi/pkg/postgres"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/albertwidi/go-example/internal/currency"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
+	"github.com/albertwidi/go-example/services"
 	"github.com/albertwidi/go-example/services/ledger"
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
 // CreateAccounts API allows the client to create ledger accounts. It is possible to associate an account_id as the parent_id when
 // creating the account. The API don't allow inactive account to be referenced as parent_id.
-func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedgerAccountsRequest) (*ledgerv1.CreateLedgerAccountsResponse, error) {
+func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedgerAccountsRequest, fn services.TransactFunc) (*ledgerv1.CreateLedgerAccountsResponse, error) {
 	if err := validator.Validate(request); err != nil {
 		return nil, err
 	}
@@ -71,7 +74,14 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 		}
 	}
 	// Save the data to the database.
-	if err := a.queries.CreateLedgerAccounts(ctx, createReqs...); err != nil {
+	if err := services.NewTransactExec(ctx, a.queries.Postgres(), sql.LevelReadCommitted).
+		Do(
+			func(ctx context.Context, p *postgres.Postgres) error {
+				return ledgerpg.New(p).CreateLedgerAccounts(ctx, createReqs...)
+			},
+			fn,
+			time.Second*3,
+		); err != nil {
 		return nil, err
 	}
 	return resp, nil

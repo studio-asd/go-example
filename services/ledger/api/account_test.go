@@ -132,7 +132,7 @@ func TestCreateAccounts(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			resp, err := api.CreateAccounts(context.Background(), test.request)
+			resp, err := api.CreateAccounts(context.Background(), test.request, nil)
 			if !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}

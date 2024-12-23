@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     transaction_id VARCHAR PRIMARY KEY,
     transaction_type INT NOT NULL,
     transaction_status INT NOT NULL,
+    idempotency_key VARCHAR NOT NULL,
     created_at TIMESTAMPTZNOT NULL,
     updated_at TIMESTAMPTZ,
     finished_at TIMESTAMPTZ

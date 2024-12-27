@@ -57,7 +57,7 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	accounts := make([]string, len(req.GetMovementEntries())*2)
 	entries := req.GetMovementEntries()
 	for idx, entry := range entries {
-		accounts[idx] = entry.FromAccountId
+		accounts[idx] = entry.FromAccount.FromAccountId
 		accounts[idx+1] = entry.ToAccountId
 	}
 

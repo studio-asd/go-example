@@ -200,6 +200,9 @@ When talking about domain to domain communication, consistency of the data is no
 
 ```text
 |------------------------------------------------------------------------------------|
+| Microservice Model |                                                               |
+|--------------------|                                                               |
+|                                                                                    |
 |           |------------------|                      |------------------|           |
 |           |   Wallet Domain  |                      |  Ledger Domain   |           |
 |           |                  |                      |                  |           |
@@ -231,13 +234,68 @@ Managing latency for the end user is important as user doesn't want to wait too 
 
 But unfortunately, the responsiveness of the application is not the only thing the end user need. The reliability and consistency of the application cannot be sacrificed for speed. It still doesn't matter if your application is fast but user is losing their money. So trade off need to be made, and this why something like [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem) exists.
 
+```text
+|------------------------------------------------------------------------------------|
+| Microservice Model |                                                               |
+|--------------------|                                                               |
+|                                                                                    |
+|           |------------------|                      |------------------|           |
+|           |   Wallet Domain  |                      |  Ledger Domain   |           |
+|           |                  |                      |                  |           |
+|   request |    |--------|          Network call     |    |--------|    |           |
+|  ------------->| wallet |------------------------------->| Ledger |    |           |
+|           |    |--------|    |                      |    |--------|    |           |
+|           |        |         |                      |        |         |           |
+|           |        | store   |                      |        | store   |           |
+|           |        v         |                      |        v         |           |
+|           |  |------------|  |                      |  |------------|  |           |
+|           |  | PostgreSQL |  |                      |  | PostgreSQL |  |           |
+|           |  |------------|  |                      |  |------------|  |           |
+|           |--------^---------|                      |--------^---------|           |
+|                    |                                         |                     |
+|                    |-----------------------------------------|                     |
+|                                 Different Database                                 |
+|            |-----TX--------|                         |-------TX------|             |
+|               Transaction                                Transaction               |
+|                 Scope                                       Scope                  |
+|             Of Wallet Domain                          Of Ledger Domain             |
+|------------------------------------------------------------------------------------|
+```
+
+```text
+|------------------------------------------------------------------------------------|
+| Monolith Model |                                                                   |
+|----------------|                                                                   |
+|                                                                                    |
+|      |------------------------------------------------------------------------|    |
+|      | |----------------------|                       |---------------------| |    |
+|      | |    Wallet Domain     |                       |    Ledger Domain    | |    |
+|      | |                      |                       |                     | |    |
+|      | |     |--------|       |     Function Call     |     |--------|      | |    |
+|      | |     | Wallet | ----------------------------------> | Ledger |      | |    |
+|      | |     |--------|       |                       |     |--------|      | |    |
+|      | |         |            |                       |         |           | |    |
+|      | |---------|------------|                       |---------|-----------| |    |
+|      |           | Store                                 Store  |             |    |
+|      |           |                 |------------|               |             |    |
+|      |           |---------------> | PostgreSQL | <-------------|             |    |
+|      |                             |------------|                             |    |
+|      |                    Same database for Wallet & Ledger                   |    |
+|      |------------------------------------------------------------------------|    |
+|                                                                                    |
+|         |--------------------------------TX--------------------------------|       |
+|                                  Transaction Scope                                 |
+|                              Of Wallet & Ledger Domain                             |
+|------------------------------------------------------------------------------------|
+```
+
 ```go
 package api
 
 import (
 	"github.com/albertwidi/pkg/postgres"
 
-	
+
 	walletpg "github.com/albertwidi/go-example/services/wallet/internal/postgres"
 	ledgerapi "github.com/albertwidi/go-example/services/ledger/api"
 )

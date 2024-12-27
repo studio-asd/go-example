@@ -45,10 +45,12 @@ func TestTransact(t *testing.T) {
 				IdempotencyKey: "test",
 				MovementEntries: []*ledgerv1.MovementEntry{
 					{
-						FromAccountId: depositAccount,
-						ToAccountId:   testAccount,
-						Amount:        "100",
-						ClientId:      "test_client_id",
+						FromAccount: &ledgerv1.MovementEntry_FromAccount{
+							FromAccountId: depositAccount,
+						},
+						ToAccountId: testAccount,
+						Amount:      "100",
+						ClientId:    "test_client_id",
 					},
 				},
 			},
@@ -177,9 +179,11 @@ func TestTransactCorrectness(t *testing.T) {
 			IdempotencyKey: "one",
 			MovementEntries: []*ledgerv1.MovementEntry{
 				{
-					FromAccountId: depositAccount.GetAccountId(),
-					ToAccountId:   firstAccount.GetAccountId(),
-					Amount:        "100",
+					FromAccount: &ledgerv1.MovementEntry_FromAccount{
+						FromAccountId: depositAccount.GetAccountId(),
+					},
+					ToAccountId: firstAccount.GetAccountId(),
+					Amount:      "100",
 				},
 			},
 		}, nil)
@@ -200,9 +204,11 @@ func TestTransactCorrectness(t *testing.T) {
 					IdempotencyKey: uuid.NewString(),
 					MovementEntries: []*ledgerv1.MovementEntry{
 						{
-							FromAccountId: firstAccount.GetAccountId(),
-							ToAccountId:   secondAccount.GetAccountId(),
-							Amount:        "10",
+							FromAccount: &ledgerv1.MovementEntry_FromAccount{
+								FromAccountId: firstAccount.GetAccountId(),
+							},
+							ToAccountId: secondAccount.GetAccountId(),
+							Amount:      "10",
 						},
 					},
 				}, nil)

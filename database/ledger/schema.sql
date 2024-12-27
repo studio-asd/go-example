@@ -33,13 +33,18 @@ CREATE TABLE IF NOT EXISTS movements (
     "idempotency_key" varchar UNIQUE NOT NULL,
     "movement_status" movement_status NOT NULL,
     "created_at" timestamptz NOT NULL,
-    "updated_at" timestamptz
+    "updated_at" timestamptz,
+    -- reversed_at is a marker for reversal. If the reversed_at is not null then the movement is reversed.
+    "reversed_at" timestamptz,
+    -- reversal_movement_id is the id of movement where the reversal is being performed.
+    "reversal_movement_id" varchar
 );
 
 -- accounts_balance is used to store the latest state of user's balance. This table will be used for user
 -- balance fast retrieval and for locking the user balance for movement.
 CREATE TABLE IF NOT EXISTS accounts_balance (
     "account_id" varchar PRIMARY KEY,
+    "parent_account_id" varchar NOT NULL,
     "currency_id" int NOT NULL,
     -- allow_negative allows some accounts to have negative balance. For example, for the funding
     -- account we might allow the account to have negative balance.
@@ -95,7 +100,16 @@ CREATE TABLE IF NOT EXISTS accounts_ledger (
     --
     -- For example, the client want to use the ledger for transfer. The client might want to have a separate transfer table that have its own
     -- id, use that id when creating the transaction to the ledger.
-    "client_id" varchar
+    "client_id" varchar,
+    -- reversal_of is a ledger_id that being reversed by this ledger_id.
+    "reversal_of" varchar,
+);
+
+CREATE TABLE IF NOT EXISTS reversed_movements (
+    "movement_id" varchar NOT NULL,
+    "reversal_movement_id" varchar NOT NULL,
+    "reversal_reason" text NOT NULL,
+    "created_at" timestamptz NOT NULL
 );
 
 -- accounts_ledger index will be used for several cases:
@@ -106,6 +120,10 @@ DROP INDEX IF EXISTS idx_accounts_ledger_movement_id;
 DROP INDEX IF EXISTS idx_accounts_ledger_account_id;
 
 DROP INDEX IF EXISTS idx_accounts_ledger_client_id;
+
+DROP INDEX IF EXISTS idx_accounts_balance_parent_account_id;
+
+CREATE INDEX IF NOT EXISTS idx_accounts_balance_parent_account_id ON accounts_balance ("parent_account_id");
 
 CREATE INDEX IF NOT EXISTS idx_accounts_ledger_movement_id ON accounts_ledger ("movement_id");
 

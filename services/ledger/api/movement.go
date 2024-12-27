@@ -28,7 +28,7 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 	createdAt := time.Now()
 	for idx, entry := range entries {
 		// Check whether we have the correct currencies from and to account as we don't want to mix the currencies in the transfer.
-		currFrom, err := currency.Currencies.GetByID(balances[entry.GetFromAccountId()].CurrencyID)
+		currFrom, err := currency.Currencies.GetByID(balances[entry.GetFromAccount().GetFromAccountId()].CurrencyID)
 		if err != nil {
 			return ledger.MovementLedgerEntries{}, err
 		}
@@ -37,7 +37,7 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 			return ledger.MovementLedgerEntries{}, err
 		}
 		if err := checkEligibleForMovement(checkEligible{
-			FromAccountID: entry.GetFromAccountId(),
+			FromAccountID: entry.GetFromAccount().GetFromAccountId(),
 			ToAccountID:   entry.GetToAccountId(),
 			FromCurrency:  currFrom,
 			ToCurrency:    currTo,
@@ -59,11 +59,11 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 		// Create the DEBIT record.
 		debitAmount := amount.Mul(decimal.NewFromInt(-1))
 		// The ledger_id is a UUIDV5 with namespace_oid and format of: movement_id:from_account_id:sequence.
-		debitLedgerID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(movementID+":"+entry.GetFromAccountId()+":"+strconv.Itoa(sequence))).String()
+		debitLedgerID := uuid.NewSHA1(uuid.NameSpaceOID, []byte(movementID+":"+entry.GetFromAccount().GetFromAccountId()+":"+strconv.Itoa(sequence))).String()
 		le.LedgerEntries[arrIdx] = ledger.LedgerEntry{
 			LedgerID:         debitLedgerID,
 			MovementID:       movementID,
-			AccountID:        entry.GetFromAccountId(),
+			AccountID:        entry.GetFromAccount().GetFromAccountId(),
 			Amount:           debitAmount,
 			MovementSequence: sequence,
 			ClientID:         entry.GetClientId(),
@@ -85,8 +85,8 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 			Timestamp:        createdAt.Unix(),
 		}
 		// Add the accounts to the list of accounts.
-		if _, ok := le.AccountsSummary[entry.GetFromAccountId()]; !ok {
-			le.Accounts = append(le.Accounts, entry.GetFromAccountId())
+		if _, ok := le.AccountsSummary[entry.GetFromAccount().GetFromAccountId()]; !ok {
+			le.Accounts = append(le.Accounts, entry.GetFromAccount().GetFromAccountId())
 		}
 		if _, ok := le.AccountsSummary[entry.GetToAccountId()]; !ok {
 			le.Accounts = append(le.Accounts, entry.GetToAccountId())
@@ -95,22 +95,22 @@ func createLedgerEntries(movementID, idempotencyKey string, balances map[string]
 		// Add each account to the summary.
 		// Sender account.
 		var fromSummary ledger.AccountMovementSummary
-		if summary, ok := le.AccountsSummary[entry.GetFromAccountId()]; ok {
+		if summary, ok := le.AccountsSummary[entry.GetFromAccount().GetFromAccountId()]; ok {
 			fromSummary = summary
 		} else {
 			fromSummary = ledger.AccountMovementSummary{
-				LastLedgerID:  balances[entry.GetFromAccountId()].LastLedgerID,
-				EndingBalance: balances[entry.GetFromAccountId()].Balance,
+				LastLedgerID:  balances[entry.GetFromAccount().GetFromAccountId()].LastLedgerID,
+				EndingBalance: balances[entry.GetFromAccount().GetFromAccountId()].Balance,
 			}
 		}
 		fromSummary.NextLedgerID = debitLedgerID
 		fromSummary.BalanceChanges = fromSummary.BalanceChanges.Add(debitAmount)
 		fromSummary.EndingBalance = fromSummary.EndingBalance.Add(debitAmount)
 		// Check whether the ending balance is negative, we cannot allow negative balance for most the accounts.
-		if fromSummary.EndingBalance.IsNegative() && !balances[entry.GetFromAccountId()].AllowNegative {
+		if fromSummary.EndingBalance.IsNegative() && !balances[entry.GetFromAccount().GetFromAccountId()].AllowNegative {
 			return ledger.MovementLedgerEntries{}, ledger.ErrInsufficientBalance
 		}
-		le.AccountsSummary[entry.GetFromAccountId()] = fromSummary
+		le.AccountsSummary[entry.GetFromAccount().GetFromAccountId()] = fromSummary
 
 		// Receiver account.
 		var toSummary ledger.AccountMovementSummary

@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS movements (
 -- balance fast retrieval and for locking the user balance for movement.
 CREATE TABLE IF NOT EXISTS accounts_balance (
     "account_id" varchar PRIMARY KEY,
-    "parent_account_id" varchar NOT NULL,
+    "parent_account_id" varchar,
     "currency_id" int NOT NULL,
     -- allow_negative allows some accounts to have negative balance. For example, for the funding
     -- account we might allow the account to have negative balance.
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS accounts_ledger (
     -- id, use that id when creating the transaction to the ledger.
     "client_id" varchar,
     -- reversal_of is a ledger_id that being reversed by this ledger_id.
-    "reversal_of" varchar,
+    "reversal_of" varchar
 );
 
 CREATE TABLE IF NOT EXISTS reversed_movements (

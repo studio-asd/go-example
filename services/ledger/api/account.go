@@ -10,16 +10,16 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/albertwidi/go-example/internal/await"
 	"github.com/albertwidi/go-example/internal/currency"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
-	"github.com/albertwidi/go-example/services"
 	"github.com/albertwidi/go-example/services/ledger"
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
 
 // CreateAccounts API allows the client to create ledger accounts. It is possible to associate an account_id as the parent_id when
 // creating the account. The API don't allow inactive account to be referenced as parent_id.
-func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedgerAccountsRequest, fn services.TransactFunc) (*ledgerv1.CreateLedgerAccountsResponse, error) {
+func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedgerAccountsRequest, fn func(context.Context, *postgres.Postgres, []ledger.AccountInfo) error) (*ledgerv1.CreateLedgerAccountsResponse, error) {
 	if err := validator.Validate(request); err != nil {
 		return nil, err
 	}
@@ -32,6 +32,8 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 	}
 	createReqs := make([]ledgerpg.CreateLedgerAccount, len(request.Accounts))
 
+	// accountInfo is the information we kept for the callback function to allow them to consume the informations.
+	var accountInfo = make([]ledger.AccountInfo, len(request.Accounts))
 	// If the parent account id is not empty, then we need to check whether the parent has another parent or not.
 	// This is because we are not allowing sub of sub-account to be created at the first place.
 	var parentAccountIDs []string
@@ -58,6 +60,11 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 			AccountId: accID,
 			CreatedAt: createdAtPb,
 		}
+		accountInfo[idx] = ledger.AccountInfo{
+			AccountID:       accID,
+			ParentAccountID: acc.ParentAccountId,
+			AllowNegative:   acc.AllowNegative,
+		}
 	}
 	if len(parentAccountIDs) > 0 {
 		accs, err := a.queries.GetAccounts(ctx, parentAccountIDs)
@@ -73,15 +80,22 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 			}
 		}
 	}
-	// Save the data to the database.
-	if err := services.NewTransactExec(ctx, a.queries.Postgres(), sql.LevelReadCommitted).
-		Do(
-			func(ctx context.Context, p *postgres.Postgres) error {
-				return ledgerpg.New(p).CreateLedgerAccounts(ctx, createReqs...)
-			},
-			fn,
-			time.Second*3,
-		); err != nil {
+	if fn == nil {
+		// Nil out the account info as soon as possible because we don't need this in non-callback case.
+		accountInfo = nil
+		return resp, a.queries.CreateLedgerAccounts(ctx, createReqs...)
+	}
+
+	err := a.queries.Postgres().Transact(ctx, sql.LevelReadCommitted, func(ctx context.Context, p *postgres.Postgres) error {
+		if err := ledgerpg.New(p).CreateLedgerAccounts(ctx, createReqs...); err != nil {
+			return err
+		}
+		_, err := await.Do(ctx, time.Second*3, accountInfo, func(ctx context.Context, info []ledger.AccountInfo) (any, error) {
+			return nil, fn(ctx, p, info)
+		})
+		return err
+	})
+	if err != nil {
 		return nil, err
 	}
 	return resp, nil

@@ -19,4 +19,5 @@ For example, we cannot do this inside the `ledger`:
 2. Set a different `wallet_type` for each ledger.
 
   By default, `ledger` is only a place to store a historical data of an account. So it doesn't understand any concept of `type` inside of it, everything is the same. So the `wallet` domain need
-  to maintain its own abstraction of `wallet_type` inside its database.
+  to maintain its own abstraction of `wallet_type` inside its database. For business use cases, wallet usually have different-different kind of types. For example we can have `main` wallet,
+  `savings` wallet and other kind of wallet based on the business and user needs.

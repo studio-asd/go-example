@@ -268,6 +268,8 @@ But unfortunately, the responsiveness of the application is not the only thing t
 |----------------|                                                                   |
 |                                                                                    |
 |      |------------------------------------------------------------------------|    |
+|      | The Software                                                           |    |
+|      |                                                                        |    |
 |      | |----------------------|                       |---------------------| |    |
 |      | |    Wallet Domain     |                       |    Ledger Domain    | |    |
 |      | |                      |                       |                     | |    |
@@ -288,6 +290,58 @@ But unfortunately, the responsiveness of the application is not the only thing t
 |                              Of Wallet & Ledger Domain                             |
 |------------------------------------------------------------------------------------|
 ```
+
+Being a monolith it doesn't mean you always need to share database with all domains. A well defined and separated domain can have different database to ensure the resources all separated
+between domain. For example:
+
+```text
+|-------------------------------------------------------------------------------------------------------------|
+| Monolith Model |                                                                                            |
+|----------------|                                                                                            |
+|                                                                                                             |
+|                                                       |------|                                              |
+|                                                       | User |                                              |
+|                                                       |------|                                              |
+|                                                          |                                                  |
+|                                                          | Request                                          |
+|    |-----------------------------------------------------|---------------------------------------------|    |
+|    | The Software                                        |                                             |    |
+|    |                                                     v                                             |    |
+|    |                                           |------------------|                                    |    |
+|    |                                           | Business Handler |                                    |    |
+|    |                                           |------------------|                                    |    |
+|    |                          Function Call              |                                             |    |
+|    |          -------------------------------------------|                                             |    |
+|    |          |                           |                                                            |    |
+|    |          | Retrieve User             | Retrieve Wallet                                            |    |
+|    |          v                           v                                                            |    |
+|    |  |--------------------|    |----------------------|                       |---------------------| |    |
+|    |  |    User Domain     |    |    Wallet Domain     |                       |    Ledger Domain    | |    |
+|    |  |                    |    |                      |                       |                     | |    |
+|    |  |    |---------|     |    |     |--------|       |     Function Call     |     |--------|      | |    |
+|    |  |    |  User   |     |    |     | Wallet | ----------------------------------> | Ledger |      | |    |
+|    |  |    |---------|     |    |     |--------|       |                       |     |--------|      | |    |
+|    |  |        |           |    |         |            |                       |         |           | |    |
+|    |  |--------|-----------|    |---------|------------|                       |---------|-----------| |    |
+|    |           v  Store                   | Store                                 Store  |             |    |
+|    |     |------------|                   |                 |------------|               |             |    |
+|    |     | PostgreSQL |                   |---------------> | PostgreSQL | <-------------|             |    |
+|    |     |------------|                                     |------------|                             |    |
+|    |                                                                                                   |    |
+|    |    Different Database                         Same database for Wallet & Ledger                   |    |
+|    |---------------------------------------------------------------------------------------------------|    |
+|                                                                                                             |
+|        |--------TX-------|       |--------------------------------TX--------------------------------|       |
+|         Transaction Scope                                 Transaction Scope                                 |
+|          Of User Domain                               Of Wallet & Ledger Domain                             |
+|-------------------------------------------------------------------------------------------------------------|
+```
+
+The user domain is a completely different domain than wallet and ledger domain. The user domain doesn't have the need to be in the same transaction scope as the domain does not depends on
+both wallet and ledger domain. In this case it is makes sense to separate the database between them as they have  different business need and data flow. But, please NOTE that this is
+something that you need to decide based on your resource usage, it doesn't have to be like this from the get go. Focusing yourself to build a product is far more important than thinking
+about tech infrastructure optimization. These kind of optimization can always be done later as the domain is well separated. In reverse, it will be hard for you to merge the domain once it
+is separated.
 
 ```go
 package api

@@ -9,3 +9,9 @@ const (
 	AccountStatusActive   = "active"
 	AccountStatusInactive = "inactive"
 )
+
+type AccountInfo struct {
+	AccountID       string
+	ParentAccountID string
+	AllowNegative   bool
+}

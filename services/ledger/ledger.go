@@ -6,6 +6,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type MovementInfo struct {
+	MovementID string
+}
+
 type LedgerEntry struct {
 	LedgerID         string
 	MovementID       string

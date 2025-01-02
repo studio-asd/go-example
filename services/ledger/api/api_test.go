@@ -13,6 +13,7 @@ import (
 
 	prototesting "github.com/albertwidi/go-example/internal/testing/proto"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
+	"github.com/albertwidi/go-example/services/ledger"
 )
 
 func TestTransact(t *testing.T) {
@@ -117,7 +118,7 @@ func TestTransact(t *testing.T) {
 		t.Skip()
 		t.Parallel()
 
-		fn := func(ctx context.Context, pg *postgres.Postgres) error {
+		fn := func(ctx context.Context, pg *postgres.Postgres, info ledger.MovementInfo) error {
 			insertQuery := "INSERT INTO transact_test VALUES(1);"
 			_, err := pg.Exec(ctx, insertQuery)
 			if err != nil {

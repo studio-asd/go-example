@@ -57,6 +57,21 @@ enum WalletStatus {
   WALLET_STATUS_SUSPENDED = 50;
 }
 
+enum DepositStatus {
+    DEPOSIT_STATUS_UNSPECIFIED = 1;
+    DEPOSIT_STATUS_SCUCESS = 1;
+    DEPOSIT_STATUS_CANCELLED = 40;
+    DEPOSIT_STATUS_FAILED = 50;
+}
+
+enum DepositChannel {
+    DEPOSIT_CHANNEL_UNSPECIFIED = 0;
+    DEPOSIT_CHANNEL_PAYMENT_GATEWAY = 1;
+    DEPOSIT_CHANNEL_BANKS = 50;
+    // DEPOSIT_CHANNEL_LOAN_PRODUCT is used when triggering a deposit from a "loan" product.
+    DEPOSIT_CHANNEL_LOAN_PRODUCT = 100;
+}
+
 enum WithdrawalStatus {
     STATUS_UNSPECIFIED = 0;
     STATUS_SCUCESS = 1;

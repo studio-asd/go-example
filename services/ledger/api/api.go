@@ -9,9 +9,10 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"github.com/albertwidi/go-example/internal/await"
 	"github.com/albertwidi/go-example/internal/protovalidate"
 	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
-	"github.com/albertwidi/go-example/services"
+	"github.com/albertwidi/go-example/services/ledger"
 	internal "github.com/albertwidi/go-example/services/ledger/internal"
 	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
 )
@@ -49,7 +50,7 @@ func (a *API) GRPC() *GRPC {
 }
 
 // Transact moves money from accounts to accounts within the transaction scope.
-func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn func(context.Context, *postgres.Postgres) error) (*ledgerv1.TransactResponse, error) {
+func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn func(context.Context, *postgres.Postgres, ledger.MovementInfo) error) (*ledgerv1.TransactResponse, error) {
 	if err := validator.Validate(req); err != nil {
 		return nil, err
 	}
@@ -74,17 +75,28 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	// If the additional function scope is not nil, then we should invoke the function inside a time-bounded
 	// goroutine as we don't know how much time the function will spent. So we need to ensure the function runs
 	// inside the Transact SLA.
-	if err := services.NewTransactExec(ctx, a.queries.Postgres(), sql.LevelReadCommitted).
-		Do(
-			func(ctx context.Context, p *postgres.Postgres) error {
-				var err error
-				result, err = ledgerpg.New(p).Move(ctx, ledgerEntries)
+	if fn == nil {
+		result, err = a.queries.Move(ctx, ledgerEntries)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = a.queries.Postgres().Transact(ctx, sql.LevelReadCommitted, func(ctx context.Context, p *postgres.Postgres) error {
+			result, err = ledgerpg.New(p).Move(ctx, ledgerEntries)
+			if err != nil {
 				return err
-			},
-			fn,
-			time.Second*3,
-		); err != nil {
-		return nil, err
+			}
+			info := ledger.MovementInfo{
+				MovementID: result.MovementID,
+			}
+			_, err := await.Do(ctx, time.Second*3, info, func(ctx context.Context, info ledger.MovementInfo) (any, error) {
+				return nil, fn(ctx, p, info)
+			})
+			return err
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Construct the response. As the movement id and ledger ids are constructed beforehand, we only consruct the response

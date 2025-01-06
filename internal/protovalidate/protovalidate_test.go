@@ -6,8 +6,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/albertwidi/go-example/internal/errors"
-	testdatav1 "github.com/albertwidi/go-example/proto/testdata/protovalidate/v1"
+	"github.com/studio-asd/go-example/internal/errors"
+	testdatav1 "github.com/studio-asd/go-example/proto/testdata/protovalidate/v1"
 )
 
 func TestValidate(t *testing.T) {

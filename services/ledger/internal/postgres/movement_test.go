@@ -10,9 +10,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/shopspring/decimal"
 
-	"github.com/albertwidi/go-example/internal/currency"
-	"github.com/albertwidi/go-example/services/ledger"
-	internal "github.com/albertwidi/go-example/services/ledger/internal"
+	"github.com/studio-asd/go-example/internal/currency"
+	"github.com/studio-asd/go-example/services/ledger"
+	internal "github.com/studio-asd/go-example/services/ledger/internal"
 )
 
 // TestMove tests whether the database records are correct when movement happens.

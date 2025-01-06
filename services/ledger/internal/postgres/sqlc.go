@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"database/sql"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 )
 
 type Queries struct {

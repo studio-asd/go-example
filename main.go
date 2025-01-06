@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/albertwidi/pkg/srun"
+	"github.com/studio-asd/pkg/srun"
 )
 
 func main() {

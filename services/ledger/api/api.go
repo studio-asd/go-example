@@ -5,16 +5,16 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/albertwidi/go-example/internal/await"
-	"github.com/albertwidi/go-example/internal/protovalidate"
-	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
-	"github.com/albertwidi/go-example/services/ledger"
-	internal "github.com/albertwidi/go-example/services/ledger/internal"
-	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
+	"github.com/studio-asd/go-example/internal/await"
+	"github.com/studio-asd/go-example/internal/protovalidate"
+	ledgerv1 "github.com/studio-asd/go-example/proto/api/ledger/v1"
+	"github.com/studio-asd/go-example/services/ledger"
+	internal "github.com/studio-asd/go-example/services/ledger/internal"
+	ledgerpg "github.com/studio-asd/go-example/services/ledger/internal/postgres"
 )
 
 var validator *protovalidate.Validator

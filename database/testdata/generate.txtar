@@ -43,7 +43,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 )
 
 type Queries struct {
@@ -96,11 +96,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/albertwidi/pkg/postgres"
-	testingpkg "github.com/albertwidi/pkg/testing"
-	"github.com/albertwidi/pkg/testing/pgtest"
+	"github.com/studio-asd/pkg/postgres"
+	testingpkg "github.com/studio-asd/pkg/testing"
+	"github.com/studio-asd/pkg/testing/pgtest"
 
-	"github.com/albertwidi/go-example/internal/env"
+	"github.com/studio-asd/go-example/internal/env"
 )
 
 type TestHelper struct {

@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 )
 
 var pg *postgres.Postgres

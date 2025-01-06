@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 	"github.com/shopspring/decimal"
 
-	"github.com/albertwidi/go-example/services/ledger"
-	internal "github.com/albertwidi/go-example/services/ledger/internal"
+	"github.com/studio-asd/go-example/services/ledger"
+	internal "github.com/studio-asd/go-example/services/ledger/internal"
 )
 
 // bulkUpdate is a custom type to pass the bulk update parameters around functions. The type is customized

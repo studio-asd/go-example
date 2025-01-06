@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/albertwidi/go-example/internal/testing/pghelper"
+	"github.com/studio-asd/go-example/internal/testing/pghelper"
 )
 
 var (

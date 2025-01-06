@@ -5,15 +5,15 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/testing/protocmp"
 
-	prototesting "github.com/albertwidi/go-example/internal/testing/proto"
-	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
-	"github.com/albertwidi/go-example/services/ledger"
+	prototesting "github.com/studio-asd/go-example/internal/testing/proto"
+	ledgerv1 "github.com/studio-asd/go-example/proto/api/ledger/v1"
+	"github.com/studio-asd/go-example/services/ledger"
 )
 
 func TestTransact(t *testing.T) {

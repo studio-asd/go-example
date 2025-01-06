@@ -21,8 +21,8 @@ import (
 
 	_ "github.com/lib/pq"
 
-	"github.com/albertwidi/pkg/postgres"
-	"github.com/albertwidi/pkg/testing/pgtest"
+	"github.com/studio-asd/pkg/postgres"
+	"github.com/studio-asd/pkg/testing/pgtest"
 )
 
 //go:embed sqlc.yaml
@@ -419,7 +419,7 @@ import (
 	"fmt"
 	"database/sql"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 )
 
 type Queries struct {
@@ -478,7 +478,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/albertwidi/go-example/internal/testing/pghelper"
+	"github.com/studio-asd/go-example/internal/testing/pghelper"
 )
 
 var (

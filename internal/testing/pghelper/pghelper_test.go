@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 )
 
 var _ PGQuery = (*testQuery)(nil)

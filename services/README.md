@@ -38,9 +38,9 @@ For example:
 package api
 
 import (
-	"github.com/albertwidi/go-example/internal/errors"
-	"github.com/albertwidi/go-example/internal/protovalidate"
-	serviceapiv1 "github.com/albertwidi/go-examle/proto/api/service_api/v1"
+	"github.com/studio-asd/go-example/internal/errors"
+	"github.com/studio-asd/go-example/internal/protovalidate"
+	serviceapiv1 "github.com/studio-asd/go-examle/proto/api/service_api/v1"
 )
 
 var validator *protovalidate.Validator

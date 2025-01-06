@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 	"github.com/shopspring/decimal"
 
-	"github.com/albertwidi/go-example/internal/currency"
+	"github.com/studio-asd/go-example/internal/currency"
 )
 
 type CreateLedgerAccount struct {

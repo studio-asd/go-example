@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/albertwidi/go-example/internal/testing/pghelper"
-	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
+	"github.com/studio-asd/go-example/internal/testing/pghelper"
+	ledgerpg "github.com/studio-asd/go-example/services/ledger/internal/postgres"
 )
 
 var (

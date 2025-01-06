@@ -31,7 +31,7 @@ The `ledger` service is not a production ready service/system, and it only desig
 
    We will use `decimal` to maintain abritrary precission decimal value.
 
-4. [Pkg](https://github.com/albertwidi/pkg)
+4. [Pkg](https://github.com/studio-asd/pkg)
 
    We will use `pkg` and its helper package to make the development of the service easier.
 

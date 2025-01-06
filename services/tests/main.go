@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 )
 
 type Config struct {

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/albertwidi/go-example/internal/currency"
-	ledgerv1 "github.com/albertwidi/go-example/proto/api/ledger/v1"
-	"github.com/albertwidi/go-example/services/ledger"
-	ledgerpg "github.com/albertwidi/go-example/services/ledger/internal/postgres"
+	"github.com/studio-asd/go-example/internal/currency"
+	ledgerv1 "github.com/studio-asd/go-example/proto/api/ledger/v1"
+	"github.com/studio-asd/go-example/services/ledger"
+	ledgerpg "github.com/studio-asd/go-example/services/ledger/internal/postgres"
 )
 
 func TestCreateAccounts(t *testing.T) {

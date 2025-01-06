@@ -11,16 +11,16 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/albertwidi/pkg/postgres"
-	testingpkg "github.com/albertwidi/pkg/testing"
-	"github.com/albertwidi/pkg/testing/pgtest"
+	"github.com/studio-asd/pkg/postgres"
+	testingpkg "github.com/studio-asd/pkg/testing"
+	"github.com/studio-asd/pkg/testing/pgtest"
 
-	"github.com/albertwidi/go-example/internal/env"
+	"github.com/studio-asd/go-example/internal/env"
 )
 
 // PGQuery interface defines the type that use this package should implements PGQuery.
 type PGQuery interface {
-	// Postgres returns the postgres connection object from github.com/albertwidi/pkg/postgres. We need the connection
+	// Postgres returns the postgres connection object from github.com/studio-asd/pkg/postgres. We need the connection
 	// because we will create the query object from the connection.
 	Postgres() *postgres.Postgres
 }

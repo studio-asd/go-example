@@ -6,7 +6,7 @@ RUN apt update \
     && apt install -y protobuf-compiler \
     && apt clean
 
-RUN go mod init github.com/albertwidi/go-example && \
+RUN go mod init github.com/studio-asd/go-example && \
     go mod tidy && \
     go get github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
     github.com/golang/protobuf/protoc-gen-go \

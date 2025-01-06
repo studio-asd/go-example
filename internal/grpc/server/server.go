@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	"github.com/albertwidi/pkg/srun"
+	"github.com/studio-asd/pkg/srun"
 )
 
 var _ srun.ServiceRunnerAware = (*Server)(nil)

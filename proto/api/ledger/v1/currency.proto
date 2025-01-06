@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package go_example.api.ledger.v1;
-option go_package = "github.com/albertwidi/go-example/proto/api/ledger/v1";
+option go_package = "github.com/studio-asd/go-example/proto/api/ledger/v1";
 
 message CurrencyListResponse {
     repeated Currency currencies = 1;

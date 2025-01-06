@@ -55,7 +55,7 @@ generate: $(DOCKERFILE) $(GEN_DIR)
         --grpc-gateway_out=$(GEN_DIR) \
         --grpc-gateway_opt logtostderr=true \
         $(proto_folder)/$(target)/*.proto"
-	@cp -r $(GEN_DIR)/github.com/albertwidi/go-example/proto/$(proto_folder)/* ./$(proto_folder)
+	@cp -r $(GEN_DIR)/github.com/studio-asd/go-example/proto/$(proto_folder)/* ./$(proto_folder)
 	@rm -rf $(GEN_DIR) 2>/dev/null
 
 api_dirs := \

@@ -347,11 +347,11 @@ is separated.
 package api
 
 import (
-	"github.com/albertwidi/pkg/postgres"
+	"github.com/studio-asd/pkg/postgres"
 
 
-	walletpg "github.com/albertwidi/go-example/services/wallet/internal/postgres"
-	ledgerapi "github.com/albertwidi/go-example/services/ledger/api"
+	walletpg "github.com/studio-asd/go-example/services/wallet/internal/postgres"
+	ledgerapi "github.com/studio-asd/go-example/services/ledger/api"
 )
 
 // API for wallet pacakge.

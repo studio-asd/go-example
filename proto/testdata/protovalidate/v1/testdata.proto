@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package go_example.testdata.protovalidate.v1;
-option go_package = "github.com/albertwidi/go-example/proto/testdata/protovalidate/v1";
+option go_package = "github.com/studio-asd/go-example/proto/testdata/protovalidate/v1";
 
 import "buf/validate/validate.proto";
 

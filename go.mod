@@ -1,13 +1,13 @@
-module github.com/albertwidi/go-example
+module github.com/studio-asd/go-example
 
 go 1.23.1
 
-replace github.com/albertwidi/pkg => ../pkg
+replace github.com/studio-asd/pkg => ../pkg
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240717164558-a6c49f84cc0f.2
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/albertwidi/pkg v0.0.0-00010101000000-000000000000
+	github.com/studio-asd/pkg v0.0.0-00010101000000-000000000000
 	github.com/bufbuild/protovalidate-go v0.6.5
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0

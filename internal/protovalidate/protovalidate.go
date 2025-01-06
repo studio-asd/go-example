@@ -4,7 +4,7 @@ import (
 	"github.com/bufbuild/protovalidate-go"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/albertwidi/go-example/internal/errors"
+	"github.com/studio-asd/go-example/internal/errors"
 )
 
 // DefaultConstraintsMap defines the default map for constraint_id from protovalidate. The map is based

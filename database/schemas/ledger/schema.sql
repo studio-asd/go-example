@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 
 -- movements is used to store all movement records.
 CREATE TABLE IF NOT EXISTS movements (
+    -- movement_id is UUID_v7.
     "movement_id" varchar PRIMARY KEY,
     "idempotency_key" varchar UNIQUE NOT NULL,
     "movement_status" movement_status NOT NULL,

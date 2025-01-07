@@ -11,7 +11,7 @@ sql:
       go:
         package: "postgres"
         # The database internal package is always placed under the '/[service_name]/postgres'.
-        out: "../../services/ledger/internal/postgres"
+        out: "../../../services/ledger/internal/postgres"
         sql_package: "pgx/v5"
         output_db_file_name: "sqlc.go"
         output_models_file_name: "types.sql.go"
@@ -105,6 +105,6 @@ sql:
               type: "NullTime"
             nullable: true
     database:
-      uri: "postgres://postgres:postgres@localhost:5432/go_example?sslmode=disable"
+      uri: "postgres://postgres:postgres@localhost:5432/ledger?sslmode=disable"
     rules:
       - sqlc/db-prepare

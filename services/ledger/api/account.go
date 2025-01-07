@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/studio-asd/pkg/postgres"
 	"github.com/google/uuid"
+	"github.com/studio-asd/pkg/postgres"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/studio-asd/go-example/internal/await"
@@ -92,7 +92,7 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 		}
 		_, err := await.Do(ctx, time.Second*3, accountInfo, func(ctx context.Context, info []ledger.AccountInfo) (any, error) {
 			return nil, fn(ctx, p, info)
-		})
+		}, await.WithTrace("ledger.createAccounts"))
 		return err
 	})
 	if err != nil {

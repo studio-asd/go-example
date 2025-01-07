@@ -96,7 +96,42 @@ child_accounts AS (
 SELECT
     main_acc.account_id,
     main_acc.allow_negative,
-    SUM(main_acc.balance, child_acc.balance),
+    main_acc.balance + child_acc.balance total_account_balance,
+    main_acc.balance main_account_balance,
+    child_acc.balance child_account_balance,
+    main_acc.last_ledger_id,
+    main_acc.last_movement_id,
+    main_acc.currency_id,
+    main_acc.created_at
+FROM sum_main main_acc,
+    child_accounts child_acc
+WHERE main_acc.account_id = child_acc.account_id;
+
+-- name: GetAccountsBalancesWithChild :many
+WITH sum_main AS (
+    SELECT account_id,
+        allow_negative,
+        balance,
+        last_ledger_id,
+        last_movement_id,
+        currency_id,
+        created_at
+    FROM accounts_balance
+    WHERE account_id = ANY($1::varchar[])
+),
+child_accounts AS (
+    SELECT parent_account_id as account_id,
+        SUM(balance) as balance
+    FROM accounts_balance
+    WHERE parent_account_id = ANY($1::varchar[])
+    GROUP BY parent_account_id
+)
+SELECT
+    main_acc.account_id,
+    main_acc.allow_negative,
+    main_acc.balance + child_acc.balance total_account_balance,
+    main_acc.balance main_account_balance,
+    child_acc.balance child_account_balance,
     main_acc.last_ledger_id,
     main_acc.last_movement_id,
     main_acc.currency_id,

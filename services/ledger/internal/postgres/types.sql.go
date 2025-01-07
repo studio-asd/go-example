@@ -107,14 +107,15 @@ type Account struct {
 }
 
 type AccountsBalance struct {
-	AccountID      string
-	CurrencyID     int32
-	AllowNegative  bool
-	Balance        decimal.Decimal
-	LastMovementID string
-	LastLedgerID   string
-	CreatedAt      time.Time
-	UpdatedAt      sql.NullTime
+	AccountID       string
+	ParentAccountID sql.NullString
+	CurrencyID      int32
+	AllowNegative   bool
+	Balance         decimal.Decimal
+	LastMovementID  string
+	LastLedgerID    string
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
 }
 
 type AccountsBalanceHistory struct {
@@ -140,12 +141,22 @@ type AccountsLedger struct {
 	PreviousLedgerID string
 	CreatedAt        time.Time
 	ClientID         sql.NullString
+	ReversalOf       sql.NullString
 }
 
 type Movement struct {
-	MovementID     string
-	IdempotencyKey string
-	MovementStatus MovementStatus
-	CreatedAt      time.Time
-	UpdatedAt      sql.NullTime
+	MovementID         string
+	IdempotencyKey     string
+	MovementStatus     MovementStatus
+	CreatedAt          time.Time
+	UpdatedAt          sql.NullTime
+	ReversedAt         sql.NullTime
+	ReversalMovementID sql.NullString
+}
+
+type ReversedMovement struct {
+	MovementID         string
+	ReversalMovementID string
+	ReversalReason     string
+	CreatedAt          time.Time
 }

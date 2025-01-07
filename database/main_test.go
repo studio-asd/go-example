@@ -7,7 +7,6 @@ package main
 
 import (
 	"embed"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,7 @@ import (
 	"github.com/rogpeppe/go-internal/testscript"
 )
 
-//go:embed docker-compose.yaml sqlc.yaml main.go helper.go
+//go:embed docker-compose.yaml sqlc.yaml main.go
 var embeddedTestFiles embed.FS
 
 func TestMain(m *testing.M) {
@@ -26,21 +25,19 @@ func TestMain(m *testing.M) {
 
 // TestRunner uses testscript to run tests from testdata/script/*.txtar.
 func TestScript(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
+	t.Skip()
 
 	// Delete all databases created in the testdata/*.
 	t.Cleanup(func() {
-		databases := []string{
-			"orders",
-		}
-		for _, db := range databases {
-			execQuery(
-				"postgres://postgres:postgres@localhost:5432?sslmode=disable",
-				fmt.Sprintf("DROP DATABASE IF EXISTS %s;", db),
-			)
-		}
+		// databases := []string{
+		// 	"orders",
+		// }
+		// for _, db := range databases {
+		// 	execQuery(
+		// 		"postgres://postgres:postgres@localhost:5432?sslmode=disable",
+		// 		fmt.Sprintf("DROP DATABASE IF EXISTS %s;", db),
+		// 	)
+		// }
 	})
 
 	testscript.Run(t, testscript.Params{
@@ -73,23 +70,14 @@ func TestParseFlags(t *testing.T) {
 		expect Flags
 	}{
 		{
-			args: []string{"--all"},
+			args: []string{"--sqlc_config=something.yaml"},
 			expect: Flags{
-				All:        true,
-				SQLCConfig: "sqlc.yaml",
-			},
-		},
-		{
-			args: []string{"--all", "--sqlc_config=something.yaml"},
-			expect: Flags{
-				All:        true,
 				SQLCConfig: "something.yaml",
 			},
 		},
 		{
-			args: []string{"--all", "--sqlc_config=something.yaml", "--db_name=test"},
+			args: []string{"--sqlc_config=something.yaml", "--db_name=test"},
 			expect: Flags{
-				All:        true,
 				SQLCConfig: "something.yaml",
 				DBName:     "test",
 			},

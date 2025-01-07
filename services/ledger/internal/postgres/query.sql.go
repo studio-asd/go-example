@@ -198,6 +198,145 @@ func (q *Queries) GetAccountsBalance(ctx context.Context, dollar_1 []string) ([]
 	return items, nil
 }
 
+const getAccountsBalanceWithChild = `-- name: GetAccountsBalanceWithChild :one
+WITH sum_main AS (
+    SELECT account_id,
+        allow_negative,
+        balance,
+        last_ledger_id,
+        last_movement_id,
+        currency_id,
+        created_at
+    FROM accounts_balance
+    WHERE account_id = $1
+),
+child_accounts AS (
+    SELECT parent_account_id as account_id,
+        SUM(balance) as balance
+    FROM accounts_balance
+    WHERE parent_account_id = $1
+    GROUP BY parent_account_id
+)
+SELECT
+    main_acc.account_id,
+    main_acc.allow_negative,
+    main_acc.balance + child_acc.balance total_account_balance,
+    main_acc.balance main_account_balance,
+    child_acc.balance child_account_balance,
+    main_acc.last_ledger_id,
+    main_acc.last_movement_id,
+    main_acc.currency_id,
+    main_acc.created_at
+FROM sum_main main_acc,
+    child_accounts child_acc
+WHERE main_acc.account_id = child_acc.account_id
+`
+
+type GetAccountsBalanceWithChildRow struct {
+	AccountID           string
+	AllowNegative       bool
+	TotalAccountBalance decimal.Decimal
+	MainAccountBalance  decimal.Decimal
+	ChildAccountBalance decimal.Decimal
+	LastLedgerID        string
+	LastMovementID      string
+	CurrencyID          int32
+	CreatedAt           time.Time
+}
+
+func (q *Queries) GetAccountsBalanceWithChild(ctx context.Context, dollar_1 sql.NullString) (GetAccountsBalanceWithChildRow, error) {
+	row := q.db.QueryRow(ctx, getAccountsBalanceWithChild, dollar_1)
+	var i GetAccountsBalanceWithChildRow
+	err := row.Scan(
+		&i.AccountID,
+		&i.AllowNegative,
+		&i.TotalAccountBalance,
+		&i.MainAccountBalance,
+		&i.ChildAccountBalance,
+		&i.LastLedgerID,
+		&i.LastMovementID,
+		&i.CurrencyID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getAccountsBalancesWithChild = `-- name: GetAccountsBalancesWithChild :many
+WITH sum_main AS (
+    SELECT account_id,
+        allow_negative,
+        balance,
+        last_ledger_id,
+        last_movement_id,
+        currency_id,
+        created_at
+    FROM accounts_balance
+    WHERE account_id = ANY($1::varchar[])
+),
+child_accounts AS (
+    SELECT parent_account_id as account_id,
+        SUM(balance) as balance
+    FROM accounts_balance
+    WHERE parent_account_id = ANY($1::varchar[])
+    GROUP BY parent_account_id
+)
+SELECT
+    main_acc.account_id,
+    main_acc.allow_negative,
+    main_acc.balance + child_acc.balance total_account_balance,
+    main_acc.balance main_account_balance,
+    child_acc.balance child_account_balance,
+    main_acc.last_ledger_id,
+    main_acc.last_movement_id,
+    main_acc.currency_id,
+    main_acc.created_at
+FROM sum_main main_acc,
+    child_accounts child_acc
+WHERE main_acc.account_id = child_acc.account_id
+`
+
+type GetAccountsBalancesWithChildRow struct {
+	AccountID           string
+	AllowNegative       bool
+	TotalAccountBalance decimal.Decimal
+	MainAccountBalance  decimal.Decimal
+	ChildAccountBalance decimal.Decimal
+	LastLedgerID        string
+	LastMovementID      string
+	CurrencyID          int32
+	CreatedAt           time.Time
+}
+
+func (q *Queries) GetAccountsBalancesWithChild(ctx context.Context, dollar_1 []string) ([]GetAccountsBalancesWithChildRow, error) {
+	rows, err := q.db.Query(ctx, getAccountsBalancesWithChild, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAccountsBalancesWithChildRow
+	for rows.Next() {
+		var i GetAccountsBalancesWithChildRow
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.AllowNegative,
+			&i.TotalAccountBalance,
+			&i.MainAccountBalance,
+			&i.ChildAccountBalance,
+			&i.LastLedgerID,
+			&i.LastMovementID,
+			&i.CurrencyID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAccountsLedgerByMovementID = `-- name: GetAccountsLedgerByMovementID :many
 SELECT ledger_id,
 	movement_id,
@@ -256,7 +395,7 @@ func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID 
 }
 
 const getMovement = `-- name: GetMovement :one
-SELECT movement_id, idempotency_key, movement_status, created_at, updated_at FROM movements
+SELECT movement_id, idempotency_key, movement_status, created_at, updated_at, reversed_at, reversal_movement_id FROM movements
 WHERE movement_id = $1
 `
 
@@ -269,6 +408,8 @@ func (q *Queries) GetMovement(ctx context.Context, movementID string) (Movement,
 		&i.MovementStatus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReversedAt,
+		&i.ReversalMovementID,
 	)
 	return i, err
 }

@@ -3,6 +3,7 @@ package await
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -47,5 +48,16 @@ func TestDo(t *testing.T) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}
 		})
+	}
+}
+
+func TestWithTrace(t *testing.T) {
+	opts := &options{}
+	WithTrace("test")(opts)
+	if opts.traceSpanName == "" {
+		t.Fatal("trace span name is empty")
+	}
+	if !strings.HasSuffix(opts.traceSpanName, ".await") {
+		t.Fatal("expecting .await suffix at the end of trace name")
 	}
 }

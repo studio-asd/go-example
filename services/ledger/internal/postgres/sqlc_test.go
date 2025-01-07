@@ -4,7 +4,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : ledger
-// generated_time  : 2025-01-07T15:39:08+07:00
+// generated_time  : 2025-01-07T23:28:23+07:00
 
 package postgres
 
@@ -44,7 +44,9 @@ func TestMain(m *testing.M) {
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
 	dbName := "ledger"
-	testHelper, err = pghelper.New(ctx, dbName, New)
+	testHelper, err = pghelper.New(ctx, pghelper.Config{
+	   DatabaseName: dbName,
+	}, New)
 	if err != nil {
 		code = 1
 		return

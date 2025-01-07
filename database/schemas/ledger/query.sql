@@ -10,13 +10,14 @@ INSERT INTO accounts(
 -- name: CreateAccountBalance :exec
 INSERT INTO accounts_balance(
 	account_id,
+	parent_account_id,
 	allow_negative,
 	balance,
 	last_ledger_id,
 	last_movement_id,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6,$7);
+) VALUES($1,$2,$3,$4,$5,$6,$7,$8);
 
 -- name: GetAccounts :many
 SELECT *
@@ -26,6 +27,7 @@ ORDER BY created_at;
 
 -- name: GetAccountsBalance :many
 SELECT ab.account_id,
+    ab.parent_account_id,
 	ab.allow_negative,
 	ab.balance,
 	ab.currency_id,

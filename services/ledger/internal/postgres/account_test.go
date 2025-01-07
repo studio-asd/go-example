@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/studio-asd/pkg/postgres"
 	"github.com/google/go-cmp/cmp"
 	"github.com/shopspring/decimal"
+	"github.com/studio-asd/pkg/postgres"
 
 	"github.com/studio-asd/go-example/internal/currency"
 )
@@ -179,6 +179,100 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			}
 			if diff := cmp.Diff(test.expectAccountsBalance, gotAccb); diff != "" {
 				t.Fatalf("(-want/+got)\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
+	t.Parallel()
+
+	createdAt := time.Now()
+	tests := []struct {
+		name           string
+		createAccounts []CreateLedgerAccount
+		findAccountIDs []string
+		expect         map[string]GetAccountsBalanceRow
+	}{
+		{
+			name: "one account",
+			createAccounts: []CreateLedgerAccount{
+				{
+					AccountID:       "one",
+					ParentAccountID: "",
+					AccountStatus:   AccountStatusActive,
+					Currency:        currency.IDR,
+					AllowNegative:   false,
+					CreatedAt:       createdAt,
+					balance:         decimal.NewFromInt(100),
+				},
+				{
+					AccountID:       "two",
+					ParentAccountID: "one",
+					AccountStatus:   AccountStatusActive,
+					Currency:        currency.IDR,
+					AllowNegative:   false,
+					CreatedAt:       createdAt,
+					balance:         decimal.NewFromInt(100),
+				},
+				{
+					AccountID:       "three",
+					ParentAccountID: "one",
+					AccountStatus:   AccountStatusActive,
+					Currency:        currency.IDR,
+					AllowNegative:   false,
+					CreatedAt:       createdAt,
+					balance:         decimal.NewFromInt(300),
+				},
+				{
+					AccountID:       "four",
+					ParentAccountID: "one",
+					AccountStatus:   AccountStatusActive,
+					Currency:        currency.IDR,
+					AllowNegative:   false,
+					CreatedAt:       createdAt,
+					balance:         decimal.NewFromInt(-500),
+				},
+			},
+			findAccountIDs: []string{"one"},
+			expect: map[string]GetAccountsBalanceRow{
+				"one": {
+					AccountID:     "one",
+					AllowNegative: false,
+					Balance:       decimal.NewFromInt(0),
+					CreatedAt:     createdAt,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries())
+			if err != nil {
+				t.Fatal(err)
+			}
+			q := th.Queries()
+			t.Log(th.DefaultSearchPath())
+
+			if err := q.CreateLedgerAccounts(context.Background(), test.createAccounts...); err != nil {
+				t.Fatal(err)
+			}
+
+			balances, err := q.GetAccountsBalanceWithChildMappedByAccID(context.Background(), test.findAccountIDs...)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for accID, expect := range test.expect {
+				got, ok := balances[accID]
+				if !ok {
+					t.Fatalf("account id %s not found", accID)
+				}
+
+				if diff := cmp.Diff(expect, got); diff != "" {
+					t.Fatalf("(-want/+got)\n%s", diff)
+				}
 			}
 		})
 	}

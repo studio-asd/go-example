@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/studio-asd/pkg/postgres"
 	"github.com/google/uuid"
+	"github.com/studio-asd/pkg/postgres"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/studio-asd/go-example/internal/await"
@@ -66,7 +66,12 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	if err != nil {
 		return nil, err
 	}
-	ledgerEntries, err := createLedgerEntries(uuid.NewString(), req.GetIdempotencyKey(), accountsBalance, entries...)
+	// Create a new UUID_V7 for movement_id.
+	uuidv7, err := uuid.NewV7()
+	if err != nil {
+		return nil, err
+	}
+	ledgerEntries, err := createLedgerEntries(uuidv7.String(), req.GetIdempotencyKey(), accountsBalance, entries...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,16 +86,19 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 			return nil, err
 		}
 	} else {
-		err = a.queries.Postgres().Transact(ctx, sql.LevelReadCommitted, func(ctx context.Context, p *postgres.Postgres) error {
-			result, err = ledgerpg.New(p).Move(ctx, ledgerEntries)
+		err = a.queries.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *ledgerpg.Queries) error {
+			result, err = q.Move(ctx, ledgerEntries)
 			if err != nil {
 				return err
 			}
 			info := ledger.MovementInfo{
 				MovementID: result.MovementID,
 			}
-			_, err := await.Do(ctx, time.Second*3, info, func(ctx context.Context, info ledger.MovementInfo) (any, error) {
-				return nil, fn(ctx, p, info)
+			err := q.Do(ctx, func(ctx context.Context, pg *postgres.Postgres) error {
+				_, err := await.Do(ctx, time.Second*3, info, func(ctx context.Context, info ledger.MovementInfo) (any, error) {
+					return nil, fn(ctx, pg, info)
+				})
+				return err
 			})
 			return err
 		})

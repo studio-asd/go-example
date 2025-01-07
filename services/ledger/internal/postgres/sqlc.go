@@ -5,7 +5,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : ledger
-// generated_time  : 2025-01-07T15:39:08+07:00
+// generated_time  : 2025-01-07T23:28:23+07:00
 
 package postgres
 

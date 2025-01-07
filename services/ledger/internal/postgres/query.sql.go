@@ -45,28 +45,31 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) er
 const createAccountBalance = `-- name: CreateAccountBalance :exec
 INSERT INTO accounts_balance(
 	account_id,
+	parent_account_id,
 	allow_negative,
 	balance,
 	last_ledger_id,
 	last_movement_id,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5,$6,$7)
+) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
 `
 
 type CreateAccountBalanceParams struct {
-	AccountID      string
-	AllowNegative  bool
-	Balance        decimal.Decimal
-	LastLedgerID   string
-	LastMovementID string
-	CurrencyID     int32
-	CreatedAt      time.Time
+	AccountID       string
+	ParentAccountID sql.NullString
+	AllowNegative   bool
+	Balance         decimal.Decimal
+	LastLedgerID    string
+	LastMovementID  string
+	CurrencyID      int32
+	CreatedAt       time.Time
 }
 
 func (q *Queries) CreateAccountBalance(ctx context.Context, arg CreateAccountBalanceParams) error {
 	_, err := q.db.Exec(ctx, createAccountBalance,
 		arg.AccountID,
+		arg.ParentAccountID,
 		arg.AllowNegative,
 		arg.Balance,
 		arg.LastLedgerID,
@@ -142,6 +145,7 @@ func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]Account
 
 const getAccountsBalance = `-- name: GetAccountsBalance :many
 SELECT ab.account_id,
+    ab.parent_account_id,
 	ab.allow_negative,
 	ab.balance,
 	ab.currency_id,
@@ -157,15 +161,16 @@ WHERE ab.account_id = ANY($1::varchar[])
 `
 
 type GetAccountsBalanceRow struct {
-	AccountID      string
-	AllowNegative  bool
-	Balance        decimal.Decimal
-	CurrencyID     int32
-	LastLedgerID   string
-	LastMovementID string
-	CreatedAt      time.Time
-	UpdatedAt      sql.NullTime
-	AccountStatus  AccountStatus
+	AccountID       string
+	ParentAccountID sql.NullString
+	AllowNegative   bool
+	Balance         decimal.Decimal
+	CurrencyID      int32
+	LastLedgerID    string
+	LastMovementID  string
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
+	AccountStatus   AccountStatus
 }
 
 func (q *Queries) GetAccountsBalance(ctx context.Context, dollar_1 []string) ([]GetAccountsBalanceRow, error) {
@@ -179,6 +184,7 @@ func (q *Queries) GetAccountsBalance(ctx context.Context, dollar_1 []string) ([]
 		var i GetAccountsBalanceRow
 		if err := rows.Scan(
 			&i.AccountID,
+			&i.ParentAccountID,
 			&i.AllowNegative,
 			&i.Balance,
 			&i.CurrencyID,

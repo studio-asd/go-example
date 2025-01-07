@@ -36,7 +36,9 @@ func run(m *testing.M) (code int, err error) {
 	}()
 
 	if !testing.Short() {
-		testHelper, err = pghelper.New(context.Background(), "ledger_api", ledgerpg.New)
+		testHelper, err = pghelper.New(context.Background(), pghelper.Config{
+			DatabaseName: "ledger_api",
+		}, ledgerpg.New)
 		if err != nil {
 			return
 		}

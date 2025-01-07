@@ -22,7 +22,9 @@ func (t *testQuery) Postgres() *postgres.Postgres {
 }
 
 func TestFork(t *testing.T) {
-	th, err := New(context.Background(), "test_fork", newTestQuery)
+	th, err := New(context.Background(), Config{
+		DatabaseName: "test_fork",
+	}, newTestQuery)
 	if err != nil {
 		t.Fatal(err)
 	}

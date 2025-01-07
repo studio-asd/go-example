@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/studio-asd/pkg/postgres"
 	"github.com/shopspring/decimal"
+	"github.com/studio-asd/pkg/postgres"
 
 	"github.com/studio-asd/go-example/internal/currency"
 )
@@ -54,7 +54,11 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 			return err
 		}
 		if err := qr.CreateAccountBalance(ctx, CreateAccountBalanceParams{
-			AccountID:     c.AccountID,
+			AccountID: c.AccountID,
+			ParentAccountID: sql.NullString{
+				String: c.ParentAccountID,
+				Valid:  true,
+			},
 			AllowNegative: c.AllowNegative,
 			Balance:       c.balance,
 			CurrencyID:    c.Currency.ID,
@@ -85,6 +89,39 @@ func (q *Queries) GetAccountsBalanceMappedByAccID(ctx context.Context, accounts 
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.AccountStatus,
+		); err != nil {
+			return err
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		accountsBalance[i.AccountID] = i
+		return nil
+	}, accounts); err != nil {
+		return nil, err
+	}
+	return accountsBalance, nil
+}
+
+func (q *Queries) GetAccountsBalanceWithChildMappedByAccID(ctx context.Context, accounts ...string) (map[string]GetAccountsBalanceRow, error) {
+	accountsBalance := make(map[string]GetAccountsBalanceRow)
+	if err := q.db.RunQuery(ctx, getAccountsBalancesWithChild, func(rows *postgres.RowsCompat) error {
+		var (
+			i GetAccountsBalanceRow
+			// Below variables are ignored/omitted from the result.
+			iMainAccountBalance  decimal.Decimal
+			iChildAccountBalance decimal.Decimal
+		)
+		if err := rows.Scan(
+			&i.AccountID,
+			&i.AllowNegative,
+			&i.Balance,
+			&iMainAccountBalance,
+			&iChildAccountBalance,
+			&i.LastLedgerID,
+			&i.LastMovementID,
+			&i.CurrencyID,
+			&i.CreatedAt,
 		); err != nil {
 			return err
 		}

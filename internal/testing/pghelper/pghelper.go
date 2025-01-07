@@ -25,8 +25,17 @@ type PGQuery interface {
 	Postgres() *postgres.Postgres
 }
 
+type Config struct {
+	DatabaseName string
+	// DontDropOnClose allows/prevents the helper to drop the database when closing all the connections
+	// in the test helper.
+	//
+	// This option is helpful for debugging in case we want to connect directly to the PostgreSQL database.
+	DontDropOnClose bool
+}
+
 type Helper[T PGQuery] struct {
-	dbName       string
+	config       Config
 	conn         *postgres.Postgres
 	pgtestHelper *pgtest.PGTest
 
@@ -43,15 +52,15 @@ type Helper[T PGQuery] struct {
 	closed bool
 }
 
-func New[T PGQuery](ctx context.Context, dbName string, fn func(*postgres.Postgres) T) (*Helper[T], error) {
+func New[T PGQuery](ctx context.Context, config Config, fn func(*postgres.Postgres) T) (*Helper[T], error) {
 	if !testing.Testing() {
 		return nil, errors.New("can only be used in test")
 	}
 	th := &Helper[T]{
-		dbName:       dbName,
+		config:       config,
 		pgtestHelper: pgtest.New(),
 	}
-	pg, err := prepareTest(ctx, dbName)
+	pg, err := prepareTest(ctx, config.DatabaseName)
 	if err != nil {
 		return nil, err
 	}
@@ -93,15 +102,17 @@ func (th *Helper[T]) Close() error {
 				return err
 			}
 		}
-		// Drop the database after test so we will always have a fresh database when we start the test.
-		config := th.conn.Config()
-		config.DBName = ""
-		pg, err := postgres.Connect(context.Background(), config)
-		if err != nil {
-			return err
+		if !th.config.DontDropOnClose {
+			// Drop the database after test so we will always have a fresh database when we start the test.
+			config := th.conn.Config()
+			config.DBName = ""
+			pg, err := postgres.Connect(context.Background(), config)
+			if err != nil {
+				return err
+			}
+			defer pg.Close()
+			err = pgtest.DropDatabase(context.Background(), pg, th.config.DatabaseName)
 		}
-		defer pg.Close()
-		err = pgtest.DropDatabase(context.Background(), pg, th.dbName)
 	}
 	if err == nil {
 		th.closed = true
@@ -125,7 +136,7 @@ func (th *Helper[T]) ForkPostgresSchema(ctx context.Context, q T) (*Helper[T], e
 		return nil, err
 	}
 	newTH := &Helper[T]{
-		dbName:       th.dbName,
+		config:       th.config,
 		conn:         pg,
 		testQueries:  th.queriesFn(pg),
 		pgtestHelper: th.pgtestHelper,
@@ -156,7 +167,7 @@ func (th *Helper[T]) CloseFunc(t *testing.T) func() {
 func prepareTest(ctx context.Context, dbName string) (*postgres.Postgres, error) {
 	// TEST_PG_DSN can be used to set different DSN for flexible test setup.
 	pgDSN := env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/")
-	if err := pgtest.CreateDatabase(ctx, pgDSN, dbName, false); err != nil {
+	if err := pgtest.CreateDatabase(ctx, pgDSN, dbName, true); err != nil {
 		return nil, err
 	}
 
@@ -176,7 +187,14 @@ func prepareTest(ctx context.Context, dbName string) (*postgres.Postgres, error)
 	if err != nil {
 		return nil, err
 	}
-	out, err := os.ReadFile(filepath.Join(repoRoot, "database/ledger/schema.sql"))
+	// Hardcode the schema path for now as we know the schema will always be in this format: database/schemas/{db_name}/schema.sql
+	schemaPath := filepath.Join(
+		"database",
+		"schemas",
+		dbName,
+		"schema.sql",
+	)
+	out, err := os.ReadFile(filepath.Join(repoRoot, schemaPath))
 	if err != nil {
 		return nil, err
 	}

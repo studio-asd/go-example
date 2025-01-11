@@ -1,10 +1,26 @@
-test:
-	go test -v -race ./...
+REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
+DB_SCRIPT := $(REPOSITORY_ROOT)/database/all.bash
 
-copyconf:
-	go run -v . copyconf --all
+gen_dirs := \
+	go-example/ledger \
+	go-example/wallet
 
+$(gen_dirs):
+ifeq (generate,$(command))
+	@$(DB_SCRIPT) $(command) $@
+endif
+ifeq (up,$(command))
+	@$(DB_SCRIPT) $(command) $@
+endif
+
+.PHONY: genall
 genall:
-	go run -v . gengo --all
+	@$(MAKE) $(gen_dirs) command=generate
 
-.PHONY: copyconf genall
+.PHONY: upall
+upall:
+	@$(MAKE) $(gen_dirs) command=up
+
+.PHONY: downall
+downall:
+	@$(DB_SCRIPT) down

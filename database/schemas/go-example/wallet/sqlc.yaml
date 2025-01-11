@@ -4,14 +4,14 @@
 
 version: "2"
 sql:
-  - schema: "schema.sql"
+  - schema: "../schema.sql"
     queries: "query.sql"
     engine: "postgresql"
     gen:
       go:
         package: "postgres"
         # The database internal package is always placed under the '/[service_name]/postgres'.
-        out: "../../database_name/postgres"
+        out: "../../../../services/wallet/internal/postgres"
         sql_package: "pgx/v5"
         output_db_file_name: "sqlc.go"
         output_models_file_name: "types.sql.go"
@@ -106,6 +106,6 @@ sql:
               type: "NullTime"
             nullable: true
     database:
-      uri: "postgres://postgres:postgres@localhost:5432/database_name?sslmode=disable"
+      uri: "postgres://postgres:postgres@localhost:5432/go_example?sslmode=disable"
     rules:
       - sqlc/db-prepare

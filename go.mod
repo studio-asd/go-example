@@ -7,14 +7,13 @@ replace github.com/studio-asd/pkg => ../pkg
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.34.2-20240717164558-a6c49f84cc0f.2
 	github.com/Masterminds/squirrel v1.5.4
-	github.com/studio-asd/pkg v0.0.0-00010101000000-000000000000
 	github.com/bufbuild/protovalidate-go v0.6.5
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0
-	github.com/lib/pq v1.10.9
 	github.com/rogpeppe/go-internal v1.10.0
 	github.com/shopspring/decimal v1.3.1
+	github.com/studio-asd/pkg v0.0.0-00010101000000-000000000000
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/metric v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
@@ -38,6 +37,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/prometheus/client_golang v1.19.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect

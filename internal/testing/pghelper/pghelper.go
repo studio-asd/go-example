@@ -105,13 +105,11 @@ func (th *Helper[T]) Close() error {
 		if !th.config.DontDropOnClose {
 			// Drop the database after test so we will always have a fresh database when we start the test.
 			config := th.conn.Config()
-			config.DBName = ""
-			pg, err := postgres.Connect(context.Background(), config)
+			url, _, err := config.DSN()
 			if err != nil {
 				return err
 			}
-			defer pg.Close()
-			err = pgtest.DropDatabase(context.Background(), pg, th.config.DatabaseName)
+			err = pgtest.DropDatabase(context.Background(), url)
 		}
 	}
 	if err == nil {
@@ -166,8 +164,8 @@ func (th *Helper[T]) CloseFunc(t *testing.T) func() {
 // to the database that can be used for testing purposes.
 func prepareTest(ctx context.Context, dbName string) (*postgres.Postgres, error) {
 	// TEST_PG_DSN can be used to set different DSN for flexible test setup.
-	pgDSN := env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/")
-	if err := pgtest.CreateDatabase(ctx, pgDSN, dbName, true); err != nil {
+	pgDSN := env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/"+dbName)
+	if err := pgtest.CreateDatabase(ctx, pgDSN, true); err != nil {
 		return nil, err
 	}
 
@@ -176,7 +174,6 @@ func prepareTest(ctx context.Context, dbName string) (*postgres.Postgres, error)
 	if err != nil {
 		return nil, err
 	}
-	config.DBName = dbName
 	// Connect to the PostgreSQL with the configuration.
 	testConn, err := postgres.Connect(context.Background(), config)
 	if err != nil {

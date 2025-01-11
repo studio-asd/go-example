@@ -9,8 +9,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"time"
-
-	"github.com/shopspring/decimal"
 )
 
 type AccountStatus string
@@ -106,44 +104,6 @@ type Account struct {
 	UpdatedAt       sql.NullTime
 }
 
-type AccountsBalance struct {
-	AccountID       string
-	ParentAccountID sql.NullString
-	CurrencyID      int32
-	AllowNegative   bool
-	Balance         decimal.Decimal
-	LastMovementID  string
-	LastLedgerID    string
-	CreatedAt       time.Time
-	UpdatedAt       sql.NullTime
-}
-
-type AccountsBalanceHistory struct {
-	HistoryID          int64
-	MovementID         string
-	LedgerID           string
-	AccountID          string
-	Balance            decimal.Decimal
-	PreviousBalance    decimal.Decimal
-	PreviousMovementID string
-	PreviousLedgerID   string
-	CreatedAt          time.Time
-}
-
-type AccountsLedger struct {
-	InternalID       int64
-	LedgerID         string
-	MovementID       string
-	AccountID        string
-	MovementSequence int32
-	CurrencyID       int32
-	Amount           decimal.Decimal
-	PreviousLedgerID string
-	CreatedAt        time.Time
-	ClientID         sql.NullString
-	ReversalOf       sql.NullString
-}
-
 type Movement struct {
 	MovementID         string
 	IdempotencyKey     string
@@ -152,11 +112,4 @@ type Movement struct {
 	UpdatedAt          sql.NullTime
 	ReversedAt         sql.NullTime
 	ReversalMovementID sql.NullString
-}
-
-type ReversedMovement struct {
-	MovementID         string
-	ReversalMovementID string
-	ReversalReason     string
-	CreatedAt          time.Time
 }

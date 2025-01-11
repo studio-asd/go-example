@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/studio-asd/pkg/postgres"
 	"github.com/shopspring/decimal"
+	"github.com/studio-asd/pkg/postgres"
 
 	"github.com/studio-asd/go-example/services/ledger"
 	internal "github.com/studio-asd/go-example/services/ledger/internal"
@@ -208,7 +208,7 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 	endingBalances := make(map[string]internal.MovementEndingBalance)
 	// accounts is the new information of the accounts which we want to change. We will use this to create UPDATE query.
 	err = q.db.RunQuery(ctx, selectForUpdate, func(rc *postgres.RowsCompat) error {
-		ab := AccountsBalance{}
+		ab := GetAccountsBalanceRow{}
 		if err := rc.Scan(
 			&ab.AccountID,
 			&ab.AllowNegative,

@@ -6,4 +6,4 @@ INSERT INTO wallet_accounts(
 	wallet_status,
 	wallet_type,
 	created_at
-) VALUES($1,$2,$3,$4,$5);
+) VALUES($1,$2,$3,$4,$5, $6);

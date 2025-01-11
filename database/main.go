@@ -17,7 +17,6 @@ import (
 	"text/template"
 	"time"
 
-	_ "github.com/lib/pq"
 	"github.com/studio-asd/pkg/postgres"
 	"gopkg.in/yaml.v3"
 )

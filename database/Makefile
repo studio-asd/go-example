@@ -24,3 +24,11 @@ upall:
 .PHONY: downall
 downall:
 	@$(DB_SCRIPT) down
+
+.PHONY: dbcomposeup
+dbcomposeup:
+	@docker compose -f $(REPOSITORY_ROOT)/database/docker-compose.yaml up -d --remove-orphans
+
+.PHONY: dbcomposedown
+dbcomposedown:
+	@docker compose -f $(REPOSITORY_ROOT)/database/docker-compose.yaml down -v

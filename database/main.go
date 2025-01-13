@@ -12,11 +12,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
 
+	"github.com/studio-asd/go-example/internal/git"
 	"github.com/studio-asd/pkg/postgres"
 	"gopkg.in/yaml.v3"
 )
@@ -25,15 +27,17 @@ import (
 var goTemplate embed.FS
 
 type Flags struct {
-	DBName     string
-	SQLCConfig string
+	DBName      string
+	DBSchemaDir string
+	SQLCConfig  string
 }
 
 // SQLCConfig is the sqlc configuration structure to be used in this generator.
 type SQLCConfig struct {
-	fileName string
-	Version  string          `yaml:"version"`
-	SQL      []SQLCSQLConfig `yaml:"sql"`
+	fileName  string
+	schemaDir string
+	Version   string          `yaml:"version"`
+	SQL       []SQLCSQLConfig `yaml:"sql"`
 }
 
 type SQLCSQLConfig struct {
@@ -57,15 +61,17 @@ type SQLCGenGo struct {
 }
 
 type TemplateData struct {
-	DatabaseName       string
-	SQLCVersion        string
-	SQLCConfig         string
-	SQLCOutputFileName string
-	GoPackageName      string
-	SQLPackageName     string
-	PathToSchema       string
-	DatabaseConn       TemplateDataDatabaseConn
-	Date               string
+	DatabaseName         string
+	SQLCVersion          string
+	SQLCConfig           string
+	SQLCOutputFileName   string
+	GoPackageName        string
+	SQLPackageName       string
+	RelativePathToSchema string
+	SchemaName           string
+	SchemaDir            string
+	DatabaseConn         TemplateDataDatabaseConn
+	Date                 string
 }
 
 type TemplateDataDatabaseConn struct {
@@ -81,11 +87,10 @@ func parseFlags(args []string) (f Flags, err error) {
 	// Parse all the flags needed for code generation.
 	fset := flag.NewFlagSet("global_flags", flag.ExitOnError)
 	fset.StringVar(&f.DBName, "db_name", "", "database name")
+	fset.StringVar(&f.DBSchemaDir, "db_schema_dir", "", "database schema directory")
 	fset.StringVar(&f.SQLCConfig, "sqlc_config", "sqlc.yaml", "sqlc.yaml configuration")
 
-	if err = fset.Parse(args); err != nil {
-		return
-	}
+	err = fset.Parse(args)
 	return
 }
 
@@ -100,16 +105,14 @@ func main() {
 }
 
 func run(args []string) error {
-	if len(args) < 1 {
-		return errors.New("command is empty")
+	if len(args) < 2 {
+		return errors.New("please specify the command and directory")
 	}
 
-	// Check if we have more than one(1) args which is the command. In general we only use one(1) input after the
-	// command, for example main.go gengo [db_name]. Thus everything after [db_name] are flags.
+	// Check if we have more than two(2) args which is the command. In general we only use two(2) input after the
+	// command, for example main.go gengo [db_name] [dir]. Thus everything after [db_name] [dir] are flags.
 	var flagArgs []string
-	if len(args) > 1 {
-		flagArgs = args[1:]
-	}
+	flagArgs = args[2:]
 	flags, err := parseFlags(flagArgs)
 	if err != nil {
 		return err
@@ -140,6 +143,7 @@ func run(args []string) error {
 		}
 		// Set the filename with the base as this command can be invoked from a relative path.
 		sqlcConfig.fileName = filepath.Base(flags.SQLCConfig)
+		sqlcConfig.schemaDir = flags.DBSchemaDir
 
 		if err := genGoTemplate(sqlcConfig); err != nil {
 			return err
@@ -183,14 +187,17 @@ func genGoTemplate(config SQLCConfig) error {
 		return err
 	}
 
-	// Check whether the sqlc files are already generated, we want to replace the generated sqlc.go with our template.
-	relativePath := config.SQL[0].Gen.Go.Out
-	filePath := filepath.Join(relativePath, config.SQL[0].Gen.Go.OutputDBFileName)
-	f, err := os.OpenFile(filePath, os.O_WRONLY, os.ModeAppend)
+	dbTemplateFile, err := goTemplate.Open("go_template/db_embed_go.tmpl")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	dbTemplateContent, err := io.ReadAll(dbTemplateFile)
+	if err != nil {
+		return err
+	}
+
+	// Check whether the sqlc files are already generated, we want to replace the generated sqlc.go with our template.
+	relativePath := config.SQL[0].Gen.Go.Out
 
 	tmpl := template.New("sqlc_template")
 	tmpl, err = tmpl.Parse(string(goTemplateContent))
@@ -202,6 +209,13 @@ func genGoTemplate(config SQLCConfig) error {
 	if err != nil {
 		return err
 	}
+	tmpl = tmpl.New("db_embed")
+	tmpl, err = tmpl.Parse(string(dbTemplateContent))
+	if err != nil {
+		return err
+	}
+
+	_, schemaFile := filepath.Split(config.SQL[0].Schema)
 
 	td := TemplateData{
 		DatabaseName:       dsn.DatabaseName,
@@ -210,7 +224,13 @@ func genGoTemplate(config SQLCConfig) error {
 		SQLCOutputFileName: config.SQL[0].Gen.Go.OutputDBFileName,
 		GoPackageName:      config.SQL[0].Gen.Go.Package,
 		SQLPackageName:     config.SQL[0].Gen.Go.SQLPackage,
-		PathToSchema:       filepath.Join("database", dsn.DatabaseName, config.SQL[0].Schema),
+		RelativePathToSchema: filepath.Join(
+			genPathToSchemaPath(config.SQL[0].Gen.Go.Out),
+			dsn.DatabaseName,
+			config.SQL[0].Schema,
+		),
+		SchemaName: schemaFile,
+		SchemaDir:  config.schemaDir,
 		DatabaseConn: TemplateDataDatabaseConn{
 			Username:     dsn.Username,
 			Password:     dsn.Password,
@@ -225,6 +245,13 @@ func genGoTemplate(config SQLCConfig) error {
 	if err := tmpl.ExecuteTemplate(buff, "sqlc_template", td); err != nil {
 		return err
 	}
+
+	filePath := filepath.Join(relativePath, config.SQL[0].Gen.Go.OutputDBFileName)
+	f, err := os.OpenFile(filePath, os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 	_, err = f.Write(buff.Bytes())
 	if err != nil {
 		return err
@@ -240,5 +267,37 @@ func genGoTemplate(config SQLCConfig) error {
 	}
 	buff.Reset()
 
+	if err := tmpl.ExecuteTemplate(buff, "db_embed", td); err != nil {
+		return err
+	}
+
+	// Retrieve the repository root so we can have an absolute path to generate the database.go. We need the absolute path because this
+	// program is intended to be running in the database/schema directory. Since we can have multiple sub-schema inside a big schema, we
+	// better not guess on where we were at.
+	repoRoot, err := git.RepositoryRoot()
+	if err != nil {
+		return err
+	}
+	dbEmbedPackagePath := filepath.Join(repoRoot, "database", "schemas", config.schemaDir, "database.go")
+	if err := os.WriteFile(dbEmbedPackagePath, buff.Bytes(), 0o777); err != nil {
+		return err
+	}
+	buff.Reset()
+
 	return nil
+}
+
+// genPathToSchemaPath returns the relative path from the generated code to the schema. Defining the relative path is quite
+// simple as we only need to go backwards from non ".." path and put them as ".." to the repository root and pinpoint them
+// to the right schema path.
+func genPathToSchemaPath(genPath string) string {
+	dirs := strings.Split(genPath, "/")
+	goToPrev := ""
+	for _, dir := range dirs {
+		if dir != ".." {
+			goToPrev = path.Join(goToPrev, "..")
+		}
+	}
+	goToPrev = path.Join(goToPrev, "database", "schemas")
+	return goToPrev
 }

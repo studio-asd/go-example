@@ -5,18 +5,21 @@ package pghelper
 
 import (
 	"context"
+	"embed"
 	"errors"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/studio-asd/pkg/postgres"
-	testingpkg "github.com/studio-asd/pkg/testing"
 	"github.com/studio-asd/pkg/testing/pgtest"
 
 	"github.com/studio-asd/go-example/internal/env"
 )
+
+// PGTEST_SKIP_PREPARE is used to skip the creation of the database and applying all schemas into it. The environment varialbe
+// is useful to skip the preparation when a multiple packages tests is being performed.
+var skipPrepareTest = os.Getenv("PGTEST_SKIP_PREPARE")
 
 // PGQuery interface defines the type that use this package should implements PGQuery.
 type PGQuery interface {
@@ -27,11 +30,22 @@ type PGQuery interface {
 
 type Config struct {
 	DatabaseName string
+	// EmbeddedSchema is used to embed the database schema for test preparation purposes. The embedded schema is used
+	// because it is more deterministic rather than guessing about where the schema files are being located when
+	// the tests runs.
+	EmbeddedSchema embed.FS
 	// DontDropOnClose allows/prevents the helper to drop the database when closing all the connections
 	// in the test helper.
 	//
 	// This option is helpful for debugging in case we want to connect directly to the PostgreSQL database.
 	DontDropOnClose bool
+}
+
+func (c Config) validate() error {
+	if c.DatabaseName == "" {
+		return errors.New("database name cannot be empty")
+	}
+	return nil
 }
 
 type Helper[T PGQuery] struct {
@@ -60,9 +74,27 @@ func New[T PGQuery](ctx context.Context, config Config, fn func(*postgres.Postgr
 		config:       config,
 		pgtestHelper: pgtest.New(),
 	}
-	pg, err := prepareTest(ctx, config.DatabaseName)
-	if err != nil {
-		return nil, err
+
+	var (
+		pg  *postgres.Postgres
+		err error
+		// TEST_PG_DSN can be used to set different DSN for flexible test setup.
+		pgDSN = env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/"+config.DatabaseName)
+	)
+	if skipPrepareTest != "1" {
+		pg, err = prepareTest(ctx, pgDSN, config.EmbeddedSchema)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		config, err := postgres.NewConfigFromDSN(pgDSN)
+		if err != nil {
+			return nil, err
+		}
+		pg, err = postgres.Connect(ctx, config)
+		if err != nil {
+			return nil, err
+		}
 	}
 	th.conn = pg
 	th.testQueries = fn(pg)
@@ -162,9 +194,8 @@ func (th *Helper[T]) CloseFunc(t *testing.T) func() {
 
 // prepareTest prepares the designated postgres database by creating the database and applying the schema. The function returns a postgres connection
 // to the database that can be used for testing purposes.
-func prepareTest(ctx context.Context, dbName string) (*postgres.Postgres, error) {
+func prepareTest(ctx context.Context, pgDSN string, embeddedSchema embed.FS) (*postgres.Postgres, error) {
 	// TEST_PG_DSN can be used to set different DSN for flexible test setup.
-	pgDSN := env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/"+dbName)
 	if err := pgtest.CreateDatabase(ctx, pgDSN, true); err != nil {
 		return nil, err
 	}
@@ -179,19 +210,7 @@ func prepareTest(ctx context.Context, dbName string) (*postgres.Postgres, error)
 	if err != nil {
 		return nil, err
 	}
-	// Read the schema and apply the schema.
-	repoRoot, err := testingpkg.RepositoryRoot()
-	if err != nil {
-		return nil, err
-	}
-	// Hardcode the schema path for now as we know the schema will always be in this format: database/schemas/{db_name}/schema.sql
-	schemaPath := filepath.Join(
-		"database",
-		"schemas",
-		dbName,
-		"schema.sql",
-	)
-	out, err := os.ReadFile(filepath.Join(repoRoot, schemaPath))
+	out, err := embeddedSchema.ReadFile("schema.sql")
 	if err != nil {
 		return nil, err
 	}

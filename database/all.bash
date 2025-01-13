@@ -59,7 +59,7 @@ sqlc_exec() {
 		PGPASSWORD=postgres ${pgexec} -d $db_name -f /data/$db_schema_dir/schema.sql
 		sqlc $2
 		if [[ "$2" = "generate" ]]; then
-			go run $origin_dir/main.go gengo . --sqlc_config=sqlc.yaml --db_name=$db_name
+			go run $origin_dir/main.go gengo . --sqlc_config=sqlc.yaml --db_schema_dir=${db_schema_dir} --db_name=${db_name}
 		fi
 		cd -
 	fi
@@ -68,7 +68,7 @@ sqlc_exec() {
 
 	# Shutdown the services spawed by docker compose because we are not in github actions.
 	if [[ -z "${GITHUB_ACTIONS}" ]]; then
-		docker compose down --remove-orphans
+		docker compose down --remove-orphans -v
 	fi
 }
 
@@ -152,7 +152,7 @@ up() {
 #
 # Usage: ./all.bash down
 down() {
-    docker compose -f ${database_dir}/docker-compose.yaml down --remove-orphans || true
+    docker compose -f ${database_dir}/docker-compose.yaml down --remove-orphans -v || true
 }
 
 case $1 in

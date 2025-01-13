@@ -98,3 +98,39 @@ func TestParseFlags(t *testing.T) {
 		})
 	}
 }
+
+func TestGenPathToSchemaPath(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		genPath   string
+		expectOut string
+	}{
+		{
+			genPath:   "../../some/dir",
+			expectOut: "../../database/schemas",
+		},
+		{
+			genPath:   "../some/dir",
+			expectOut: "../../database/schemas",
+		},
+		{
+			genPath:   "some/dir",
+			expectOut: "../../database/schemas",
+		},
+		{
+			genPath:   "../../dir",
+			expectOut: "../database/schemas",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.genPath, func(t *testing.T) {
+			t.Parallel()
+			got := genPathToSchemaPath(test.genPath)
+			if got != test.expectOut {
+				t.Fatalf("want %s but got %s", test.expectOut, got)
+			}
+		})
+	}
+}

@@ -2,7 +2,7 @@ version: "3"
 services:
   postgres:
     container_name: sqlc-postgres
-    image: library/postgres:16-alpine
+    image: library/postgres:17-alpine
     restart: unless-stopped
     ports:
       - "5432:5432"

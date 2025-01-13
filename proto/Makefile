@@ -1,5 +1,6 @@
 OS 			   ?= $(shell uname | tr A-Z a-z)
 REPO_TOP_LEVEL ?= $(shell git rev-parse --show-toplevel)
+PROTO_PATH     ?= $(REPO_TOP_LEVEL)/proto
 
 SED := sed
 # Replace sed to gsed if OS is darwin(MacOS) as behavior of the sed is different from GNU sed. We force gsed because
@@ -15,6 +16,8 @@ DOCKERFILE := Dockerfile
 
 # DOCKER_IMAGE_ID to check whether we already have the docker image or not.
 DOCKER_IMAGE_ID := $(shell docker images -q $(IMAGE_NAME):$(VERSION))
+# DOCKER_GEN_DIR is the directory on where the generated file will be located to.
+DOCKER_GEN_DIR := gengo
 
 # DEFAULT_PLATFORM defines the --platform flag for the docker build command.
 DEFAULT_PLATFORM := linux/amd64
@@ -23,7 +26,7 @@ ifndef GITHUB_ACTIONS
 DEFAULT_PLATFORM = linux/arm64
 endif
 
-GEN_DIR := gengo
+GEN_DIR := $(PROTO_PATH)/gengo
 $(GEN_DIR):
 	@if [ ! -d $(GEN_DIR) ]; then mkdir -p $(GEN_DIR); fi
 
@@ -50,9 +53,9 @@ generate: $(DOCKERFILE) $(GEN_DIR)
         -c "protoc \
         -I/usr/local/include -I. \
         -I./shared \
-        --go_out=$(GEN_DIR) \
-        --go-grpc_out=$(GEN_DIR) \
-        --grpc-gateway_out=$(GEN_DIR) \
+        --go_out=$(DOCKER_GEN_DIR) \
+        --go-grpc_out=$(DOCKER_GEN_DIR) \
+        --grpc-gateway_out=$(DOCKER_GEN_DIR) \
         --grpc-gateway_opt logtostderr=true \
         $(proto_folder)/$(target)/*.proto"
 	@cp -r $(GEN_DIR)/github.com/studio-asd/go-example/proto/$(proto_folder)/* ./$(proto_folder)
@@ -76,4 +79,5 @@ $(testdata_dirs):
 	@$(MAKE) generate proto_folder=testdata target=$@
 	@sleep 0.2
 
-genall: $(api_dirs) $(testdata_dirs)
+.PHONY: protogenall
+protogenall: $(api_dirs) $(testdata_dirs)

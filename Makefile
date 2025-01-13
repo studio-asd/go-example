@@ -1,4 +1,5 @@
 include database/Makefile
+include proto/Makefile
 
 .PHONY: dbup
 dbup:
@@ -7,6 +8,17 @@ dbup:
 .PHONY: dbdown
 dbdown:
 	@make downall
+
+.PHONY: gendb
+gendb:
+	cd database && make dbgenall
+
+.PHONY: genproto
+genproto:
+	cd proto && make protogenall
+
+.PHONY: genall
+genall: genproto gendb
 
 .PHONY: composeup
 composeup: dbcomposeup

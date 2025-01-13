@@ -13,8 +13,8 @@ ifeq (up,$(command))
 	@$(DB_SCRIPT) $(command) $@
 endif
 
-.PHONY: genall
-genall:
+.PHONY: dbgenall
+dbgenall :
 	@$(MAKE) $(gen_dirs) command=generate
 
 .PHONY: upall

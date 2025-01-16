@@ -81,7 +81,7 @@ func New[T PGQuery](ctx context.Context, config Config, fn func(*postgres.Postgr
 		// TEST_PG_DSN can be used to set different DSN for flexible test setup.
 		pgDSN = env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/"+config.DatabaseName)
 	)
-	if skipPrepareTest != "1" {
+	if !SkipPrepare() {
 		pg, err = prepareTest(ctx, pgDSN, config.EmbeddedSchema)
 		if err != nil {
 			return nil, err
@@ -219,4 +219,11 @@ func prepareTest(ctx context.Context, pgDSN string, embeddedSchema embed.FS) (*p
 		return nil, err
 	}
 	return testConn, nil
+}
+
+// SkipPrepare returns the value of PGTEST_SKIP_PREPARE to decide whether test preparation need to be skipped or not.
+// It is rather useful for other package to understand this as they may want to use a separate database name or
+// using other configurations if test preparation is not skipped.
+func SkipPrepare() bool {
+	return skipPrepareTest == "1"
 }

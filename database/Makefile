@@ -15,10 +15,19 @@ endif
 
 .PHONY: dbgenall
 dbgenall :
+ifndef ($(GITHUB_ACTIONS))
+	make dbcomposeup
+endif
 	@$(MAKE) $(gen_dirs) command=generate
+ifndef ($(GITHUB_ACTIONS))
+	make dbcomposedown
+endif
 
 .PHONY: upall
 upall:
+ifndef ($(GITHUB_ACTIONS))
+		make dbcomposeup
+endif
 	@$(MAKE) $(gen_dirs) command=up
 
 .PHONY: downall
@@ -28,6 +37,7 @@ downall:
 .PHONY: dbcomposeup
 dbcomposeup:
 	@docker compose -f $(REPOSITORY_ROOT)/database/docker-compose.yaml up -d --remove-orphans
+	@sleep 2
 
 .PHONY: dbcomposedown
 dbcomposedown:

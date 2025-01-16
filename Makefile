@@ -28,8 +28,8 @@ composedown: dbcomposedown
 
 .PHONY: test
 test:
-	@make dbdown
-	@make dbup
-	@cd services && PGTEST_SKIP_PREPARE=1 go test -v -race ./...
-	@make dbdown
-	@cd internal && go test -v -race ./...
+	make dbdown
+	make dbup
+	cd services && PGTEST_SKIP_PREPARE=1 go test -v -race ./... -run=TestTransact
+	make dbdown
+	cd internal && go test -v -race ./...

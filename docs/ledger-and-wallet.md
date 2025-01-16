@@ -21,3 +21,16 @@ For example, we cannot do this inside the `ledger`:
   By default, `ledger` is only a place to store a historical data of an account. So it doesn't understand any concept of `type` inside of it, everything is the same. So the `wallet` domain need
   to maintain its own abstraction of `wallet_type` inside its database. For business use cases, wallet usually have different-different kind of types. For example we can have `main` wallet,
   `savings` wallet and other kind of wallet based on the business and user needs.
+
+### Chargeback
+
+Chargeback is a transaction that created by the system to charge the user with the amount of money that they should not be able to spent/receive(but it happen anyway). The chargeback
+is needed because there are some edge-cases because of failure in the dependencies or internal system that causing the business owner to lose money.
+
+While the idea of chargeback is simple, the intention and communication to the end user must be clear so they know that they are spending money that not belong
+to them and they are being charged because of that. So there are several things that we need to consider:
+
+1. A charge must be a separate transaction.
+
+    As the chargeback need to be communicated clearly to ther user, a charback need to be a separated transaction for the user. A chargeback
+    also need a link/referrence to another transaction.

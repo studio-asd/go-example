@@ -32,14 +32,8 @@ sqlc_exec() {
 	# Since we are not in github actions, this means we don't have the services we need to be already up and running
 	# so we need to invoke docker compose in our own machine to spawn the services.
 	if [[ -z "${GITHUB_ACTIONS}" ]]; then
-		# Trying to bring eveyrthing down first regardless the result.
-		docker compose -f ${database_dir}/docker-compose.yaml down --remove-orphans || true
-		docker compose -f ${database_dir}/docker-compose.yaml up -d
-		# Wait for the docker container to be up.
-		sleep 2
-
-		container_id=$(docker ps -aqf "name=sqlc-postgres")
-		pgexec="docker exec -it ${container_id} psql -U postgres"
+    	container_id=$(docker ps -aqf "name=sqlc-postgres")
+    	pgexec="docker exec -it ${container_id} psql -U postgres"
 	fi
 
 	# Move to schema dir.
@@ -53,6 +47,13 @@ sqlc_exec() {
 	    db_schema_dir=$(echo $1 | cut -d / -f1)
 		# db_name is normalized by replacing '-' with '_' as hypen is not allowed in the database name.
 	    db_name=$(echo $db_schema_dir | sed -e 's/-/_/')
+
+		db_found=$(PGPASSWORD=postgres ${pgexec} -XtAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'")
+        if  [[ "${db_found}" != "" ]]; then
+            echo "database ${db_name} already exists"
+            exit 0;
+        fi
+
 		PGPASSWORD=postgres ${pgexec} -c "CREATE DATABASE ${db_name}"
 		cd $1
 		# The mounted volume is in '/data' so we need to seek the schema there.
@@ -65,11 +66,6 @@ sqlc_exec() {
 	fi
 	# Move to before schema dir.
 	cd -
-
-	# Shutdown the services spawed by docker compose because we are not in github actions.
-	if [[ -z "${GITHUB_ACTIONS}" ]]; then
-		docker compose down --remove-orphans -v
-	fi
 }
 
 # templategen creates the database directory if not exists and generate the sqlc configuration template.
@@ -112,14 +108,6 @@ up() {
 	# so we need to invoke docker compose in our own machine to spawn the services.
 	if [[ -z "${GITHUB_ACTIONS}" ]]; then
 		container_id=$(docker ps -aqf "name=sqlc-postgres")
-		if [[ "$container_id" == "" ]]; then
-    		# Trying to bring eveyrthing down first regardless the result.
-    		docker compose -f ${database_dir}/docker-compose.yaml down --remove-orphans || true
-    		docker compose -f ${database_dir}/docker-compose.yaml up -d
-    		# Wait for the docker container to be up.
-    		sleep 2
-            container_id=$(docker ps -aqf "name=sqlc-postgres")
-		fi
 		pgexec="docker exec -it ${container_id} psql -U postgres"
 	fi
 

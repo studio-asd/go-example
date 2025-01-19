@@ -337,11 +337,7 @@ between domain. For example:
 |-------------------------------------------------------------------------------------------------------------|
 ```
 
-The user domain is a completely different domain than wallet and ledger domain. The user domain doesn't have the need to be in the same transaction scope as the domain does not depends on
-both wallet and ledger domain. In this case it is makes sense to separate the database between them as they have  different business need and data flow. But, please NOTE that this is
-something that you need to decide based on your resource usage, it doesn't have to be like this from the get go. Focusing yourself to build a product is far more important than thinking
-about tech infrastructure optimization. These kind of optimization can always be done later as the domain is well separated. In reverse, it will be hard for you to merge the domain once it
-is separated.
+The user domain is a completely different domain than wallet and ledger domain. The user domain doesn't have the need to be in the same transaction scope as the domain does not depends on both wallet and ledger domain. In this case it is makes sense to separate the database between them as they have  different business need and data flow. But, please NOTE that this is something that you need to decide based on your resource usage, it doesn't have to be like this from the get go. Focusing yourself to build a product is far more important than thinking about tech infrastructure optimization. These kind of optimization can always be done later as the domain is well separated. In reverse, it will be hard for you to merge the domain once it is separated.
 
 ```go
 package api

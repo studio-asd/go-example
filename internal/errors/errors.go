@@ -155,18 +155,13 @@ func NewFields(kv ...any) (f Fields) {
 
 	// Ensure that the Fields is never 'odd'. If they 'key' is not available then we
 	// should replace the 'key' with 'unknown?'.
-	newKV := make([]interface{}, kvlen+1)
-	for i := 0; i < kvlen; i++ {
-		if i == kvlen-1 {
-			newKV[i] = "unknown?"
-			// We will always know this is safe to do because we previously
-			// set the array capacity to kv length + 1.
-			newKV[i+1] = kv[i]
-			break
-		}
-		newKV[i] = kv[i]
-	}
+	newKvLen := kvlen + 1
+	newKV := make([]interface{}, newKvLen)
+	copy(newKV, kv)
 
+	tmp := newKV[newKvLen-2]
+	newKV[newKvLen-2] = "unknown?"
+	newKV[newKvLen-1] = tmp
 	f = newKV
 	return
 }

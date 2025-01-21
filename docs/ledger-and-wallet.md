@@ -4,13 +4,21 @@
 
 The go-example project provides a project sample for two different domains, `ledger` and `wallet`. The `wallet` domain is specifically designed in the scope of `e-wallet` application.
 
-Please note that the `ledger` and `wallet` does not maintains the order of the transactions from the user perspective. While the order of transactions are important in some applications(for example in stock/cryptocurrency exchange), most of `e-wallet` system does not need the ordered guarantee. This is because the nature of the product itself. By default, the user need to do an ordered action to be able to do other actions. For example, a user can only pay something if they already put their money in the system. Thus its impossible to pay first before the money inside the system is exists. Even if there are two transaction happens at the same time, for example there are payment and withdrawal in the exact same time. We don't really care if two of them success or one of them result in failure as long as the system behaves correctly. Maintaining the fairness and the order of the transaction is not the goal of this example.
+Please note that the `ledger` and `wallet` does not maintains the strict order of the transactions. While the strict order of transactions are important in
+some applications(for example in stock/cryptocurrency exchange), most of `e-wallet` system does not need the ordered guarantee. This is because the nature of
+the product itself. By default, the user need to do an ordered action to be able to do other actions. For example, a user can only pay something if they already
+put their money in the system. Thus its impossible to pay first before the money inside the system is exists. Even if there are two transaction happens at the same
+time, for example there are payment and withdrawal in the exact same time. We don't really care if two of them success or one of them result in failure as long as
+the system behaves correctly. Maintaining the fairness and the order of the transaction is not the goal of this example.
 
 ## Ledger
 
-### Transaction & Lock
+### Ledger Transaction & Lock
 
 Money inside one account in the ledger will be monotonicaly increased and decreased. The ledger will ensure a lock is held when a transaction happen and no other transaction can change the account. Because we are using PostgreSQL as our database, it only rational that we also utilize the database to do the lock. Do you remember that we have `ledger_accounts_balance` where we stores the latest `balance` of an account? Everytime we are doing a transaction, we will lock the account row using `SELECT FOR UPDATE` within a [read committed]() transaction. Using the read committed isolation is enough for this use case because we are locking the `row` by using `FOR UPDATE`, so other sessions will not be able to change the data.
+
+By locking for each row, each account can concurrently use their ledger without get affected by another account. This means as long as the accounts are separated for the end users the
+
 
 ## Wallet
 
@@ -20,12 +28,11 @@ For example, we cannot do this inside the `ledger`:
 
 1. Set a `status` for a given ledger.
 
-    The `status` for a wallet is a pretty common business use-case as user might want to create a `wallet_type` fo different-different purposes, and one of the wallet might get deactivated/deleted
-    by the user.
+    The `status` for a wallet is a pretty common business use-case as user might want to create a `wallet_type` fo different-different purposes, and one of the wallet might get deactivated/deleted by the user.
 
 2. Set a different `wallet_type` for each ledger.
 
-    By default, `ledger` is only a place to store a historical data of an account. So it doesn't understand any concept of `type` inside of it, everything is the same. So the `wallet` domain need to maintain its own abstraction of `wallet_type` inside its database. For business use cases, wallet usually have different-different kind of types. For example we can have `main` wallet, `savings` wallet and other kind of wallet based on the business and user needs.
+    By default, `ledger` is only a place to store a historical data of an account. So it doesn't understand any concept of `type` inside of it, everything is the same. So the `wallet` domain need to maintain its own abstraction of `wallet_type` inside its database. For business use cases, wallet usually have different-different kind of types. For example we can have `main` wallet `savings` wallet and other kind of wallet based on the business and user needs.
 
 ### Chargeback Transaction
 
@@ -82,7 +89,7 @@ With an additional chargeback wallet, its clear that the user need to make the c
 
 2. Chargeback Payment
 
-### Transaction & Lock
+### Wallet Transaction & Lock
 
 As we already know, `wallet` uses `ledger` to store its balance. This means the order of transaction and locks is guaranteed inside one ledger account only, and not across all ledgers owned by an account. And because the `wallet` uses `ledger` under the hood, it doesn't guarantee the order of the transactions on some edge-cases. For example, we have two different type of wallet: `main` and `chargeback` wallet. The `main` wallet can only be used to transact if the `chargeback` wallet is zero(0) in value. And there might be some cases where there are a race condition of a `chargeback` is being triggered at the same time when a user pays for something else. This means, the `chargeback` is not being prioritized and money already flowing out from the user's account to pay for something.
 
@@ -92,3 +99,7 @@ As we already know, `wallet` uses `ledger` to store its balance. This means the 
 ```
 
 In this case, should we make all transactions for `wallet` ordered for a reason like this?
+
+### Scaling The Wallet
+
+In the [previous](#wallet-transaction--lock) section we learned on how `wallet` utilize `ledger` under the hood to ensure the monotonicity of the balance. While a single wallet lock contention is pretty much manageable because each user has their own wallet, how about the wallet that shared across all users. For example, `deposit` and `withdrawal`?

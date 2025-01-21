@@ -42,8 +42,6 @@ type Errors struct {
 	err    error
 	kind   Kind
 	fields Fields
-	// constraintID is protovalidate constraint_id.
-	constraintID string
 }
 
 func (e *Errors) Error() string {

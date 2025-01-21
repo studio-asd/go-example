@@ -1,5 +1,7 @@
 # Database
 
+We use `PostgreSQL` as our main database. The `PostgreSQL` is built using our custom image with embedded `DuckDB` extension inside of it.
+
 The database directory contains all schema and queries needed for each database. Each sub-directory inside this directory represents a schema for a database. The `database` is defined via `sqlc` configuration, we will learn more about that part later.
 
 For example,
@@ -10,8 +12,6 @@ For example,
          |- schema.sql
          |- query.sql
 ```
-
-This means `ledger` is a database.
 
 ## Database Schema
 

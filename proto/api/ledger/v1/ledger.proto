@@ -7,17 +7,7 @@ import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 message MovementEntry {
-  message FromAccount {
-    string from_account_id = 1 [ (buf.validate.field).required = true ];
-    // include_child explicitly sums the amount of money in the main and child
-    // accounts. The behavior of the movement will be determined by the main
-    // account(from_account_id). If the main account doesn't allow the balances
-    // to be < 0 then the movement will be rejected if the SUM of money is
-    // negative.
-    bool include_child = 2;
-  }
-
-  FromAccount from_account = 1 [ (buf.validate.field).required = true ];
+  string from_account = 1 [ (buf.validate.field).required = true ];
   string to_account_id = 2 [ (buf.validate.field).required = true ];
   string amount = 3 [ (buf.validate.field).required = true ];
   // client_id is an identifier passed by the client so the client can find the

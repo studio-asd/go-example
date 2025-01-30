@@ -39,9 +39,11 @@ There are several transaction types supported by the `wallet` system.
 4. [Payment](#payment-transaction)
 5. [Chargeback](#chargebeback-transaction)
 
+All of these transactions are [idempotent](https://en.wikipedia.org/wiki/Idempotence) by default, so the system will not process transactions with the same identifier twice.
+
 #### Deposit Transaction
 
-Deposit transaction is a way to insert money from outside of the system into the wallet ecosystem. The amount of digital money should reflect the money that has been transferred into the bank account owned by the digital money product. Or, if you are in the cyrptocurrency industry, the money should reflect the money that stored inside your cryptocurrency wallet.
+Deposit transaction is a way to insert money from outside of the system into the wallet ecosystem. The amount of digital money should reflect the money that has been transferred into the bank account owned by the digital money product. Or, if you are in the cyrptocurrency industry, the money should reflect the money that stored inside your cryptocurrency wallet. The deposit transaction uses a special wallet called `deposit wallet`. Only this wallet can "create" money inside the ecosystem and give them to the user.
 
 > The cryptocurrency industry still need the off-chain solution because they need to off-ramp the digital currency to fiat or real money. As we are living in the world of off-chains, off-ramp is unavoidable.
 
@@ -88,7 +90,41 @@ The deposit flow is crucial because now we are able to create the digital money 
 
 #### Withdrawal Transaction
 
-To be added
+Withdrawal transaction is a waay to withdraw money from the wallet ecosystem into other ecosystem that receives the same currency. It can be Banks, another wallet or other type of ecosystem that recognize the system's assets as interchangeable assets. All user need to withdraw their money via `withdrawal wallet`, the money inside the `withdrawal wallet` cannot be transferred and will be there forever. However, to ensure all transactions to the `withdrawal wallet` is a valid and successful transactions, when withdrawal happens user will automatically transfer their funds into the user's `escrow wallet` first. The reason is, because withdrawal transaction usually involves third party connections as the money destination. As we should treat all thrid party connections as "uncertain"(because it can fail), we need a place where we are able to put the money temporarily before it marked as a success and fully transferred to the `withdrawal wallet`. To understand more on why the `escrow wallet` is needed, please check the [scalability](#scaling-the-wallet) section.
+
+```text
+          |---------------|
+          | Wallet System |
+          |---------------|
+          |      $$$      |------------|
+          |---------------|            |
+                                       |
+                                       |
+                     |---------------------------------------------------------------|         |------------------------------|
+                     | User                                                          |         | System                       |
+                     |                                                              |          |                              |
+                     |        |-------------|              |---------------|        |          | |-------------------|        |
+                     |        | Main Wallet |              | Escrow Wallet |        |          | | Withdrawal Wallet |        |
+                     |        |-------------|              |---------------|        |          | |-------------------|        |
+                     |        |    $1,000   |              |       $0      |        |          | |      $10,000      |        |
+                     |        |-------------|    + 500     |---------------|        |          | |-------------------|        |
+                     |  Debit |     $500    | -----------> |      $500     | Credit |          | |      $10,000      |        |
+                     |        |-------------|              |---------------|        |  + 500   | |-------------------|        |
+                     |                               Debit |       $0      | ------------------> |      $10,500      | Credit |
+                     |                                     |---------------|        |          | |-------------------|        |
+                     |                                        |                     |          |                              |
+                     |----------------------------------------|---------------------|          |------------------------------|
+                                                              |                ^
+                                                              | + 500          |
+                                                              v                |   Success
+                                                      |--------------------|   | Notification
+                                                      | Third Party System |---|
+                                                      |--------------------|
+                                                      |        $$$         |
+                                                      |--------------------|
+```
+
+As you can see above, the money will only be transferred to the `withdrawal` wallet when there are "success notification" from the third party system that receives the money. If the transfer to the third party system results in failure, then the money will be transferred back to the `main wallet` fomr the `escrow wallet`.
 
 #### Transfer Transaction
 
@@ -176,3 +212,9 @@ In the [previous](#wallet-transaction--lock) section we learned on how `wallet` 
 - Payment from `user` to `merchant`
 - Deposit from `deposit` to `user`
 - Withdrawal from `user` to `withdrawal`
+
+### Reconciliation And Monitoring
+
+#### Reconciling Deposit Transaction
+
+The reconciliation between "real money" and the digital money inside the wallet is something that need to be performed in daily or even in a more frequent basis. Because only by reconciling the data one by one we are really sure all `deposit` transactions are tally.

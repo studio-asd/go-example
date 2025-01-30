@@ -4,12 +4,7 @@
 
 The go-example project provides a project sample for two different domains, `ledger` and `wallet`. The `wallet` domain is specifically designed in the scope of `e-wallet` application.
 
-Please note that the `ledger` and `wallet` does not maintains the strict order of the transactions. While the strict order of transactions are important in
-some applications(for example in stock/cryptocurrency exchange), most of `e-wallet` system does not need the ordered guarantee. This is because the nature of
-the product itself. By default, the user need to do an ordered action to be able to do other actions. For example, a user can only pay something if they already
-put their money in the system. Thus its impossible to pay first before the money inside the system is exists. Even if there are two transaction happens at the same
-time, for example there are payment and withdrawal in the exact same time. We don't really care if two of them success or one of them result in failure as long as
-the system behaves correctly. Maintaining the fairness and the order of the transaction is not the goal of this example.
+Please note that the `ledger` and `wallet` does not maintains the strict order of the user requests. While the strict order of transactions are important in some applications(for example in stock/cryptocurrency exchange), most of `e-wallet` system does not need the ordered guarantee. Instead of order guarantee, the system need the transactions to be `idempotent`.
 
 ## Ledger
 
@@ -34,7 +29,76 @@ For example, we cannot do this inside the `ledger`:
 
     By default, `ledger` is only a place to store a historical data of an account. So it doesn't understand any concept of `type` inside of it, everything is the same. So the `wallet` domain need to maintain its own abstraction of `wallet_type` inside its database. For business use cases, wallet usually have different-different kind of types. For example we can have `main` wallet `savings` wallet and other kind of wallet based on the business and user needs.
 
-### Chargeback Transaction
+### Wallet Transaction Types
+
+There are several transaction types supported by the `wallet` system.
+
+1. [Deposit](#deposit-transaction)
+2. [Withdrawal](#withdrawal-transaction)
+3. [Transfer](#transfer-transaction)
+4. [Payment](#payment-transaction)
+5. [Chargeback](#chargebeback-transaction)
+
+#### Deposit Transaction
+
+Deposit transaction is a way to insert money from outside of the system into the wallet ecosystem. The amount of digital money should reflect the money that has been transferred into the bank account owned by the digital money product. Or, if you are in the cyrptocurrency industry, the money should reflect the money that stored inside your cryptocurrency wallet.
+
+> The cryptocurrency industry still need the off-chain solution because they need to off-ramp the digital currency to fiat or real money. As we are living in the world of off-chains, off-ramp is unavoidable.
+
+```text
+             |------|
+             | Bank |
+             |------|-------------------------------------------|
+        |----| $$$$ |-------------|                             |
+        |    |------|             |                             |
+        |                     |------------|               |----------|
+        |                     | Acc Wallet |               | Acc User |
+        |                     |------------|               |----------|
+        |                     |   $10.000  |               |   $100   |
+        |                     |------------|    + $100     |----------|
+        |              Credit |   $10.100  | <------------ |    $0    | Debit
+        |                     |------------|               |----------|
+        |
+        |
+------------------------------------- Separator ------------------------------------------
+        |
+        |
+        |  Notification
+        |  of Transfer
+        v
+ |-------------- |
+ | Wallet System |
+ |---------------|---------------------------------------------|
+ |     $$$       |----------------|                            |
+ |---------------|                |                            |
+                          |----------------|             |-------------|
+                          | Deposit Wallet |             | User Wallet |
+                          |----------------|             |-------------|
+                          |  - $10.000     |             |     $0      |
+                          |----------------|   + $100    |-------------|
+                    Debit |  - $10.100     | ----------> |    $100     | Credit
+                          |----------------|             |-------------|
+```
+
+While the above model is a simplified model of how the transfer happens between accounts in the bank, in general the concept is still the same. The double entry accounting is the foundation to record money movement, thus money is flowing from a valid souce into a a valid destination.
+
+Maybe you have a question on why the `deposit wallet` records negative balance? The short answer is because of [scaling issues](#scaling-the-wallet), we directly transfer the amount of money from the system's `deposit wallet` to the `user's wallet`. But while doing so, we are maintaining the exact opposite of our money inside the bank, which is fine as long as the data is tally.
+
+The deposit flow is crucial because now we are able to create the digital money out from nowehre, thus ensuring the backing one to one(1:1) assets is really important. If this happen, then people can spend more than they should and somebody else(the company) should fill the gap in their book.
+
+#### Withdrawal Transaction
+
+To be added
+
+#### Transfer Transaction
+
+To be added
+
+#### Payment Transaction
+
+To be added
+
+#### Chargebeback Transaction
 
 Chargeback is a transaction that created by the system to charge the user with the amount of money that they should not be able to spent/receive(but it happen anyway). The chargeback is needed because there are some edge-cases because of failure in the dependencies or internal system that causing the business owner to lose money.
 
@@ -89,6 +153,10 @@ With an additional chargeback wallet, its clear that the user need to make the c
 
 2. Chargeback Payment
 
+    To be added
+
+### Wallet Types
+
 ### Wallet Transaction & Lock
 
 As we already know, `wallet` uses `ledger` to store its balance. This means the order of transaction and locks is guaranteed inside one ledger account only, and not across all ledgers owned by an account. And because the `wallet` uses `ledger` under the hood, it doesn't guarantee the order of the transactions on some edge-cases. For example, we have two different type of wallet: `main` and `chargeback` wallet. The `main` wallet can only be used to transact if the `chargeback` wallet is zero(0) in value. And there might be some cases where there are a race condition of a `chargeback` is being triggered at the same time when a user pays for something else. This means, the `chargeback` is not being prioritized and money already flowing out from the user's account to pay for something.
@@ -98,8 +166,13 @@ As we already know, `wallet` uses `ledger` to store its balance. This means the 
 |----
 ```
 
-In this case, should we make all transactions for `wallet` ordered for a reason like this?
+In this case, should we make all transactions for `wallet` ordered for a reason like this? In our case, we don't think we need a strict ordering for all transactions in the `wallet` system. This is because most of the time, transactions that deduct user money is triggered by the end user and not fully automatic. Even though there is automatic recurring payment, it won't be at a random time thus race condition with chargeback will be a less likely condition. Thus we don't think it is worth it to introduce strict ordering in the `wallet` system.
 
 ### Scaling The Wallet
 
-In the [previous](#wallet-transaction--lock) section we learned on how `wallet` utilize `ledger` under the hood to ensure the monotonicity of the balance. While a single wallet lock contention is pretty much manageable because each user has their own wallet, how about the wallet that shared across all users. For example, `deposit` and `withdrawal`?
+In the [previous](#wallet-transaction--lock) section we learned on how `wallet` utilize `ledger` under the hood to ensure the monotonicity of the balance. While a single wallet lock contention is manageable because each user has their own wallet, how about the wallet that shared across all users. For example, `deposit` and `withdrawal` wallet are shared across all users and a transaction to that wallet will fully lock the wallet until the transaction is completed. To understand the problem better, lets take a look again in how the transaction for each use case is being executed:
+
+- Transfer from `user` to `user`
+- Payment from `user` to `merchant`
+- Deposit from `deposit` to `user`
+- Withdrawal from `user` to `withdrawal`

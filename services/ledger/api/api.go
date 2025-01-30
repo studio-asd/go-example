@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/studio-asd/pkg/postgres"
+	"github.com/studio-asd/pkg/srun"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/studio-asd/go-example/internal/await"
@@ -17,7 +18,10 @@ import (
 	ledgerpg "github.com/studio-asd/go-example/services/ledger/internal/postgres"
 )
 
-var validator *protovalidate.Validator
+var (
+	validator *protovalidate.Validator
+	_         srun.ServiceInitAware = (*API)(nil)
+)
 
 func init() {
 	var err error
@@ -44,6 +48,14 @@ func New(queries *ledgerpg.Queries) *API {
 	}
 }
 
+func (a *API) Name() string {
+	return "ledger_api"
+}
+
+func (a *API) Init(ctx srun.Context) error {
+	return nil
+}
+
 // GRPC returns the grpc api implementation of the ledger api.
 func (a *API) GRPC() *GRPC {
 	return newGRPC(a)
@@ -58,7 +70,7 @@ func (a *API) Transact(ctx context.Context, req *ledgerv1.TransactRequest, fn fu
 	accounts := make([]string, len(req.GetMovementEntries())*2)
 	entries := req.GetMovementEntries()
 	for idx, entry := range entries {
-		accounts[idx] = entry.FromAccount.FromAccountId
+		accounts[idx] = entry.FromAccountId
 		accounts[idx+1] = entry.ToAccountId
 	}
 

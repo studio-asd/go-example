@@ -50,11 +50,9 @@ func TestCreateLedgerEntries(t *testing.T) {
 			},
 			entries: []*ledgerv1.MovementEntry{
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "one",
-					},
-					ToAccountId: "two",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "two",
+					Amount:        "100",
 				},
 			},
 			expect: ledger.MovementLedgerEntries{
@@ -122,18 +120,14 @@ func TestCreateLedgerEntries(t *testing.T) {
 			},
 			entries: []*ledgerv1.MovementEntry{
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "one",
-					},
-					ToAccountId: "two",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "two",
+					Amount:        "100",
 				},
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "one",
-					},
-					ToAccountId: "three",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "three",
+					Amount:        "100",
 				},
 			},
 			expect: ledger.MovementLedgerEntries{
@@ -226,32 +220,24 @@ func TestCreateLedgerEntries(t *testing.T) {
 			},
 			entries: []*ledgerv1.MovementEntry{
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "one",
-					},
-					ToAccountId: "two",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "two",
+					Amount:        "100",
 				},
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "one",
-					},
-					ToAccountId: "three",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "three",
+					Amount:        "100",
 				},
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "three",
-					},
-					ToAccountId: "four",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "four",
+					Amount:        "100",
 				},
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: "two",
-					},
-					ToAccountId: "three",
-					Amount:      "100",
+					FromAccountId: "one",
+					ToAccountId:   "three",
+					Amount:        "100",
 				},
 			},
 			expect: ledger.MovementLedgerEntries{

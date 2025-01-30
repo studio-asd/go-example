@@ -7,7 +7,7 @@ import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 message MovementEntry {
-  string from_account = 1 [ (buf.validate.field).required = true ];
+  string from_account_id = 1 [ (buf.validate.field).required = true ];
   string to_account_id = 2 [ (buf.validate.field).required = true ];
   string amount = 3 [ (buf.validate.field).required = true ];
   // client_id is an identifier passed by the client so the client can find the
@@ -18,9 +18,6 @@ message MovementEntry {
 
 message TransactRequest {
   string idempotency_key = 1 [ (buf.validate.field).required = true ];
-  // include_child_accounts ensure the child account is being calculated in the
-  // transaction and the SUM of the main and child account is not below zero(0).
-  bool include_child_accounts = 5;
   repeated MovementEntry movement_entries = 20
       [ (buf.validate.field).repeated = {min_items : 1 max_items : 100} ];
 }

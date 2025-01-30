@@ -5,10 +5,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/studio-asd/pkg/postgres"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/studio-asd/pkg/postgres"
 	"google.golang.org/protobuf/testing/protocmp"
 
 	prototesting "github.com/studio-asd/go-example/internal/testing/proto"
@@ -46,12 +46,10 @@ func TestTransact(t *testing.T) {
 				IdempotencyKey: "test",
 				MovementEntries: []*ledgerv1.MovementEntry{
 					{
-						FromAccount: &ledgerv1.MovementEntry_FromAccount{
-							FromAccountId: depositAccount,
-						},
-						ToAccountId: testAccount,
-						Amount:      "100",
-						ClientId:    "test_client_id",
+						FromAccountId: depositAccount,
+						ToAccountId:   testAccount,
+						Amount:        "100",
+						ClientId:      "test_client_id",
 					},
 				},
 			},
@@ -180,11 +178,9 @@ func TestTransactCorrectness(t *testing.T) {
 			IdempotencyKey: "one",
 			MovementEntries: []*ledgerv1.MovementEntry{
 				{
-					FromAccount: &ledgerv1.MovementEntry_FromAccount{
-						FromAccountId: depositAccount.GetAccountId(),
-					},
-					ToAccountId: firstAccount.GetAccountId(),
-					Amount:      "100",
+					FromAccountId: depositAccount.GetAccountId(),
+					ToAccountId:   firstAccount.GetAccountId(),
+					Amount:        "100",
 				},
 			},
 		}, nil)
@@ -205,11 +201,9 @@ func TestTransactCorrectness(t *testing.T) {
 					IdempotencyKey: uuid.NewString(),
 					MovementEntries: []*ledgerv1.MovementEntry{
 						{
-							FromAccount: &ledgerv1.MovementEntry_FromAccount{
-								FromAccountId: firstAccount.GetAccountId(),
-							},
-							ToAccountId: secondAccount.GetAccountId(),
-							Amount:      "10",
+							FromAccountId: firstAccount.GetAccountId(),
+							ToAccountId:   secondAccount.GetAccountId(),
+							Amount:        "10",
 						},
 					},
 				}, nil)

@@ -219,16 +219,6 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 			return err
 		}
 
-		// Don't take the zero(0) balance changes for the bulk-update as we don't need to update zero changes.
-		// We are still need to lock the balance though as it might be used by the client to specifically lock
-		// an account for any given reason.
-		//
-		// One valid use-case for this kind of thing is to lock both the main and chargeback account as we need to
-		// sum(main_account,chargeback_account) and ensure the total of the balance is not minus in total.
-		if changes[ab.AccountID].BalanceChanges.IsZero() {
-
-		}
-
 		var newBalance decimal.Decimal
 		// If the last ledger id is still the same under lock, then we should use the ending balance given, as there are no
 		// transactions being recorded concurrently for this account.

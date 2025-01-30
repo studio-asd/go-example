@@ -93,35 +93,35 @@ The deposit flow is crucial because now we are able to create the digital money 
 Withdrawal transaction is a waay to withdraw money from the wallet ecosystem into other ecosystem that receives the same currency. It can be Banks, another wallet or other type of ecosystem that recognize the system's assets as interchangeable assets. All user need to withdraw their money via `withdrawal wallet`, the money inside the `withdrawal wallet` cannot be transferred and will be there forever. However, to ensure all transactions to the `withdrawal wallet` is a valid and successful transactions, when withdrawal happens user will automatically transfer their funds into the user's `escrow wallet` first. The reason is, because withdrawal transaction usually involves third party connections as the money destination. As we should treat all thrid party connections as "uncertain"(because it can fail), we need a place where we are able to put the money temporarily before it marked as a success and fully transferred to the `withdrawal wallet`. To understand more on why the `escrow wallet` is needed, please check the [scalability](#scaling-the-wallet) section.
 
 ```text
-          |---------------|
-          | Wallet System |
-          |---------------|
-          |      $$$      |------------|
-          |---------------|            |
-                                       |
-                                       |
-                     |---------------------------------------------------------------|         |------------------------------|
-                     | User                                                          |         | System                       |
-                     |                                                              |          |                              |
-                     |        |-------------|              |---------------|        |          | |-------------------|        |
-                     |        | Main Wallet |              | Escrow Wallet |        |          | | Withdrawal Wallet |        |
-                     |        |-------------|              |---------------|        |          | |-------------------|        |
-                     |        |    $1,000   |              |       $0      |        |          | |      $10,000      |        |
-                     |        |-------------|    + 500     |---------------|        |          | |-------------------|        |
-                     |  Debit |     $500    | -----------> |      $500     | Credit |          | |      $10,000      |        |
-                     |        |-------------|              |---------------|        |  + 500   | |-------------------|        |
-                     |                               Debit |       $0      | ------------------> |      $10,500      | Credit |
-                     |                                     |---------------|        |          | |-------------------|        |
-                     |                                        |                     |          |                              |
-                     |----------------------------------------|---------------------|          |------------------------------|
-                                                              |                ^
-                                                              | + 500          |
-                                                              v                |   Success
-                                                      |--------------------|   | Notification
-                                                      | Third Party System |---|
-                                                      |--------------------|
-                                                      |        $$$         |
-                                                      |--------------------|
+|---------------|
+| Wallet System |
+|---------------|
+|      $$$      |------------|
+|---------------|            |
+                             |
+                             |
+           |---------------------------------------------------------------|         |------------------------------|
+           | User                                                          |         | System                       |
+           |                                                              |          |                              |
+           |        |-------------|              |---------------|        |          | |-------------------|        |
+           |        | Main Wallet |              | Escrow Wallet |        |          | | Withdrawal Wallet |        |
+           |        |-------------|              |---------------|        |          | |-------------------|        |
+           |        |    $1,000   |              |       $0      |        |          | |      $10,000      |        |
+           |        |-------------|    + 500     |---------------|        |          | |-------------------|        |
+           |  Debit |     $500    | -----------> |      $500     | Credit |          | |      $10,000      |        |
+           |        |-------------|              |---------------|        |  + 500   | |-------------------|        |
+           |                               Debit |       $0      | ------------------> |      $10,500      | Credit |
+           |                                     |---------------|        |          | |-------------------|        |
+           |                                        |                     |          |                              |
+           |----------------------------------------|---------------------|          |------------------------------|
+                                                    |                ^
+                                                    | + 500          |
+                                                    v                |   Success
+                                            |--------------------|   | Notification
+                                            | Third Party System |---|
+                                            |--------------------|
+                                            |        $$$         |
+                                            |--------------------|
 ```
 
 As you can see above, the money will only be transferred to the `withdrawal` wallet when there are "success notification" from the third party system that receives the money. If the transfer to the third party system results in failure, then the money will be transferred back to the `main wallet` fomr the `escrow wallet`.

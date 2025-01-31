@@ -14,7 +14,6 @@ Money inside one account in the ledger will be monotonicaly increased and decrea
 
 By locking for each row, each account can concurrently use their ledger without get affected by another account. This means as long as the accounts are separated for the end users the
 
-
 ## Wallet
 
 Wallet domain provide a wallet and stores the money in a currency inside it. Under the hood, wallet use `ledger` to store its balance. While `ledger` maintains the balance and bookeeping of the wallet transactions, the wallet domain maintains its abstraction to serve user-facing features.
@@ -90,49 +89,117 @@ The deposit flow is crucial because now we are able to create the digital money 
 
 #### Withdrawal Transaction
 
-Withdrawal transaction is a waay to withdraw money from the wallet ecosystem into other ecosystem that receives the same currency. It can be Banks, another wallet or other type of ecosystem that recognize the system's assets as interchangeable assets. All user need to withdraw their money via `withdrawal wallet`, the money inside the `withdrawal wallet` cannot be transferred and will be there forever. However, to ensure all transactions to the `withdrawal wallet` is a valid and successful transactions, when withdrawal happens user will automatically transfer their funds into the user's `escrow wallet` first. The reason is, because withdrawal transaction usually involves third party connections as the money destination. As we should treat all thrid party connections as "uncertain"(because it can fail), we need a place where we are able to put the money temporarily before it marked as a success and fully transferred to the `withdrawal wallet`. To understand more on why the `escrow wallet` is needed, please check the [scalability](#scaling-the-wallet) section.
+Withdrawal transaction is a way to withdraw money from the wallet ecosystem into other ecosystem that receives the same currency. It can be Banks, another wallet or other type of ecosystem that recognize the system's assets as interchangeable assets. All user need to withdraw their money via `withdrawal wallet`, the money inside the `withdrawal wallet` cannot be transferred and will be there forever. However, to ensure all transactions to the `withdrawal wallet` is a valid and successful transactions, when withdrawal happens user will automatically transfer their funds into the user's `escrow wallet` first. The reason is, because withdrawal transaction usually involves third party connections as the money destination. As we should treat all thrid party connections as "uncertain"(because it can fail), we need a place where we are able to put the money temporarily before it marked as a success and fully transferred to the `withdrawal wallet`. To understand more on why the `escrow wallet` is needed, please check the [scalability](#scaling-the-wallet) section.
 
 ```text
 |---------------|
 | Wallet System |
 |---------------|
-|      $$$      |------------|
-|---------------|            |
-                             |
-                             |
-           |---------------------------------------------------------------|         |------------------------------|
-           | User                                                          |         | System                       |
-           |                                                              |          |                              |
-           |        |-------------|              |---------------|        |          | |-------------------|        |
-           |        | Main Wallet |              | Escrow Wallet |        |          | | Withdrawal Wallet |        |
-           |        |-------------|              |---------------|        |          | |-------------------|        |
-           |        |    $1,000   |              |       $0      |        |          | |      $10,000      |        |
-           |        |-------------|    + 500     |---------------|        |          | |-------------------|        |
-           |  Debit |     $500    | -----------> |      $500     | Credit |          | |      $10,000      |        |
-           |        |-------------|              |---------------|        |  + 500   | |-------------------|        |
-           |                               Debit |       $0      | ------------------> |      $10,500      | Credit |
-           |                                     |---------------|        |          | |-------------------|        |
-           |                                        |                     |          |                              |
-           |----------------------------------------|---------------------|          |------------------------------|
-                                                    |                ^
-                                                    | + 500          |
-                                                    v                |   Success
-                                            |--------------------|   | Notification
-                                            | Third Party System |---|
-                                            |--------------------|
-                                            |        $$$         |
-                                            |--------------------|
+|      $$$      |---|
+|---------------|   |
+                    |
+                    |
+  |--------------------------------------------------------------|          |---------------------------------|
+  | User                                                         |          | System                          |
+  |                                                              |          |                                 |
+  |        |-------------|              |---------------|        |          |    |-------------------|        |
+  |        | Main Wallet |              | Escrow Wallet |        |          |    | Withdrawal Wallet |        |
+  |        |-------------|              |---------------|        |          |    |-------------------|        |
+  |        |    $1,000   |              |       $0      |        |          |    |      $10,000      |        |
+  |        |-------------|    + 500     |---------------|        |          |    |-------------------|        |
+  |  Debit |     $500    | -----------> |      $500     | Credit |          |    |      $10,000      |        |
+  |        |-------------|              |---------------|        |  + 500   |    |-------------------|        |
+  |                               Debit |       $0      | ---------------------> |      $10,500      | Credit |
+  |                                     |---------------|        |          |    |-------------------|        |
+  |                                        |                     |          |                                 |
+  |----------------------------------------|---------------------|          |---------------------------------|
+                                           |                ^
+                                           | + 500          |
+                                           v                |   Success
+                                   |--------------------|   | Notification
+                                   | Third Party System |---|
+                                   |--------------------|
+                                   |        $$$         |
+                                   |--------------------|
 ```
 
 As you can see above, the money will only be transferred to the `withdrawal` wallet when there are "success notification" from the third party system that receives the money. If the transfer to the third party system results in failure, then the money will be transferred back to the `main wallet` fomr the `escrow wallet`.
 
 #### Transfer Transaction
 
-To be added
+Transfer transaction is a way to move money from a user wallet to another wallet of user. The `transfer` can **only** be triggered by the user/client that authorized to access the wallet.
+
+```text
+|---------------|
+| Wallet System |
+|---------------|------------------------|
+|      $$$      |---|                    |
+|---------------|   |                    |
+                    |                    |
+                    |                    |
+               |--------|            |--------|
+               | User A |            | User B |
+               |--------|            |--------|
+               |  $500  |            |  $300  |
+               |--------|    +200    |--------|
+         Debit |  $300  | ---------> |  $500  | Credit
+               |--------|            |--------|
+```
+
+The `transfer` transaction is very straightforward as it only moving money to another account, thus a double entry accounting is happened here.
 
 #### Payment Transaction
 
-To be added
+A `payment` transaction is a way to categorized a movement of money as a `payment`. While this is simply a movement from user to another user(merchant), categorizing the transaction is important to not mix the transaction types. The `payment` transaction also supports additional metadata that supported to ensure there are enough information for the end user, for example additional fee because of tax, service, etc.
+
+```text
+|---------------|
+| Wallet System |
+|---------------|-----------------------------|
+|      $$$      |---|                         |
+|---------------|   |                         |
+                    |                         |
+                    |                         |
+               |--------|            |-------------------|
+               | User A |            | User D (Merchant) |
+               |--------|            |-------------------|
+               |  $500  |            |       $1,000      |
+               |--------|    +200    |-------------------|
+         Debit |  $300  | ---------> |       $1,200      | Credit
+               |--------|    |       |-------------------|
+                             |
+                             |
+                     |----------------|
+                     | $150 - Price   |
+                     |  $15 - Tax     |
+                     |  $35 - Service |
+                     |----------------|
+```
+
+As you can see above, even though the total amount of transaction is $200, but the price of the item is not $200. There are additional items that being added to the price that incur the cost.
+
+But, usually the `payment` transaction is not this simple though. As the provider of the payments, the wallet ecosystem also need some incentive so it able to continue to operate. Thus the system will retrieve some percentage of the item price as the revenue of the wallet ecosystem.
+
+```text
+|---------------|
+| Wallet System |-------------------------------------------------------------|
+|---------------|-----------------------------|                               |
+|      $$$      |---|                         |                               |
+|---------------|   |                         |                               |
+                    |                         |                               |
+                    |                         |                               |
+               |--------|            |-------------------|            |--------------|
+               | User A |            | User D (Merchant) |            | Payment Fees |
+               |--------|            |-------------------|            |--------------|
+               |  $500  |            |       $1,000      |            |   $10,000    |
+               |--------|    +200    |-------------------|            |--------------|
+         Debit |  $300  | ---------> |       $1,200      | Credit     |   $10,000    |
+               |--------|            |-------------------|            |--------------|
+               | $292.5 | ------------------------------------------> |   $10,007.5  | Credit
+               |--------|                    + $7.5                   |--------------|
+```
+
+There we go, there is an additional account called `payment fees` involved in the transaction and the user will pay 5% of $150(item price) as the payment fees($7.5).
 
 #### Chargebeback Transaction
 
@@ -192,6 +259,21 @@ With an additional chargeback wallet, its clear that the user need to make the c
     To be added
 
 ### Wallet Types
+
+There are two wallet criteria
+
+#### System Wallet
+
+1. Deposit wallet
+2. Withdrawal wallet
+3. Withdrawal fees wallet
+4. Payment fees wallet
+
+#### User Wallet 
+
+1. Uer's main wallet
+2. User's escrow wallet
+3. Merchant wallet
 
 ### Wallet Transaction & Lock
 

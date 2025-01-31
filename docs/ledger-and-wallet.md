@@ -2,9 +2,26 @@
 
 > This is not a Production ready software and not intended to be used outside of the go-example project. This project is intended to give an example of how to do programming in Go.
 
-The go-example project provides a project sample for two different domains, `ledger` and `wallet`. The `wallet` domain is specifically designed in the scope of `e-wallet` application.
+The go-example project provides a project sample for two different domains, `ledger` and `wallet`. The `wallet` domain is specifically designed in the scope of `e-wallet` application. The name of `ledger` is coming from [accounting ledger](https://en.wikipedia.org/wiki/Ledger).
 
 Please note that the `ledger` and `wallet` does not maintains the strict order of the user requests. While the strict order of transactions are important in some applications(for example in stock/cryptocurrency exchange), most of `e-wallet` system does not need the ordered guarantee. Instead of order guarantee, the system need the transactions to be `idempotent`.
+
+We recommend the reader to learn the basic accounting so the content can be more relateable. Let's discuss a bit about it to save time.
+
+1. [Ledger](https://en.wikipedia.org/wiki/Ledger)
+
+    Ledger keeps the records of all accounts transactions. Each transaction in the ledger recorded as a **pair** of either debit or credit. This method is called [double entry bookeeping or double entry accounting](https://en.wikipedia.org/wiki/Double-entry_bookkeeping).
+
+2. [Double Entry Bookeeping](https://en.wikipedia.org/wiki/Double-entry_bookkeeping)
+
+    As being mentioned in above section, the double entry bookeeping is a method to record two-sided accounting to maintain financial information. This method is fundamental as every debit must have a credit record alongside of it. The purpose of double entry bookkeeping is to detect error or fraud in financial records.
+
+    For example, we have a case of a money transfer of $100 from `user_a` to `user_b`. Then the record will looked like this
+
+    |user|debit|credit|
+    |-|-|-|
+    |user_a|$100|-|
+    |user_b|-|$100|
 
 ## Ledger
 
@@ -44,7 +61,7 @@ All of these transactions are [idempotent](https://en.wikipedia.org/wiki/Idempot
 
 Deposit transaction is a way to insert money from outside of the system into the wallet ecosystem. The amount of digital money should reflect the money that has been transferred into the bank account owned by the digital money product. Or, if you are in the cyrptocurrency industry, the money should reflect the money that stored inside your cryptocurrency wallet. The deposit transaction uses a special wallet called `deposit wallet`. Only this wallet can "create" money inside the ecosystem and give them to the user.
 
-> The cryptocurrency industry still need the off-chain solution because they need to off-ramp the digital currency to fiat or real money. As we are living in the world of off-chains, off-ramp is unavoidable.
+> The cryptocurrency industry still need the off-chain solution because they need to off-ramp the digital currency to fiat or real money. As we are living in the world dominated by off-chain ecosystem, off-ramp is unavoidable.
 
 ```text
              |------|
@@ -55,9 +72,9 @@ Deposit transaction is a way to insert money from outside of the system into the
         |                     |------------|               |----------|
         |                     | Acc Wallet |               | Acc User |
         |                     |------------|               |----------|
-        |                     |   $10.000  |               |   $100   |
+        |                     |   $10,000  |               |   $100   |
         |                     |------------|    + $100     |----------|
-        |              Credit |   $10.100  | <------------ |    $0    | Debit
+        |              Credit |   $10,100  | <------------ |    $0    | Debit
         |                     |------------|               |----------|
         |
         |
@@ -75,17 +92,17 @@ Deposit transaction is a way to insert money from outside of the system into the
                           |----------------|             |-------------|
                           | Deposit Wallet |             | User Wallet |
                           |----------------|             |-------------|
-                          |  - $10.000     |             |     $0      |
+                          |  - $10,000     |             |     $0      |
                           |----------------|   + $100    |-------------|
-                    Debit |  - $10.100     | ----------> |    $100     | Credit
+                    Debit |  - $10,100     | ----------> |    $100     | Credit
                           |----------------|             |-------------|
 ```
 
 While the above model is a simplified model of how the transfer happens between accounts in the bank, in general the concept is still the same. The double entry accounting is the foundation to record money movement, thus money is flowing from a valid souce into a a valid destination.
 
-Maybe you have a question on why the `deposit wallet` records negative balance? The short answer is because of [scaling issues](#scaling-the-wallet), we directly transfer the amount of money from the system's `deposit wallet` to the `user's wallet`. But while doing so, we are maintaining the exact opposite of our money inside the bank, which is fine as long as the data is tally.
+Maybe you have a question on why the `deposit wallet` records negative balance? The short answer is because the user's money is now becomes the [liability](https://en.wikipedia.org/wiki/Liability_(financial_accounting)#:~:text=In%20financial%20accounting%2C%20a%20liability,obligation%20arising%20from%20past%20events.) of the wallet platform, the platform is now responsible for the user's money. So, even though we are recording a surplus of balance in the bank(from the users), we are liable to give the money back in the platform.
 
-The deposit flow is crucial because now we are able to create the digital money out from nowehre, thus ensuring the backing one to one(1:1) assets is really important. If this happen, then people can spend more than they should and somebody else(the company) should fill the gap in their book.
+The deposit flow is crucial because now we are able to create the digital money out from nowehre, thus ensuring the backing one to one(1:1) liable assets is really important. The mapping should not only for the total of assets in the bank, but the mapping of each user assets.
 
 #### Withdrawal Transaction
 
@@ -195,7 +212,7 @@ But, usually the `payment` transaction is not this simple though. As the provide
                |--------|    +200    |-------------------|            |--------------|
          Debit |  $300  | ---------> |       $1,200      | Credit     |   $10,000    |
                |--------|            |-------------------|            |--------------|
-               | $292.5 | ------------------------------------------> |   $10,007.5  | Credit
+         Debit | $292.5 | ------------------------------------------> |   $10,007.5  | Credit
                |--------|                    + $7.5                   |--------------|
 ```
 
@@ -265,9 +282,26 @@ There are two wallet criteria
 #### System Wallet
 
 1. Deposit wallet
+
+    Deposit wallet is where the money is coming from when the "real money" is coming in to the bank's account of the e-wallet platform. The deposit wallet then disburse the same amount of money to the end user.
+
 2. Withdrawal wallet
+
+    Withdrawal wallet is where the money goes to when the end user wants to withdraw their money to other ecosystem such like banks, other wallet ecosystem, etc.
+
 3. Withdrawal fees wallet
+
+    Withdrawal fees wallet is where the `fee` money from withdrawal transaction is being kept by the system.
+
 4. Payment fees wallet
+
+    Payment fees wallet is where the `fee` money from payment transaction is being kept by the system.
+
+5. Consolidated fees wallet
+
+    Consolidated fees wallet is where all `fee` will be consilidated automatically by the system from all fees wallet. The consolidation of the fees is needed because there are several fees wallet exists within the system. So it will be easier for the system operator to withdraw all the fees money at once.
+
+6. Intermediary wallet
 
 #### User Wallet 
 
@@ -294,6 +328,8 @@ In the [previous](#wallet-transaction--lock) section we learned on how `wallet` 
 - Payment from `user` to `merchant`
 - Deposit from `deposit` to `user`
 - Withdrawal from `user` to `withdrawal`
+
+### Fee Management
 
 ### Reconciliation And Monitoring
 

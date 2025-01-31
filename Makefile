@@ -1,6 +1,12 @@
 include database/Makefile
 include proto/Makefile
 
+.PHONY: install
+install:
+ifeq (,$(shell which golangci-lint))
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.63.4
+endif
+
 .PHONY: dbup
 dbup:
 	@$(MAKE) upall
@@ -33,3 +39,9 @@ test:
 	cd services && PGTEST_SKIP_PREPARE=1 go test -v -race ./... -run=TestTransact
 	make dbdown
 	cd internal && go test -v -race ./...
+
+.PHONY: lint
+lint: install
+	golangci-lint run --verbose \
+		--config=./.config/golangcilint.yaml \
+		--print-resources-usage

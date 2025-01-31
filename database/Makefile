@@ -1,5 +1,6 @@
 REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
 DB_SCRIPT := $(REPOSITORY_ROOT)/database/all.bash
+RIVER_QUEUE := github.com/riverqueue/river@v0.16.0
 
 gen_dirs := \
 	go-example/ledger \
@@ -42,3 +43,5 @@ dbcomposeup:
 .PHONY: dbcomposedown
 dbcomposedown:
 	@docker compose -f $(REPOSITORY_ROOT)/database/docker-compose.yaml down -v
+
+$(RIVER_QUEUE):

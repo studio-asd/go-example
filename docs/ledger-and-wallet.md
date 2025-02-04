@@ -4,7 +4,9 @@
 
 The go-example project provides a project sample for two different domains, `ledger` and `wallet`. The `wallet` domain is specifically designed in the scope of `e-wallet` application. The name of `ledger` is coming from [accounting ledger](https://en.wikipedia.org/wiki/Ledger).
 
-Please note that the `ledger` and `wallet` does not maintains the strict order of the user requests. While the strict order of transactions are important in some applications(for example in stock/cryptocurrency exchange), most of `e-wallet` system does not need the ordered guarantee. Instead of order guarantee, the system need the transactions to be `idempotent`.
+While there are some applications that maintains the strict order of transactions(like stock/cryptocurrency exchange), this project doesn't guarantee strict ordering as it doesn't have to. The [idempotency]((https://en.wikipedia.org/wiki/Idempotence)) of the transaction is far more important for the transaction in this project.
+
+## Basic Accounting
 
 We recommend the reader to learn the basic accounting so the content can be more relateable. Let's discuss a bit about it to save time.
 
@@ -22,6 +24,15 @@ We recommend the reader to learn the basic accounting so the content can be more
     |-|-|-|
     |user_a|$100|-|
     |user_b|-|$100|
+
+    And if the `user_b` decided to transfer the money to `user_c`, then the record will be appended like this:
+
+    |user|debit|credit|
+    |-|-|-|
+    |user_a|$100|-|
+    |user_b|-|$100|
+    |user_b|$100|-|
+    |user_c|-|$100|
 
 ## Ledger
 
@@ -44,6 +55,51 @@ For example, we cannot do this inside the `ledger`:
 2. Set a different `wallet_type` for each ledger.
 
     By default, `ledger` is only a place to store a historical data of an account. So it doesn't understand any concept of `type` inside of it, everything is the same. So the `wallet` domain need to maintain its own abstraction of `wallet_type` inside its database. For business use cases, wallet usually have different-different kind of types. For example we can have `main` wallet `savings` wallet and other kind of wallet based on the business and user needs.
+
+### Wallet Types
+
+There are two big types of wallets in the system:
+
+1. System's Wallet
+
+    System wallet is a collection of wallet that owned by the system to record all financial activities in the system that involves the system directly. Anything besides `transfer` involves the system as the system need to act as an intermediary.
+
+2. User's Wallet
+
+    User wallet is a collection of wallet that owned by the user to supports user's financial activity. The wallet can be used by the user's to fulfill their needs inside the platform. From doing payments to transferring money to other users.
+
+We look on how these two wallets being used in [transaction](#wallet-transaction-types) later on.
+
+#### System Wallet
+
+1. Deposit wallet
+
+    Deposit wallet is where the money is coming from when the "real money" is coming in to the bank's account of the e-wallet platform. The deposit wallet then disburse the same amount of money to the end user.
+
+2. Withdrawal wallet
+
+    Withdrawal wallet is where the money goes to when the end user wants to withdraw their money to other ecosystem such like banks, other wallet ecosystem, etc.
+
+3. Withdrawal fees wallet
+
+    Withdrawal fees wallet is where the `fee` money from withdrawal transaction is being kept by the system.
+
+4. Payment fees wallet
+
+    Payment fees wallet is where the `fee` money from payment transaction is being kept by the system.
+
+5. Consolidated fees wallet
+
+    Consolidated fees wallet is where all `fee` will be consilidated automatically by the system from all fees wallet. The consolidation of the fees is needed because there are several fees wallet exists within the system. So it will be easier for the system operator to withdraw all the fees money at once.
+
+6. Intermediary wallet
+
+#### User Wallet 
+
+1. Main wallet
+2. Escrow wallet
+3. Merchant wallet
+4. Chargeback Wallet
 
 ### Wallet Transaction Types
 
@@ -116,28 +172,28 @@ Withdrawal transaction is a way to withdraw money from the wallet ecosystem into
 |---------------|   |
                     |
                     |
-  |--------------------------------------------------------------|          |---------------------------------|
-  | User                                                         |          | System                          |
-  |                                                              |          |                                 |
-  |        |-------------|              |---------------|        |          |    |-------------------|        |
-  |        | Main Wallet |              | Escrow Wallet |        |          |    | Withdrawal Wallet |        |
-  |        |-------------|              |---------------|        |          |    |-------------------|        |
-  |        |    $1,000   |              |       $0      |        |          |    |      $10,000      |        |
-  |        |-------------|    + 500     |---------------|        |          |    |-------------------|        |
-  |  Debit |     $500    | -----------> |      $500     | Credit |          |    |      $10,000      |        |
-  |        |-------------|              |---------------|        |  + 500   |    |-------------------|        |
-  |                               Debit |       $0      | ---------------------> |      $10,500      | Credit |
-  |                                     |---------------|        |          |    |-------------------|        |
-  |                                        |                     |          |                                 |
-  |----------------------------------------|---------------------|          |---------------------------------|
-                                           |                ^
-                                           | + 500          |
-                                           v                |   Success
-                                   |--------------------|   | Notification
-                                   | Third Party System |---|
-                                   |--------------------|
-                                   |        $$$         |
-                                   |--------------------|
+  |-------------------------------------------------------------|          |---------------------------------|
+  | User                                                        |          | System                          |
+  |                                                             |          |                                 |
+  |       |-------------|              |---------------|        |          |    |-------------------|        |
+  |       | Main Wallet |              | Escrow Wallet |        |          |    | Withdrawal Wallet |        |
+  |       |-------------|              |---------------|        |          |    |-------------------|        |
+  |       |    $1,000   |              |       $0      |        |          |    |      $10,000      |        |
+  |       |-------------|    + 500     |---------------|        |          |    |-------------------|        |
+  | Debit |     $500    | -----------> |      $500     | Credit |          |    |      $10,000      |        |
+  |       |-------------|              |---------------|        |  + 500   |    |-------------------|        |
+  |                              Debit |       $0      | ---------------------> |      $10,500      | Credit |
+  |                                    |---------------|        |          |    |-------------------|        |
+  |                                       |                     |          |                                 |
+  |---------------------------------------|---------------------|          |---------------------------------|
+                                          |                ^
+                                          | + 500          |
+                                          v                |   Success
+                                  |--------------------|   | Notification
+                                  | Third Party System |---|
+                                  |--------------------|
+                                  |        $$$         |
+                                  |--------------------|
 ```
 
 As you can see above, the money will only be transferred to the `withdrawal` wallet when there are "success notification" from the third party system that receives the money. If the transfer to the third party system results in failure, then the money will be transferred back to the `main wallet` fomr the `escrow wallet`.
@@ -195,7 +251,7 @@ A `payment` transaction is a way to categorized a movement of money as a `paymen
 
 As you can see above, even though the total amount of transaction is $200, but the price of the item is not $200. There are additional items that being added to the price that incur the cost.
 
-But, usually the `payment` transaction is not this simple though. As the provider of the payments, the wallet ecosystem also need some incentive so it able to continue to operate. Thus the system will retrieve some percentage of the item price as the revenue of the wallet ecosystem.
+But, usually the `payment` transaction is not this simple though. As the provider of the payments, the wallet ecosystem need some incentive so it able to continue to operate. Thus the system will retrieve some percentage of the item price as the revenue of the wallet ecosystem.
 
 ```text
 |---------------|
@@ -275,40 +331,6 @@ With an additional chargeback wallet, its clear that the user need to make the c
 
     To be added
 
-### Wallet Types
-
-There are two wallet criteria
-
-#### System Wallet
-
-1. Deposit wallet
-
-    Deposit wallet is where the money is coming from when the "real money" is coming in to the bank's account of the e-wallet platform. The deposit wallet then disburse the same amount of money to the end user.
-
-2. Withdrawal wallet
-
-    Withdrawal wallet is where the money goes to when the end user wants to withdraw their money to other ecosystem such like banks, other wallet ecosystem, etc.
-
-3. Withdrawal fees wallet
-
-    Withdrawal fees wallet is where the `fee` money from withdrawal transaction is being kept by the system.
-
-4. Payment fees wallet
-
-    Payment fees wallet is where the `fee` money from payment transaction is being kept by the system.
-
-5. Consolidated fees wallet
-
-    Consolidated fees wallet is where all `fee` will be consilidated automatically by the system from all fees wallet. The consolidation of the fees is needed because there are several fees wallet exists within the system. So it will be easier for the system operator to withdraw all the fees money at once.
-
-6. Intermediary wallet
-
-#### User Wallet 
-
-1. Uer's main wallet
-2. User's escrow wallet
-3. Merchant wallet
-
 ### Wallet Transaction & Lock
 
 As we already know, `wallet` uses `ledger` to store its balance. This means the order of transaction and locks is guaranteed inside one ledger account only, and not across all ledgers owned by an account. And because the `wallet` uses `ledger` under the hood, it doesn't guarantee the order of the transactions on some edge-cases. For example, we have two different type of wallet: `main` and `chargeback` wallet. The `main` wallet can only be used to transact if the `chargeback` wallet is zero(0) in value. And there might be some cases where there are a race condition of a `chargeback` is being triggered at the same time when a user pays for something else. This means, the `chargeback` is not being prioritized and money already flowing out from the user's account to pay for something.
@@ -322,7 +344,60 @@ In this case, should we make all transactions for `wallet` ordered for a reason 
 
 ### Scaling The Wallet
 
-In the [previous](#wallet-transaction--lock) section we learned on how `wallet` utilize `ledger` under the hood to ensure the monotonicity of the balance. While a single wallet lock contention is manageable because each user has their own wallet, how about the wallet that shared across all users. For example, `deposit` and `withdrawal` wallet are shared across all users and a transaction to that wallet will fully lock the wallet until the transaction is completed. To understand the problem better, lets take a look again in how the transaction for each use case is being executed:
+> Scale is an overused terms in the software engineering world as it depends on the context of the scale itself. Please note that we are not aiming to solve the world level scale like Google, Netflix, Amazon, etc. The scope of scaling here is about overcoming limitations with simple solution without making the system incredibly complex.
+
+In the [previous](#wallet-transaction--lock) section we learned on how `wallet` utilize `ledger` under the hood to ensure the monotonicity of the balance. And its important for us to understand how our dependencies behave under the hood so we can have an idea on how we should scale the system. Let's revisit on how the `ledger` behave before going further:
+
+1. The money in a `ledger` account is guaranteed to be monotonically increased and decreased. The system use lock under the hood.
+2. The `ledger` use PostgreSQL to store the data under the hood, and it use `SELECT FOR UPDATE` to acquire a row level lock.
+3. As the `ledger` use row level lock, only affected accounts are lock inside when a transaction is running. Thus the lock contention for shared account can be huge depends on the use cases.
+
+Great, because now we know how `ledger` behave, we are 100% sure that `wallet` that shared across all transactions will worsen the transaction latency because of [lock contention](https://en.wikipedia.org/wiki/Resource_contention). But, a shared `wallet` cannot be avoided at all costs because we have several use cases that require them to be exists. 
+
+```text
+      |--------|   +100
+      | User_A |----------|
+      |--------|          |
+                          |  Deposit
+      |--------|   + 200  | To Wallet |------|
+      | User_B |--------------------> | Bank |--|
+      |--------|          |           |------|  |
+                          |                     |
+      |--------|   + 300  |                     |
+      | User_C |----------|                     |    Depsoit
+      |--------|                                | Notifications
+                                                |
+                                                |
+        |---------------------------------------|---------------------------------------|
+        | Wallet System                         v                                       |
+        |                                |----------------|                             |
+        |                                | Deposit Wallet |                             |
+        |                                |----------------|                             |
+        |                                |       $$$      |                             |
+        |                                |----------------|                             |
+        |                     |----------|    $$$ - 100   | Debit                       |
+        |                     |          |----------------|                             |
+        |                     |    Debit |    $$$ - 200   |----|                        |
+        |                     |          |----------------|    |                        |
+        |                +100 |     |----|    $$$ - 300   |    |                        |
+        |                     |     |    |----------------|    |                        |
+        |                     |     |                          |                        |
+        |         |--------|  |     |       |--------|         |      |--------|        |
+        |         | User_A |  |     | +300  | User_C |         | +200 | User_B |        |
+        |         |--------|  |     |       |--------|         |      |--------|        |
+        |         |  $100  |  |     |       |  $100  |         |      |  $100  |        |
+        |         |--------|  |     |       |--------|         |      |--------|        |
+        |  Credit |  $200  |<-|     |------>|  $400  | Credit  |----->|  $300  | Credit |
+        |         |--------|                |--------|                |--------|        |
+        |                                                                               |
+        |-------------------------------------------------------------------------------|
+```
+
+As you can see above, every transaction that involves the `deposit wallet` is sequenced depends on how the request is coming in. In above case it is `user_a` -> `user_b` -> `user_c`. As a transaction can only happen after another transaction is finished, the way of handling a transaction is practically becoming a queue with a single processor. This means, the concurrent requests from users will be handled much longer depending on the size of the queue, and there is a big chance that the transaction is failed because of lock contention that leads to timeout.
+
+In many cases, lock contention can be scaled through partitioning, thus the load are load-balanced within the partitions/clusters. The same methodology can also be used to scale the `wallet` by creating a partition/cluster of `system wallet` that shared across a type of transaction. For example, instead of having only one(1) `deposit wallet`, we can create ten(10) `deposit wallet` and load balance the `deposit transaction` whenever it happens.
+
+Now, let's look at each transaction on how this become a problem and how we are aiming to solve the issue.
 
 - Transfer from `user` to `user`
 - Payment from `user` to `merchant`

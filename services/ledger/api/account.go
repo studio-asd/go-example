@@ -33,7 +33,7 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 	createReqs := make([]ledgerpg.CreateLedgerAccount, len(request.Accounts))
 
 	// accountInfo is the information we kept for the callback function to allow them to consume the informations.
-	var accountInfo = make([]ledger.AccountInfo, len(request.Accounts))
+	accountInfo := make([]ledger.AccountInfo, len(request.Accounts))
 	// If the parent account id is not empty, then we need to check whether the parent has another parent or not.
 	// This is because we are not allowing sub of sub-account to be created at the first place.
 	var parentAccountIDs []string
@@ -51,7 +51,6 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 			AccountID:       accID,
 			ParentAccountID: acc.ParentAccountId,
 			AllowNegative:   acc.AllowNegative,
-			AccountStatus:   ledgerpg.AccountStatusActive,
 			Currency:        cur,
 			CreatedAt:       createdAt,
 		}
@@ -74,9 +73,6 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 		for _, acc := range accs {
 			if acc.ParentAccountID != "" {
 				return nil, fmt.Errorf("%w: cannot use account %s as the parent account. The account is registered as a sub-account", ledger.ErrAccountHasParent, acc.AccountID)
-			}
-			if acc.AccountStatus == ledgerpg.AccountStatusInactive {
-				return nil, fmt.Errorf("%w: cannot use account %s as the parent account. The account is inactive", ledger.ErrAccountInactive, acc.AccountID)
 			}
 		}
 	}

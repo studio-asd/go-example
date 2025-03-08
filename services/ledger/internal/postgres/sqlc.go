@@ -5,7 +5,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : go_example
-// generated_time  : 2025-01-21T15:09:09+07:00
+// generated_time  : 2025-03-08T22:36:52+07:00
 
 package postgres
 
@@ -24,6 +24,12 @@ type Queries struct {
 // New returns a new queries instance of go_example database.
 func New(db *postgres.Postgres) *Queries {
 	return &Queries{db: db}
+}
+
+// WithMetrics wraps the queries to ensure the query metrics are recorded with the name. If name is empty then the function will skip the
+// metrics recording.
+func (q *Queries) WithMetrics(ctx context.Context, name string, fn func(context.Context, *postgres.Postgres) error) error {
+	return q.db.WithMetrics(ctx, name, fn)
 }
 
 // WithTransact wraps the queries inside a database transaction. The transaction will be committed if no error returned

@@ -4,3 +4,8 @@ import "embed"
 
 //go:embed {{ .SchemaName }}
 var EmbeddedSchema embed.FS
+
+const (
+    DatabaseName = "{{ .DatabaseName }}"
+	PostgresDSN = "postgres://postgres:postgres@localhost:5432/{{ .DatabaseName }}"
+)

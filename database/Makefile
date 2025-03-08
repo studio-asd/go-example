@@ -43,5 +43,3 @@ dbcomposeup:
 .PHONY: dbcomposedown
 dbcomposedown:
 	@docker compose -f $(REPOSITORY_ROOT)/database/docker-compose.yaml down -v
-
-$(RIVER_QUEUE):

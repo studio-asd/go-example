@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+package api.shared.v1;
+option go_package = "github.com/studio-asd/go-example/proto/api/shared/v1";
+
+message Error {}

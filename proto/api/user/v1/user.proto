@@ -5,3 +5,8 @@ option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
+
+message LoginRequest {
+  string email = 1 [ (buf.validate.field).required = true ];
+  string password = 2 [ (buf.validate.field).required = true ];
+}

@@ -34,7 +34,7 @@ func TestMove(t *testing.T) {
 		name                  string
 		entries               ledger.MovementLedgerEntries
 		expectMovementResult  internal.MovementResult
-		expectMovement        Movement
+		expectMovement        LedgerMovement
 		expectAccountsBalance map[string]GetAccountsBalanceRow
 		expectAccountsLedger  []GetAccountsLedgerByMovementIDRow
 	}{
@@ -98,10 +98,9 @@ func TestMove(t *testing.T) {
 				},
 				Time: createdAt,
 			},
-			expectMovement: Movement{
+			expectMovement: LedgerMovement{
 				MovementID:     "one",
 				IdempotencyKey: "one",
-				MovementStatus: MovementStatusFinished,
 				CreatedAt:      createdAt,
 				UpdatedAt:      sql.NullTime{},
 			},
@@ -112,7 +111,6 @@ func TestMove(t *testing.T) {
 					Balance:       decimal.NewFromInt(0),
 					CurrencyID:    1,
 					LastLedgerID:  "one",
-					AccountStatus: AccountStatusActive,
 					CreatedAt:     createdAt,
 					UpdatedAt:     sql.NullTime{Time: createdAt, Valid: true},
 				},
@@ -122,7 +120,6 @@ func TestMove(t *testing.T) {
 					Balance:       decimal.NewFromInt(200),
 					CurrencyID:    1,
 					LastLedgerID:  "two",
-					AccountStatus: AccountStatusActive,
 					CreatedAt:     createdAt,
 					UpdatedAt:     sql.NullTime{Time: createdAt, Valid: true},
 				},
@@ -166,7 +163,6 @@ func TestMove(t *testing.T) {
 			for accountID, balance := range accountsSetup {
 				if err := q.CreateLedgerAccount(testCtx, CreateLedgerAccount{
 					AccountID:     accountID,
-					AccountStatus: AccountStatusActive,
 					AllowNegative: false,
 					balance:       balance,
 					Currency:      currency.IDR,

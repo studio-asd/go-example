@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ var (
 func init() {
 	var err error
 	validator, err = protovalidate.New(
-		protovalidate.WithFailFast(true),
+		protovalidate.WithFailFast(),
 		protovalidate.WithMessages(
 			&ledgerv1.TransactRequest{},
 			&ledgerv1.CreateLedgerAccountsRequest_Account{},
@@ -40,11 +41,12 @@ func init() {
 
 type API struct {
 	queries *ledgerpg.Queries
+	logger  *slog.Logger
 }
 
-func New(queries *ledgerpg.Queries) *API {
+func New(pg *postgres.Postgres) *API {
 	return &API{
-		queries: queries,
+		queries: ledgerpg.New(pg),
 	}
 }
 
@@ -53,6 +55,7 @@ func (a *API) Name() string {
 }
 
 func (a *API) Init(ctx srun.Context) error {
+	a.logger = ctx.Logger
 	return nil
 }
 

@@ -6,108 +6,20 @@ package postgres
 
 import (
 	"database/sql"
-	"database/sql/driver"
-	"fmt"
 	"time"
 )
 
-type AccountStatus string
-
-const (
-	AccountStatusActive   AccountStatus = "active"
-	AccountStatusInactive AccountStatus = "inactive"
-)
-
-func (e *AccountStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = AccountStatus(s)
-	case string:
-		*e = AccountStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for AccountStatus: %T", src)
-	}
-	return nil
-}
-
-type NullAccountStatus struct {
-	AccountStatus AccountStatus
-	Valid         bool // Valid is true if AccountStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullAccountStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.AccountStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.AccountStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullAccountStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.AccountStatus), nil
-}
-
-type MovementStatus string
-
-const (
-	MovementStatusFinished MovementStatus = "finished"
-	MovementStatusReversed MovementStatus = "reversed"
-)
-
-func (e *MovementStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MovementStatus(s)
-	case string:
-		*e = MovementStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MovementStatus: %T", src)
-	}
-	return nil
-}
-
-type NullMovementStatus struct {
-	MovementStatus MovementStatus
-	Valid          bool // Valid is true if MovementStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMovementStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.MovementStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MovementStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMovementStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MovementStatus), nil
-}
-
-type Account struct {
+type LedgerAccount struct {
 	AccountID       string
 	ParentAccountID string
-	AccountStatus   AccountStatus
 	CurrencyID      int32
 	CreatedAt       time.Time
 	UpdatedAt       sql.NullTime
 }
 
-type Movement struct {
+type LedgerMovement struct {
 	MovementID         string
 	IdempotencyKey     string
-	MovementStatus     MovementStatus
 	CreatedAt          time.Time
 	UpdatedAt          sql.NullTime
 	ReversedAt         sql.NullTime

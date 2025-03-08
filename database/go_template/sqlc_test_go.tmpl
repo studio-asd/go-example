@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/studio-asd/go-example/internal/testing/pghelper"
-	db "github.com/studio-asd/go-example/database/schemas/{{ .SchemaDir }}"
+	schema "github.com/studio-asd/go-example/database/schemas/{{ .SchemaDir }}"
 )
 
 var (
@@ -44,10 +44,9 @@ func TestMain(m *testing.M) {
 }
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
-	dbName := "{{ .DatabaseName }}"
 	testHelper, err = pghelper.New(ctx, pghelper.Config{
-	   DatabaseName: dbName,
-	   EmbeddedSchema: db.EmbeddedSchema,
+	   DatabaseName: schema.DatabaseName,
+	   EmbeddedSchema: schema.EmbeddedSchema,
 	}, New)
 	if err != nil {
 		code = 1

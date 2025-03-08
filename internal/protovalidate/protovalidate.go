@@ -18,7 +18,7 @@ var DefaultConstraintsMap = map[string]errors.Kind{
 }
 
 type Validator struct {
-	validate       *protovalidate.Validator
+	validate       protovalidate.Validator
 	constraintsMap map[string]errors.Kind
 }
 
@@ -58,25 +58,25 @@ func (v *Validator) Validate(message proto.Message) error {
 	}
 	// We expect that failfast is being used, as we will only retrieve the first error.
 	violation := validateErr.Violations[0]
-	kind, ok := v.constraintsMap[violation.ConstraintId]
+	kind, ok := v.constraintsMap[violation.Proto.GetConstraintId()]
 	if !ok {
 		kind = errors.KindUnknown
 	}
 	// The errorMessage to the user will be "violation_message for vioation_field_path". The field path will be quite verbose
 	// for the user, but we think it should be fine.
-	errorMessage := violation.GetMessage() + " for " + violation.GetFieldPath()
+	errorMessage := violation.Proto.GetMessage() + " for " + violation.Proto.GetField().String()
 	return errors.New(
 		errorMessage,
 		kind,
 		errors.Fields{
-			"protovalidate.constraint_id", violation.GetConstraintId(),
-			"protovalidate.field_path", violation.GetFieldPath(),
+			"protovalidate.constraint_id", violation.Proto.GetConstraintId(),
+			"protovalidate.field_path", violation.Proto.GetField().String(),
 		},
 	)
 }
 
-func WithFailFast(failFast bool) protovalidate.ValidatorOption {
-	return protovalidate.WithFailFast(failFast)
+func WithFailFast() protovalidate.ValidatorOption {
+	return protovalidate.WithFailFast()
 }
 
 func WithMessages(messages ...proto.Message) protovalidate.ValidatorOption {

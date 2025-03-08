@@ -23,7 +23,7 @@ func TestTransact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tl := New(tq.Queries())
+	tl := New(tq.Queries().Postgres())
 
 	newTableQuery := "CREATE TABLE IF NOT EXISTS trasact_test(id int PRIMARY KEY);"
 	err = tq.Queries().Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
@@ -147,7 +147,7 @@ func TestTransactCorrectness(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		a := New(th.Queries())
+		a := New(th.Queries().Postgres())
 
 		accountsResp, err := a.CreateAccounts(context.Background(), &ledgerv1.CreateLedgerAccountsRequest{
 			Accounts: []*ledgerv1.CreateLedgerAccountsRequest_Account{

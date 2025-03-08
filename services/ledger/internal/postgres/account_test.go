@@ -20,7 +20,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 	tests := []struct {
 		name                  string
 		createAccounts        []CreateLedgerAccount
-		expectAccounts        []Account
+		expectAccounts        []LedgerAccount
 		expectAccountsBalance []GetAccountsBalanceRow
 		// isolatedSchema fork the schema and creates a new schema for the test.
 		isolatedSchema bool
@@ -32,7 +32,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.IDR,
 					CreatedAt:       now.Add(time.Second),
@@ -40,24 +39,21 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "two",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.USD,
 					CreatedAt:       now.Add(time.Second * 2),
 				},
 			},
-			expectAccounts: []Account{
+			expectAccounts: []LedgerAccount{
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					CurrencyID:      1,
 					CreatedAt:       now.Add(time.Second),
 				},
 				{
 					AccountID:       "two",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					CurrencyID:      2,
 					CreatedAt:       now.Add(time.Second * 2),
 				},
@@ -65,7 +61,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			expectAccountsBalance: []GetAccountsBalanceRow{
 				{
 					AccountID:     "one",
-					AccountStatus: AccountStatusActive,
 					CurrencyID:    1,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -74,7 +69,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				},
 				{
 					AccountID:     "two",
-					AccountStatus: AccountStatusActive,
 					CurrencyID:    2,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -90,17 +84,15 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one_one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusInactive,
 					AllowNegative:   true,
 					Currency:        currency.IDR,
 					CreatedAt:       now.Add(time.Second * 3),
 				},
 			},
-			expectAccounts: []Account{
+			expectAccounts: []LedgerAccount{
 				{
 					AccountID:       "one_one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusInactive,
 					CurrencyID:      1,
 					CreatedAt:       now.Add(time.Second * 3),
 				},
@@ -108,7 +100,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			expectAccountsBalance: []GetAccountsBalanceRow{
 				{
 					AccountID:     "one_one",
-					AccountStatus: AccountStatusInactive,
 					CurrencyID:    1,
 					AllowNegative: true,
 					Balance:       decimal.Zero,
@@ -125,7 +116,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.IDR,
 					CreatedAt:       now.Add(time.Second),
@@ -133,7 +123,6 @@ func TestCreateLedgerAccounts(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					AllowNegative:   true,
 					Currency:        currency.USD,
 					CreatedAt:       now.Add(time.Second * 2),
@@ -200,7 +189,6 @@ func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
 				{
 					AccountID:       "one",
 					ParentAccountID: "",
-					AccountStatus:   AccountStatusActive,
 					Currency:        currency.IDR,
 					AllowNegative:   false,
 					CreatedAt:       createdAt,
@@ -209,7 +197,6 @@ func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
 				{
 					AccountID:       "two",
 					ParentAccountID: "one",
-					AccountStatus:   AccountStatusActive,
 					Currency:        currency.IDR,
 					AllowNegative:   false,
 					CreatedAt:       createdAt,
@@ -218,7 +205,6 @@ func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
 				{
 					AccountID:       "three",
 					ParentAccountID: "one",
-					AccountStatus:   AccountStatusActive,
 					Currency:        currency.IDR,
 					AllowNegative:   false,
 					CreatedAt:       createdAt,
@@ -227,7 +213,6 @@ func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
 				{
 					AccountID:       "four",
 					ParentAccountID: "one",
-					AccountStatus:   AccountStatusActive,
 					Currency:        currency.IDR,
 					AllowNegative:   false,
 					CreatedAt:       createdAt,

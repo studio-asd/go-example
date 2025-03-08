@@ -4,7 +4,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : go_example
-// generated_time  : 2025-01-21T15:09:09+07:00
+// generated_time  : 2025-03-08T22:36:52+07:00
 
 package postgres
 
@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/studio-asd/go-example/internal/testing/pghelper"
-	db "github.com/studio-asd/go-example/database/schemas/go-example"
+	schema "github.com/studio-asd/go-example/database/schemas/go-example"
 )
 
 var (
@@ -44,10 +44,9 @@ func TestMain(m *testing.M) {
 }
 
 func run(ctx context.Context, m *testing.M) (code int, err error) {
-	dbName := "go_example"
 	testHelper, err = pghelper.New(ctx, pghelper.Config{
-	   DatabaseName: dbName,
-	   EmbeddedSchema: db.EmbeddedSchema,
+	   DatabaseName: schema.DatabaseName,
+	   EmbeddedSchema: schema.EmbeddedSchema,
 	}, New)
 	if err != nil {
 		code = 1

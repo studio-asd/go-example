@@ -1,0 +1,16 @@
+resources:
+  grpc:
+    servers:
+      - name: main
+        address: ":20010"
+        grpc_gateway:
+          address: ":8080"
+  postgres:
+    monitor_stats: true
+    max_retry: 3
+    retry_delay: "1s"
+    connects:
+      - name: "go_example"
+        driver: "pgx"
+        primary:
+          dsn: "postgres://postgres:postgres@127.0.0.1:5432/go_example?sslmode=disable"

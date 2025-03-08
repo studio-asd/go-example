@@ -11,7 +11,7 @@ endif
 
 # Docker configuration (name and version of the Docker image to be built).
 IMAGE_NAME := go-example/grpcgen
-VERSION := v0.1.0
+VERSION := v0.1.1
 DOCKERFILE := Dockerfile
 
 # DOCKER_IMAGE_ID to check whether we already have the docker image or not.

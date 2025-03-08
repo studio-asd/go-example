@@ -19,7 +19,7 @@ func TestCreateAccounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := New(th.Queries())
+	api := New(th.Queries().Postgres())
 
 	// Setup the test, we will create multiple accounts with and without parent account as the basis.
 	// We will use queries directly as it doesn't have any checks, so its easy to create the data.
@@ -28,7 +28,6 @@ func TestCreateAccounts(t *testing.T) {
 		[]ledgerpg.CreateLedgerAccount{
 			{
 				AccountID:     "no_parent",
-				AccountStatus: ledgerpg.AccountStatusActive,
 				AllowNegative: false,
 				Currency:      currency.IDR,
 				CreatedAt:     time.Now(),
@@ -36,14 +35,12 @@ func TestCreateAccounts(t *testing.T) {
 			{
 				AccountID:       "with_parent",
 				ParentAccountID: "no_parent",
-				AccountStatus:   ledgerpg.AccountStatusActive,
 				AllowNegative:   false,
 				Currency:        currency.IDR,
 				CreatedAt:       time.Now(),
 			},
 			{
 				AccountID:     "no_parent_inactive",
-				AccountStatus: ledgerpg.AccountStatusInactive,
 				AllowNegative: false,
 				Currency:      currency.IDR,
 				CreatedAt:     time.Now(),

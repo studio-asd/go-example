@@ -1,6 +1,6 @@
-# Ledger & Wallet
+# Ledger & Wallet, The Product
 
-> This is not a Production ready software and not intended to be used outside of the go-example project. This project is intended to give an example of how to do programming in Go.
+> This is not a Production ready software and not intended to be used outside of the go-example project. This project is intended to give an example of how to do programming in Go. This document will explain the product point of view and how we leverage technology to solve some problems. For technical document, please look at [here](ledger-and-wallet-tech.md).
 
 The go-example project provides a project sample for two different domains, `ledger` and `wallet`. The `wallet` domain is specifically designed in the scope of `e-wallet` application. The name of `ledger` is coming from [accounting ledger](https://en.wikipedia.org/wiki/Ledger).
 
@@ -94,7 +94,7 @@ We look on how these two wallets being used in [transaction](#wallet-transaction
 
 6. Intermediary wallet
 
-#### User Wallet 
+#### User Wallet
 
 1. Main wallet
 2. Escrow wallet
@@ -286,7 +286,7 @@ There might be a case where a payment gateway/bank give us a notification of `de
 
 ```
 1. |-------------------
-   | 
+   |
 ```
 
 While the idea of chargeback is simple, the intention and communication to the end user must be clear so they know that they are spending money that not belong to them and they are being charged because of that. So there are several things that we need to consider:
@@ -352,7 +352,7 @@ In the [previous](#wallet-transaction--lock) section we learned on how `wallet` 
 2. The `ledger` use PostgreSQL to store the data under the hood, and it use `SELECT FOR UPDATE` to acquire a row level lock.
 3. As the `ledger` use row level lock, only affected accounts are lock inside when a transaction is running. Thus the lock contention for shared account can be huge depends on the use cases.
 
-Great, because now we know how `ledger` behave, we are 100% sure that `wallet` that shared across all transactions will worsen the transaction latency because of [lock contention](https://en.wikipedia.org/wiki/Resource_contention). But, a shared `wallet` cannot be avoided at all costs because we have several use cases that require them to be exists. 
+Great, because now we know how `ledger` behave, we are 100% sure that `wallet` that shared across all transactions will worsen the transaction latency because of [lock contention](https://en.wikipedia.org/wiki/Resource_contention). But, a shared `wallet` cannot be avoided at all costs because we have several use cases that require them to be exists.
 
 ```text
       |--------|   +100
@@ -396,6 +396,35 @@ Great, because now we know how `ledger` behave, we are 100% sure that `wallet` t
 As you can see above, every transaction that involves the `deposit wallet` is sequenced depends on how the request is coming in. In above case it is `user_a` -> `user_b` -> `user_c`. As a transaction can only happen after another transaction is finished, the way of handling a transaction is practically becoming a queue with a single processor. This means, the concurrent requests from users will be handled much longer depending on the size of the queue, and there is a big chance that the transaction is failed because of lock contention that leads to timeout.
 
 In many cases, lock contention can be scaled through partitioning, thus the load are load-balanced within the partitions/clusters. The same methodology can also be used to scale the `wallet` by creating a partition/cluster of `system wallet` that shared across a type of transaction. For example, instead of having only one(1) `deposit wallet`, we can create ten(10) `deposit wallet` and load balance the `deposit transaction` whenever it happens.
+
+```text
+      |--------|   +100
+      | User_A |----------|
+      |--------|          |
+                          |  Deposit
+      |--------|   + 200  | To Wallet |------|
+      | User_B |--------------------> | Bank |--|
+      |--------|          |           |------|  |
+                          |                     |
+      |--------|   + 300  |                     |
+      | User_C |----------|                     |    Depsoit
+      |--------|                                | Notifications
+                                                |
+                                                |
+|-----------------------------------------------|-------------------
+| Wallet System                                 |
+|                                               |
+|             |---------------------------------|------------------
+|             |
+|             v
+|    |------------------|
+|    | Deposit Wallet 1 |
+|    |------------------|
+|    |       $$$        |
+|    |------------------|
+|    |
+|
+```
 
 Now, let's look at each transaction on how this become a problem and how we are aiming to solve the issue.
 

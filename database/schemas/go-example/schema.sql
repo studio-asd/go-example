@@ -1,39 +1,25 @@
------------------------- LEDGER ------------------------
--- drop tables.
-DROP TABLE IF EXISTS movements;
+DROP SCHEMA IF EXISTS ledger;
+CREATE SCHEMA IF NOT EXISTS ledger;
 
-DROP TABLE IF EXISTS accounts;
+DROP TABLE IF EXISTS ledger.accounts;
+DROP TABLE IF EXISTS ledger.movements;
+DROP TABLE IF EXISTS ledger.accounts_balance;
+DROP TABLE IF EXISTS ledger.accounts_ledger;
 
-DROP TABLE IF EXISTS accounts_balance;
-
-DROP TABLE IF EXISTS accounts_ledger;
-
--- types.
-DROP TYPE IF EXISTS account_status CASCADE;
-
-CREATE TYPE account_status AS ENUM ('active', 'inactive');
-
-DROP TYPE IF EXISTS movement_status CASCADE;
-
-CREATE TYPE movement_status AS ENUM ('finished', 'reversed');
-
--- tables and index.
 -- accounts is used to store all user accounts.
-CREATE TABLE IF NOT EXISTS accounts (
+CREATE TABLE IF NOT EXISTS ledger.accounts (
     "account_id" varchar PRIMARY KEY,
     "parent_account_id" varchar NOT NULL,
-    "account_status" account_status NOT NULL,
     "currency_id" int NOT NULL,
     "created_at" timestamptz NOT NULL,
     "updated_at" timestamptz
 );
 
 -- movements is used to store all movement records.
-CREATE TABLE IF NOT EXISTS movements (
+CREATE TABLE IF NOT EXISTS ledger.movements (
     -- movement_id is UUID_v7.
     "movement_id" varchar PRIMARY KEY,
     "idempotency_key" varchar UNIQUE NOT NULL,
-    "movement_status" movement_status NOT NULL,
     "created_at" timestamptz NOT NULL,
     "updated_at" timestamptz,
     -- reversed_at is a marker for reversal. If the reversed_at is not null then the movement is reversed.
@@ -44,7 +30,7 @@ CREATE TABLE IF NOT EXISTS movements (
 
 -- accounts_balance is used to store the latest state of user's balance. This table will be used for user
 -- balance fast retrieval and for locking the user balance for movement.
-CREATE TABLE IF NOT EXISTS accounts_balance (
+CREATE TABLE IF NOT EXISTS ledger.accounts_balance (
     "account_id" varchar PRIMARY KEY,
     "parent_account_id" varchar,
     "currency_id" int NOT NULL,
@@ -65,7 +51,7 @@ CREATE TABLE IF NOT EXISTS accounts_balance (
 -- based on movement_id because we will do that in bulk rather than ledger_id.
 --
 -- This table can be used for various things like retrieving opening and ending balance of an account at a given time.
-CREATE TABLE IF NOT EXISTS accounts_balance_history (
+CREATE TABLE IF NOT EXISTS ledger.accounts_balance_history (
     "history_id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "movement_id" varchar NOT NULL,
     -- ledger_id is the id of where the balance is being summarized, the SUM of the balance in the accounts_ledger should be
@@ -83,7 +69,7 @@ CREATE TABLE IF NOT EXISTS accounts_balance_history (
 -- can possibly affecting multiple acounts in the ledger.
 --
 -- Row in this table is IMMUTABLE and should NOT be updated.
-CREATE TABLE IF NOT EXISTS accounts_ledger (
+CREATE TABLE IF NOT EXISTS ledger.accounts_ledger (
     "internal_id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- the ledger id is the secondary unique key of the accounts_ledger. Even though we have unique constraint, but the client
     -- can always refer themselves to this unique id when it comes to reconciliation.
@@ -107,7 +93,7 @@ CREATE TABLE IF NOT EXISTS accounts_ledger (
     "reversal_of" varchar
 );
 
-CREATE TABLE IF NOT EXISTS reversed_movements (
+CREATE TABLE IF NOT EXISTS ledger.reversed_movements (
     "movement_id" varchar NOT NULL,
     "reversal_movement_id" varchar NOT NULL,
     "reversal_reason" text NOT NULL,
@@ -118,34 +104,25 @@ CREATE TABLE IF NOT EXISTS reversed_movements (
 -- 1. We want to retrieve all transactions within a movement_id. Possibly sorted by timestamp.
 -- 2. We want to retrieve all transactions within an account_id. Possibly sorted by timestamp.
 DROP INDEX IF EXISTS idx_accounts_ledger_movement_id;
-
 DROP INDEX IF EXISTS idx_accounts_ledger_account_id;
-
 DROP INDEX IF EXISTS idx_accounts_ledger_client_id;
-
 DROP INDEX IF EXISTS idx_accounts_balance_parent_account_id;
 
-CREATE INDEX IF NOT EXISTS idx_accounts_balance_parent_account_id ON accounts_balance ("parent_account_id");
-
-CREATE INDEX IF NOT EXISTS idx_accounts_ledger_movement_id ON accounts_ledger ("movement_id");
-
-CREATE INDEX IF NOT EXISTS idx_accounts_ledger_account_id ON accounts_ledger ("account_id");
-
-CREATE INDEX IF NOT EXISTS idx_accounts_ledger_client_id ON accounts_ledger ("client_id")
+CREATE INDEX IF NOT EXISTS idx_accounts_balance_parent_account_id ON ledger.accounts_balance ("parent_account_id");
+CREATE INDEX IF NOT EXISTS idx_accounts_ledger_movement_id ON ledger.accounts_ledger ("movement_id");
+CREATE INDEX IF NOT EXISTS idx_accounts_ledger_account_id ON ledger.accounts_ledger ("account_id");
+CREATE INDEX IF NOT EXISTS idx_accounts_ledger_client_id ON ledger.accounts_ledger ("client_id")
 WHERE
     "client_id" IS NOT NULL;
 
------------------------- LEDGER ------------------------
------------------------- WALLET ------------------------
--- drop tables.
-drop table if exists wallet_accounts;
+DROP SCHEMA IF EXISTS wallet;
+CREATE SCHEMA IF NOT EXISTS wallet;
 
-drop table if exists wallet_transactions;
+DROP TABLE IF EXISTS wallet.wallet_accounts;
+DROP TABLE IF EXISTS wallet.wallet_transactions;
+DROP TABLE IF EXISTS wallet.wallet_transfers;
 
-drop table if exists wallet_transfers;
-
--- create tables.
-create table if not exists wallet_users (
+CREATE TABLE IF NOT EXISTS wallet.wallet_users (
     user_id varchar not null,
     user_type varchar not null,
     user_status int not null,
@@ -161,7 +138,7 @@ create table if not exists wallet_users (
     updated_at timestamptz
 );
 
-create table if not exists wallet_accounts (
+CREATE TABLE IF NOT EXISTS wallet.wallet_accounts (
     wallet_id varchar primary key,
     ledger_account_id varchar not null,
     user_id varchar not null,
@@ -179,7 +156,7 @@ create table if not exists wallet_accounts (
     updated_at timestamptz
 );
 
-create table if not exists wallet_transactions (
+CREATE TABLE IF NOT EXISTS wallet.wallet_transactions (
     transaction_id varchar primary key,
     transaction_type int not null,
     transaction_status int not null,
@@ -189,7 +166,7 @@ create table if not exists wallet_transactions (
     finished_at timestamptz
 );
 
-create table if not exists wallet_transfers (
+CREATE TABLE IF NOT EXISTS wallet.wallet_transfers (
     transaction_id varchar primary key,
     from_wallet_id varchar not null,
     to_wallet_id varchar not null,
@@ -197,7 +174,7 @@ create table if not exists wallet_transfers (
     created_at timestamptz not null
 );
 
-create table if not exists wallet_deposits (
+CREATE TABLE IF NOT EXISTS wallet.wallet_deposits (
     transaction_id varchar primary key,
     -- deposit_wallet_id is where the money is coming from to user.
     deposit_wallet_id varchar not null,
@@ -207,7 +184,7 @@ create table if not exists wallet_deposits (
     updated_at timestamptz
 );
 
-create table if not exists wallet_withdrawals (
+CREATE TABLE IF NOT EXISTS wallet.wallet_withdrawals (
     transaction_id varchar primary key,
     -- withdrawal_wallet_id is where the money is coming to from user.
     withdrawal_wallet_id varchar not null,
@@ -233,30 +210,28 @@ create table if not exists wallet_withdrawals (
     finished_at timestamptz
 );
 
-create table if not exists wallet_bank_withdrawals (
+CREATE TABLE IF NOT EXISTS wallet.wallet_bank_withdrawals (
     transaction_id varchar not null,
     bank_name varchar not null,
     created_at timestamptz not null
 );
 
-create table if not exists wallet_ewallet_withdrawals (
+CREATE TABLE IF NOT EXISTS wallet.wallet_ewallet_withdrawals (
     transaction_id varchar not null,
     ewallet_name varchar not null,
     created_at timestamptz not null
 );
 
-create table if not exists wallet_reversal (
+CREATE TABLE IF NOT EXISTS wallet.wallet_reversal (
     transaction_id varchar not null,
     reversed_transaction_id varchar not null,
     created_at timestamptz not null
 );
 
-create table if not exists wallet_chargebacks (
+CREATE TABLE IF NOT EXISTS wallet.wallet_chargebacks (
     transaction_id varchar not null,
     chargeback_type int not null,
     amount numeric not null,
     reason text not null,
     created_at timestamptz not null
 );
-
------------------------- WALLET ------------------------

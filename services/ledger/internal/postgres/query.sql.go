@@ -14,19 +14,17 @@ import (
 )
 
 const createAccount = `-- name: CreateAccount :exec
-INSERT INTO accounts(
+INSERT INTO ledger.accounts(
 	account_id,
 	parent_account_id,
-	account_status,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4,$5)
+) VALUES($1,$2,$3,$4)
 `
 
 type CreateAccountParams struct {
 	AccountID       string
 	ParentAccountID string
-	AccountStatus   AccountStatus
 	CurrencyID      int32
 	CreatedAt       time.Time
 }
@@ -35,7 +33,6 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) er
 	_, err := q.db.Exec(ctx, createAccount,
 		arg.AccountID,
 		arg.ParentAccountID,
-		arg.AccountStatus,
 		arg.CurrencyID,
 		arg.CreatedAt,
 	)
@@ -43,7 +40,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) er
 }
 
 const createAccountBalance = `-- name: CreateAccountBalance :exec
-INSERT INTO accounts_balance(
+INSERT INTO ledger.accounts_balance(
 	account_id,
 	parent_account_id,
 	allow_negative,
@@ -81,19 +78,17 @@ func (q *Queries) CreateAccountBalance(ctx context.Context, arg CreateAccountBal
 }
 
 const createMovement = `-- name: CreateMovement :exec
-INSERT INTO movements(
+INSERT INTO ledger.movements(
 	movement_id,
 	idempotency_key,
-	movement_status,
 	created_at,
 	updated_at
-) VALUES($1,$2,$3,$4,$5)
+) VALUES($1,$2,$3,$4)
 `
 
 type CreateMovementParams struct {
 	MovementID     string
 	IdempotencyKey string
-	MovementStatus MovementStatus
 	CreatedAt      time.Time
 	UpdatedAt      sql.NullTime
 }
@@ -102,7 +97,6 @@ func (q *Queries) CreateMovement(ctx context.Context, arg CreateMovementParams) 
 	_, err := q.db.Exec(ctx, createMovement,
 		arg.MovementID,
 		arg.IdempotencyKey,
-		arg.MovementStatus,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -110,25 +104,24 @@ func (q *Queries) CreateMovement(ctx context.Context, arg CreateMovementParams) 
 }
 
 const getAccounts = `-- name: GetAccounts :many
-SELECT account_id, parent_account_id, account_status, currency_id, created_at, updated_at
-FROM accounts
+SELECT account_id, parent_account_id, currency_id, created_at, updated_at
+FROM ledger.accounts
 WHERE account_id = ANY($1::varchar[])
 ORDER BY created_at
 `
 
-func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]Account, error) {
+func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]LedgerAccount, error) {
 	rows, err := q.db.Query(ctx, getAccounts, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Account
+	var items []LedgerAccount
 	for rows.Next() {
-		var i Account
+		var i LedgerAccount
 		if err := rows.Scan(
 			&i.AccountID,
 			&i.ParentAccountID,
-			&i.AccountStatus,
 			&i.CurrencyID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -152,10 +145,9 @@ SELECT ab.account_id,
 	ab.last_ledger_id,
 	ab.last_movement_id,
 	ab.created_at,
-	ab.updated_at,
-	ac.account_status
-FROM accounts_balance ab,
-	accounts ac
+	ab.updated_at
+FROM ledger.accounts_balance ab,
+	ledger.accounts ac
 WHERE ab.account_id = ANY($1::varchar[])
 	AND ab.account_id = ac.account_id
 `
@@ -170,7 +162,6 @@ type GetAccountsBalanceRow struct {
 	LastMovementID  string
 	CreatedAt       time.Time
 	UpdatedAt       sql.NullTime
-	AccountStatus   AccountStatus
 }
 
 func (q *Queries) GetAccountsBalance(ctx context.Context, dollar_1 []string) ([]GetAccountsBalanceRow, error) {
@@ -192,7 +183,6 @@ func (q *Queries) GetAccountsBalance(ctx context.Context, dollar_1 []string) ([]
 			&i.LastMovementID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.AccountStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -213,13 +203,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM accounts_balance
+    FROM ledger.accounts_balance
     WHERE account_id = $1
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM accounts_balance
+    FROM ledger.accounts_balance
     WHERE parent_account_id = $1
     GROUP BY parent_account_id
 )
@@ -276,13 +266,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM accounts_balance
+    FROM ledger.accounts_balance
     WHERE account_id = ANY($1::varchar[])
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM accounts_balance
+    FROM ledger.accounts_balance
     WHERE parent_account_id = ANY($1::varchar[])
     GROUP BY parent_account_id
 )
@@ -352,13 +342,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM accounts_balance
+    FROM ledger.accounts_balance
     WHERE account_id = ANY($1::varchar[])
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM accounts_balance
+    FROM ledger.accounts_balance
     WHERE parent_account_id = ANY($1::varchar[])
     GROUP BY parent_account_id
 )
@@ -430,7 +420,7 @@ SELECT ledger_id,
 	client_id,
 	created_at,
 	client_id
-FROM accounts_ledger
+FROM ledger.accounts_ledger
 WHERE movement_id = $1
 ORDER BY created_at
 `
@@ -478,17 +468,16 @@ func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID 
 }
 
 const getMovement = `-- name: GetMovement :one
-SELECT movement_id, idempotency_key, movement_status, created_at, updated_at, reversed_at, reversal_movement_id FROM movements
+SELECT movement_id, idempotency_key, created_at, updated_at, reversed_at, reversal_movement_id FROM ledger.movements
 WHERE movement_id = $1
 `
 
-func (q *Queries) GetMovement(ctx context.Context, movementID string) (Movement, error) {
+func (q *Queries) GetMovement(ctx context.Context, movementID string) (LedgerMovement, error) {
 	row := q.db.QueryRow(ctx, getMovement, movementID)
-	var i Movement
+	var i LedgerMovement
 	err := row.Scan(
 		&i.MovementID,
 		&i.IdempotencyKey,
-		&i.MovementStatus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ReversedAt,
@@ -502,7 +491,7 @@ SELECT movement_id,
     idempotency_key,
     created_at,
     updated_at
-FROM movements
+FROM ledger.movements
 WHERE idempotency_key = $1
 `
 

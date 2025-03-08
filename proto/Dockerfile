@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/golang:1.23.1
+FROM public.ecr.aws/docker/library/golang:1.24.1
 
 WORKDIR /generate
 

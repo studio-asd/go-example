@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	schema "github.com/studio-asd/go-example/database/schemas/go-example"
 	"github.com/studio-asd/go-example/internal/testing/pghelper"
 	ledgerpg "github.com/studio-asd/go-example/services/ledger/internal/postgres"
 )
@@ -42,7 +43,8 @@ func run(m *testing.M) (code int, err error) {
 			dbName = "ledger_api"
 		}
 		testHelper, err = pghelper.New(context.Background(), pghelper.Config{
-			DatabaseName: dbName,
+			DatabaseName:   dbName,
+			EmbeddedSchema: schema.EmbeddedSchema,
 		}, ledgerpg.New)
 		if err != nil {
 			return
@@ -54,7 +56,7 @@ func run(m *testing.M) (code int, err error) {
 			}
 		}()
 		testQueries = testHelper.Queries()
-		testAPI = New(testHelper.Queries())
+		testAPI = New(testHelper.Queries().Postgres())
 	}
 	code = m.Run()
 	return

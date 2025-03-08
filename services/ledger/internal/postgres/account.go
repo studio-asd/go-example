@@ -16,7 +16,6 @@ import (
 type CreateLedgerAccount struct {
 	AccountID       string
 	ParentAccountID string
-	AccountStatus   AccountStatus
 	AllowNegative   bool
 	Currency        *currency.Currency
 	CreatedAt       time.Time
@@ -35,7 +34,9 @@ func (q *Queries) CreateLedgerAccounts(ctx context.Context, c ...CreateLedgerAcc
 		}
 		return err
 	}
-	return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
+	return q.WithMetrics(ctx, "createLedgerAccounts", func(context.Context, *postgres.Postgres) error {
+		return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
+	})
 }
 
 func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount) error {
@@ -47,7 +48,6 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 		if err := qr.CreateAccount(ctx, CreateAccountParams{
 			AccountID:       c.AccountID,
 			ParentAccountID: c.ParentAccountID,
-			AccountStatus:   c.AccountStatus,
 			CurrencyID:      c.Currency.ID,
 			CreatedAt:       c.CreatedAt,
 		}); err != nil {
@@ -70,37 +70,38 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 		}
 		return nil
 	}
-	return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
+	return q.WithMetrics(ctx, "createLedgerAccount", func(context.Context, *postgres.Postgres) error {
+		return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
+	})
 }
 
 // GetAccountsBalanceMappByAccID returns the account balance of accounts using map and account_id as its key. The function can be used to quickly look into
 // the account information(O(1)) rather than looking from the entire accounts range(O(n)).
 func (q *Queries) GetAccountsBalanceMappedByAccID(ctx context.Context, accounts ...string) (map[string]GetAccountsBalanceRow, error) {
 	accountsBalance := make(map[string]GetAccountsBalanceRow)
-	if err := q.db.RunQuery(ctx, getAccountsBalance, func(rows *postgres.RowsCompat) error {
-		var i GetAccountsBalanceRow
-		if err := rows.Scan(
-			&i.AccountID,
-			&i.AllowNegative,
-			&i.Balance,
-			&i.CurrencyID,
-			&i.LastLedgerID,
-			&i.LastMovementID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.AccountStatus,
-		); err != nil {
-			return err
-		}
-		if err := rows.Err(); err != nil {
-			return err
-		}
-		accountsBalance[i.AccountID] = i
-		return nil
-	}, accounts); err != nil {
-		return nil, err
-	}
-	return accountsBalance, nil
+	err := q.WithMetrics(ctx, "getAccountsBalanceMappedbyAccID", func(ctx context.Context, p *postgres.Postgres) error {
+		return p.RunQuery(ctx, getAccountsBalance, func(rows *postgres.RowsCompat) error {
+			var i GetAccountsBalanceRow
+			if err := rows.Scan(
+				&i.AccountID,
+				&i.AllowNegative,
+				&i.Balance,
+				&i.CurrencyID,
+				&i.LastLedgerID,
+				&i.LastMovementID,
+				&i.CreatedAt,
+				&i.UpdatedAt,
+			); err != nil {
+				return err
+			}
+			if err := rows.Err(); err != nil {
+				return err
+			}
+			accountsBalance[i.AccountID] = i
+			return nil
+		})
+	})
+	return accountsBalance, err
 }
 
 func (q *Queries) GetAccountsBalanceWithChildMappedByAccID(ctx context.Context, accounts ...string) (map[string]GetAccountsBalanceRow, error) {

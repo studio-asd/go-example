@@ -4,7 +4,8 @@ RIVER_QUEUE := github.com/riverqueue/river@v0.16.0
 
 gen_dirs := \
 	go-example/ledger \
-	go-example/wallet
+	go-example/wallet \
+	user_data
 
 $(gen_dirs):
 ifeq (generate,$(command))

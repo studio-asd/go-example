@@ -17,7 +17,7 @@ var (
 	// All variables below this only available if '-short' is not used, this means we will do integration test.
 	testAPI     *API
 	testQueries *ledgerpg.Queries
-	testHelper  *pghelper.Helper[*ledgerpg.Queries]
+	testHelper  *pghelper.Helper
 )
 
 func TestMain(m *testing.M) {
@@ -45,7 +45,7 @@ func run(m *testing.M) (code int, err error) {
 		testHelper, err = pghelper.New(context.Background(), pghelper.Config{
 			DatabaseName:   dbName,
 			EmbeddedSchema: schema.EmbeddedSchema,
-		}, ledgerpg.New)
+		})
 		if err != nil {
 			return
 		}
@@ -55,8 +55,8 @@ func run(m *testing.M) (code int, err error) {
 				err = errors.Join(err, closeErr)
 			}
 		}()
-		testQueries = testHelper.Queries()
-		testAPI = New(testHelper.Queries().Postgres())
+		testQueries = ledgerpg.New(testHelper.Postgres())
+		testAPI = New(testHelper.Postgres())
 	}
 	code = m.Run()
 	return

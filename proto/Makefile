@@ -64,7 +64,8 @@ generate: $(DOCKERFILE) $(GEN_DIR)
 api_dirs := \
 	testdata/v1 \
 	ledger/v1 \
-	wallet/v1
+	wallet/v1 \
+	user/v1
 
 # api_dirs will loop through the api_dirs variable above, so we will invoke every value inside it like we loop through an array.
 # For example, it will invoke $(MAKE) generate proto_folder=api target=testdata/v1.

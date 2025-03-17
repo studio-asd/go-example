@@ -7,6 +7,6 @@ var EmbeddedSchema embed.FS
 
 const (
     // DatabaseName is the name of the database.
-    DatabaseName = "go_example"
-	PostgresDSN = "postgres://postgres:postgres@localhost:5432/go_example"
+    DatabaseName = "user_data"
+	PostgresDSN = "postgres://postgres:postgres@localhost:5432/user_data"
 )

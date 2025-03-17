@@ -46,16 +46,14 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			},
 			expectAccounts: []LedgerAccount{
 				{
-					AccountID:       "one",
-					ParentAccountID: "",
-					CurrencyID:      1,
-					CreatedAt:       now.Add(time.Second),
+					AccountID:  "one",
+					CurrencyID: 1,
+					CreatedAt:  now.Add(time.Second),
 				},
 				{
-					AccountID:       "two",
-					ParentAccountID: "",
-					CurrencyID:      2,
-					CreatedAt:       now.Add(time.Second * 2),
+					AccountID:  "two",
+					CurrencyID: 2,
+					CreatedAt:  now.Add(time.Second * 2),
 				},
 			},
 			expectAccountsBalance: []GetAccountsBalanceRow{
@@ -82,19 +80,17 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			name: "one account",
 			createAccounts: []CreateLedgerAccount{
 				{
-					AccountID:       "one_one",
-					ParentAccountID: "",
-					AllowNegative:   true,
-					Currency:        currency.IDR,
-					CreatedAt:       now.Add(time.Second * 3),
+					AccountID:     "one_one",
+					AllowNegative: true,
+					Currency:      currency.IDR,
+					CreatedAt:     now.Add(time.Second * 3),
 				},
 			},
 			expectAccounts: []LedgerAccount{
 				{
-					AccountID:       "one_one",
-					ParentAccountID: "",
-					CurrencyID:      1,
-					CreatedAt:       now.Add(time.Second * 3),
+					AccountID:  "one_one",
+					CurrencyID: 1,
+					CreatedAt:  now.Add(time.Second * 3),
 				},
 			},
 			expectAccountsBalance: []GetAccountsBalanceRow{
@@ -110,7 +106,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			err: nil,
 		},
 		{
-			name:           "isolated, conflict account id",
+			name:           "conflict account id",
 			isolatedSchema: true,
 			createAccounts: []CreateLedgerAccount{
 				{
@@ -137,16 +133,18 @@ func TestCreateLedgerAccounts(t *testing.T) {
 			t.Parallel()
 
 			var err error
-			tq := testHelper.Queries()
-			if test.isolatedSchema {
-				th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries())
-				if err != nil {
-					t.Fatal(err)
-				}
-				tq = th.Queries()
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testQueries.Postgres(), "ledger")
+			if err != nil {
+				t.Fatal(err)
 			}
-			if err := tq.CreateLedgerAccounts(context.Background(), test.createAccounts...); !errors.Is(err, test.err) {
+			tq := New(th.Postgres())
+
+			err = tq.CreateLedgerAccounts(context.Background(), test.createAccounts...)
+			if !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
+			}
+			if err != nil {
+				return
 			}
 
 			var accounts []string
@@ -225,6 +223,7 @@ func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
 					AccountID:     "one",
 					AllowNegative: false,
 					Balance:       decimal.NewFromInt(0),
+					CurrencyID:    currency.IDR.ID,
 					CreatedAt:     createdAt,
 				},
 			},
@@ -233,11 +232,11 @@ func TestGetAccountsBalanceWithChildMappByAccID(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries())
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Postgres(), "ledger")
 			if err != nil {
 				t.Fatal(err)
 			}
-			q := th.Queries()
+			q := New(th.Postgres())
 			t.Log(th.DefaultSearchPath())
 
 			if err := q.CreateLedgerAccounts(context.Background(), test.createAccounts...); err != nil {

@@ -8,12 +8,16 @@ import "google/protobuf/timestamp.proto";
 
 message CreateLedgerAccountsRequest {
     message Account {
+        // name of an account. It is recommended to give a meaningful short name for the account, for example wallet_user_123
+        // to identify that the account is for a wallet service and user 123.
+        string Name = 1 [(buf.validate.field).string.min_len = 10, (buf.validate.field).string.max_len = 100];
         // parent_account_id is the parent account of the id. The parameter can be used to create an associated child account.
-        string parent_account_id = 1;
+        string parent_account_id = 2;
         // allow_negative allows the balance of the account to go below 0. We can use this type of account as a deposit account.
-        bool allow_negative = 2;
+        bool allow_negative = 3;
         // currency_id is the id of a specific currency associated with the account, one account can only have one currency.
-        int32 currency_id = 3 [(buf.validate.field).required = true];
+        int32 currency_id = 4 [(buf.validate.field).required = true];
+        string description = 5;
     }
     repeated Account accounts = 1 [(buf.validate.field).required = true];
 }

@@ -15,11 +15,11 @@ import (
 func TestCreateAccounts(t *testing.T) {
 	t.Parallel()
 
-	th, err := testHelper.ForkPostgresSchema(context.Background(), testAPI.queries)
+	th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Postgres(), "ledger")
 	if err != nil {
 		t.Fatal(err)
 	}
-	api := New(th.Queries().Postgres())
+	api := New(th.Postgres())
 
 	// Setup the test, we will create multiple accounts with and without parent account as the basis.
 	// We will use queries directly as it doesn't have any checks, so its easy to create the data.

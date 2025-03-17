@@ -4,7 +4,10 @@
 
 version: "2"
 sql:
-  - schema: "../schema.sql"
+  # Name is used for schema name, please use the schema name on where the query is executed.
+  # If the "public" schema is used, the schema name should be "public".
+  - name: "ledger"
+    schema: "../schema.sql"
     queries: "query.sql"
     engine: "postgresql"
     gen:

@@ -71,7 +71,7 @@ func (a *API) CreateAccounts(ctx context.Context, request *ledgerv1.CreateLedger
 			return nil, err
 		}
 		for _, acc := range accs {
-			if acc.ParentAccountID != "" {
+			if !acc.ParentAccountID.Valid {
 				return nil, fmt.Errorf("%w: cannot use account %s as the parent account. The account is registered as a sub-account", ledger.ErrAccountHasParent, acc.AccountID)
 			}
 		}

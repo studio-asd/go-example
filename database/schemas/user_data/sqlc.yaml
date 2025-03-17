@@ -6,7 +6,7 @@ version: "2"
 sql:
   # Name is used for schema name, please use the schema name on where the query is executed.
   # If the "public" schema is used, the schema name should be "public".
-  - name: "public"
+  - name: "user"
     schema: "schema.sql"
     queries: "query.sql"
     engine: "postgresql"
@@ -14,7 +14,7 @@ sql:
       go:
         package: "postgres"
         # The database internal package is always placed under the '/[service_name]/postgres'.
-        out: "../../database_name/postgres"
+        out: "../../../services/user/internal/postgres"
         sql_package: "pgx/v5"
         output_db_file_name: "sqlc.go"
         output_models_file_name: "types.sql.go"
@@ -109,6 +109,6 @@ sql:
               type: "NullTime"
             nullable: true
     database:
-      uri: "postgres://postgres:postgres@localhost:5432/database_name?sslmode=disable"
+      uri: "postgres://postgres:postgres@localhost:5432/user_data?sslmode=disable"
     rules:
       - sqlc/db-prepare

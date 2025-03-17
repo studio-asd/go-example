@@ -4,8 +4,8 @@
 // sqlc_version    : v1.28.0
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
-// database        : go_example
-// generated_time  : 2025-03-17T23:34:02+07:00
+// database        : user_data
+// generated_time  : 2025-03-17T23:34:03+07:00
 
 package postgres
 
@@ -21,7 +21,7 @@ type Queries struct {
 	db *postgres.Postgres
 }
 
-// New returns a new queries instance of go_example database.
+// New returns a new queries instance of user_data database.
 func New(db *postgres.Postgres) *Queries {
 	return &Queries{db: db}
 }

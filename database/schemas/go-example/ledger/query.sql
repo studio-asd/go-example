@@ -1,10 +1,12 @@
 -- name: CreateAccount :exec
 INSERT INTO ledger.accounts(
 	account_id,
+	name,
+	description,
 	parent_account_id,
 	currency_id,
 	created_at
-) VALUES($1,$2,$3,$4);
+) VALUES($1,$2,$3,$4,$5,$6);
 
 -- name: CreateAccountBalance :exec
 INSERT INTO ledger.accounts_balance(

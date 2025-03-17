@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package go_example.api.user.v1;
+option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
+
+import "google/api/annotations.proto";
+import "api/ledger/v1/user.proto";
+
+service UserService {
+  rpc Register(RegisterRequest) returns (RegisterResponse) {
+    option (google.api.http) = {
+      post : "/v1/user/register",
+      body : "*"
+    };
+  }
+
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post : "/v1/user/login",
+      body : "*"
+    };
+  }
+}

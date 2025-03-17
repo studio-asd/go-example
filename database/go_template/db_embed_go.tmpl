@@ -6,6 +6,7 @@ import "embed"
 var EmbeddedSchema embed.FS
 
 const (
+    // DatabaseName is the name of the database.
     DatabaseName = "{{ .DatabaseName }}"
 	PostgresDSN = "postgres://postgres:postgres@localhost:5432/{{ .DatabaseName }}"
 )

@@ -23,7 +23,8 @@ import (
 
 var (
 	testCtx context.Context
-	testHelper *pghelper.Helper[*Queries]
+	testQueries *Queries
+	testHelper *pghelper.Helper
 )
 
 func TestMain(m *testing.M) {
@@ -47,11 +48,13 @@ func run(ctx context.Context, m *testing.M) (code int, err error) {
 	testHelper, err = pghelper.New(ctx, pghelper.Config{
 	   DatabaseName: schema.DatabaseName,
 	   EmbeddedSchema: schema.EmbeddedSchema,
-	}, New)
+	})
 	if err != nil {
 		code = 1
 		return
 	}
+	testQueries = New(testHelper.Postgres())
+
 	// Close all resources upon exit, and record the error when closing the resources if any.
 	defer func() {
 		errClose := testHelper.Close()

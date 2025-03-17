@@ -18,9 +18,10 @@ import (
 	"text/template"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/studio-asd/go-example/internal/git"
 	"github.com/studio-asd/pkg/postgres"
-	"gopkg.in/yaml.v3"
 )
 
 //go:embed go_template/*
@@ -41,6 +42,8 @@ type SQLCConfig struct {
 }
 
 type SQLCSQLConfig struct {
+	// Name is used for the DataSchemaName to determine the schema name for the query.
+	Name    string `yaml:"name"`
 	Schema  string `yaml:"schema"`
 	Queries string `yaml:"queries"`
 	Engine  string `yaml:"engine"`
@@ -62,6 +65,7 @@ type SQLCGenGo struct {
 
 type TemplateData struct {
 	DatabaseName         string
+	DataSchemaName       string
 	SQLCVersion          string
 	SQLCConfig           string
 	SQLCOutputFileName   string
@@ -111,8 +115,7 @@ func run(args []string) error {
 
 	// Check if we have more than two(2) args which is the command. In general we only use two(2) input after the
 	// command, for example main.go gengo [db_name] [dir]. Thus everything after [db_name] [dir] are flags.
-	var flagArgs []string
-	flagArgs = args[2:]
+	flagArgs := args[2:]
 	flags, err := parseFlags(flagArgs)
 	if err != nil {
 		return err
@@ -219,6 +222,7 @@ func genGoTemplate(config SQLCConfig) error {
 
 	td := TemplateData{
 		DatabaseName:       dsn.DatabaseName,
+		DataSchemaName:     config.SQL[0].Name,
 		SQLCVersion:        sqlcVersion,
 		SQLCConfig:         config.fileName,
 		SQLCOutputFileName: config.SQL[0].Gen.Go.OutputDBFileName,
@@ -278,6 +282,7 @@ func genGoTemplate(config SQLCConfig) error {
 	if err != nil {
 		return err
 	}
+
 	dbEmbedPackagePath := filepath.Join(repoRoot, "database", "schemas", config.schemaDir, "database.go")
 	if err := os.WriteFile(dbEmbedPackagePath, buff.Bytes(), 0o777); err != nil {
 		return err

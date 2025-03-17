@@ -15,6 +15,8 @@ import (
 
 type CreateLedgerAccount struct {
 	AccountID       string
+	Name            string
+	Description     string
 	ParentAccountID string
 	AllowNegative   bool
 	Currency        *currency.Currency
@@ -44,24 +46,31 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 	if !c.balance.IsZero() && !testing.Testing() {
 		return errors.New("balance can only be set inside testing")
 	}
+	var parentAccountID sql.NullString
+	if c.ParentAccountID != "" {
+		parentAccountID = sql.NullString{
+			String: c.ParentAccountID,
+			Valid:  true,
+		}
+	}
+
 	fn := func(ctx context.Context, qr *Queries) error {
 		if err := qr.CreateAccount(ctx, CreateAccountParams{
 			AccountID:       c.AccountID,
-			ParentAccountID: c.ParentAccountID,
+			Name:            c.Name,
+			Description:     c.Description,
+			ParentAccountID: parentAccountID,
 			CurrencyID:      c.Currency.ID,
 			CreatedAt:       c.CreatedAt,
 		}); err != nil {
 			return err
 		}
 		if err := qr.CreateAccountBalance(ctx, CreateAccountBalanceParams{
-			AccountID: c.AccountID,
-			ParentAccountID: sql.NullString{
-				String: c.ParentAccountID,
-				Valid:  true,
-			},
-			AllowNegative: c.AllowNegative,
-			Balance:       c.balance,
-			CurrencyID:    c.Currency.ID,
+			AccountID:       c.AccountID,
+			ParentAccountID: parentAccountID,
+			AllowNegative:   c.AllowNegative,
+			Balance:         c.balance,
+			CurrencyID:      c.Currency.ID,
 			// LastLedgerID is always empty at first.
 			LastLedgerID: "",
 			CreatedAt:    c.CreatedAt,

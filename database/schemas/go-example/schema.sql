@@ -1,15 +1,23 @@
 DROP SCHEMA IF EXISTS ledger;
+
 CREATE SCHEMA IF NOT EXISTS ledger;
 
 DROP TABLE IF EXISTS ledger.accounts;
+
 DROP TABLE IF EXISTS ledger.movements;
+
 DROP TABLE IF EXISTS ledger.accounts_balance;
+
 DROP TABLE IF EXISTS ledger.accounts_ledger;
 
 -- accounts is used to store all user accounts.
 CREATE TABLE IF NOT EXISTS ledger.accounts (
     "account_id" varchar PRIMARY KEY,
-    "parent_account_id" varchar NOT NULL,
+    "name" varchar NOT NULL,
+    -- description is a short description for the account. Usually, the account need a name to identify
+    -- and a description to explain the purpose of the account.
+    "description" text NOT NULL,
+    "parent_account_id" varchar,
     "currency_id" int NOT NULL,
     "created_at" timestamptz NOT NULL,
     "updated_at" timestamptz
@@ -104,22 +112,31 @@ CREATE TABLE IF NOT EXISTS ledger.reversed_movements (
 -- 1. We want to retrieve all transactions within a movement_id. Possibly sorted by timestamp.
 -- 2. We want to retrieve all transactions within an account_id. Possibly sorted by timestamp.
 DROP INDEX IF EXISTS idx_accounts_ledger_movement_id;
+
 DROP INDEX IF EXISTS idx_accounts_ledger_account_id;
+
 DROP INDEX IF EXISTS idx_accounts_ledger_client_id;
+
 DROP INDEX IF EXISTS idx_accounts_balance_parent_account_id;
 
 CREATE INDEX IF NOT EXISTS idx_accounts_balance_parent_account_id ON ledger.accounts_balance ("parent_account_id");
+
 CREATE INDEX IF NOT EXISTS idx_accounts_ledger_movement_id ON ledger.accounts_ledger ("movement_id");
+
 CREATE INDEX IF NOT EXISTS idx_accounts_ledger_account_id ON ledger.accounts_ledger ("account_id");
+
 CREATE INDEX IF NOT EXISTS idx_accounts_ledger_client_id ON ledger.accounts_ledger ("client_id")
 WHERE
     "client_id" IS NOT NULL;
 
 DROP SCHEMA IF EXISTS wallet;
+
 CREATE SCHEMA IF NOT EXISTS wallet;
 
 DROP TABLE IF EXISTS wallet.wallet_accounts;
+
 DROP TABLE IF EXISTS wallet.wallet_transactions;
+
 DROP TABLE IF EXISTS wallet.wallet_transfers;
 
 CREATE TABLE IF NOT EXISTS wallet.wallet_users (

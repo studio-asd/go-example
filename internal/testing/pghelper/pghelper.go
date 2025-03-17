@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"os"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -48,29 +49,26 @@ func (c Config) validate() error {
 	return nil
 }
 
-type Helper[T PGQuery] struct {
+type Helper struct {
 	config       Config
 	conn         *postgres.Postgres
 	pgtestHelper *pgtest.PGTest
 
-	queriesFn   func(*postgres.Postgres) T
-	testQueries T
-
 	mu sync.Mutex
 	// forks is the list of forked helper throughout the test. We need to track the lis of forked helper as we want
 	// to track the resource of helper and close them properly.
-	forks []*Helper[T]
+	forks []*Helper
 	// fork is a mark that the test helper had been forked, thus several expections should be made when
 	// doing several operation like closing connections.
 	fork   bool
 	closed bool
 }
 
-func New[T PGQuery](ctx context.Context, config Config, fn func(*postgres.Postgres) T) (*Helper[T], error) {
+func New(ctx context.Context, config Config) (*Helper, error) {
 	if !testing.Testing() {
 		return nil, errors.New("can only be used in test")
 	}
-	th := &Helper[T]{
+	th := &Helper{
 		config:       config,
 		pgtestHelper: pgtest.New(),
 	}
@@ -97,17 +95,17 @@ func New[T PGQuery](ctx context.Context, config Config, fn func(*postgres.Postgr
 		}
 	}
 	th.conn = pg
-	th.testQueries = fn(pg)
-	th.queriesFn = fn
 	return th, nil
 }
 
-func (th *Helper[T]) Queries() T {
-	return th.testQueries
+func (th *Helper) Postgres() *postgres.Postgres {
+	th.mu.Lock()
+	defer th.mu.Unlock()
+	return th.conn
 }
 
 // Close closes all connections from the test helper.
-func (th *Helper[T]) Close() error {
+func (th *Helper) Close() error {
 	th.mu.Lock()
 	defer th.mu.Unlock()
 	if th.closed {
@@ -152,7 +150,7 @@ func (th *Helper[T]) Close() error {
 
 // ForkPostgresSchema forks the sourceSchema with the underlying connection inside the Queries. The function will return a new connection
 // with default search_path into the new schema. The schema name currently is random and cannot be defined by the user.
-func (th *Helper[T]) ForkPostgresSchema(ctx context.Context, q T) (*Helper[T], error) {
+func (th *Helper) ForkPostgresSchema(ctx context.Context, pg *postgres.Postgres, schemaName string) (*Helper, error) {
 	if th.fork {
 		return nil, errors.New("cannot fork the schema from a forked test helper, please use the original test helper")
 	}
@@ -161,14 +159,13 @@ func (th *Helper[T]) ForkPostgresSchema(ctx context.Context, q T) (*Helper[T], e
 	if th.closed {
 		return nil, errors.New("cannot create a fork from closed test helper")
 	}
-	pg, err := th.pgtestHelper.ForkSchema(ctx, q.Postgres(), q.Postgres().DefaultSearchPath())
+	pg, err := th.pgtestHelper.ForkSchema(ctx, pg, schemaName)
 	if err != nil {
 		return nil, err
 	}
-	newTH := &Helper[T]{
+	newTH := &Helper{
 		config:       th.config,
 		conn:         pg,
-		testQueries:  th.queriesFn(pg),
 		pgtestHelper: th.pgtestHelper,
 		fork:         true,
 	}
@@ -179,12 +176,12 @@ func (th *Helper[T]) ForkPostgresSchema(ctx context.Context, q T) (*Helper[T], e
 
 // DefaultSearchPath returns the default PostgreSQL search path. This helper function invoke the pg.DefaultSearchPath
 // to do this. This function added to avoid the user/client to go deeper to the postgres object to invoke this function.
-func (th *Helper[T]) DefaultSearchPath() string {
+func (th *Helper) DefaultSearchPath() string {
 	return th.conn.DefaultSearchPath()
 }
 
 // CloseFunc is a helper function to close the test helper via testing.T.Cleanup.
-func (th *Helper[T]) CloseFunc(t *testing.T) func() {
+func (th *Helper) CloseFunc(t *testing.T) func() {
 	return func() {
 		if err := th.Close(); err != nil {
 			t.Log(err)
@@ -210,6 +207,11 @@ func prepareTest(ctx context.Context, pgDSN string, embeddedSchema embed.FS) (*p
 	if err != nil {
 		return nil, err
 	}
+	// If the embeddedSchema is nil or empty, return the test connection without applying the schema.
+	if reflect.ValueOf(embeddedSchema).IsZero() {
+		return testConn, nil
+	}
+
 	out, err := embeddedSchema.ReadFile("schema.sql")
 	if err != nil {
 		return nil, err

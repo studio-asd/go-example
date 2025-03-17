@@ -153,12 +153,12 @@ func TestMove(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 
-			th, err := testHelper.ForkPostgresSchema(testCtx, testHelper.Queries())
+			th, err := testHelper.ForkPostgresSchema(testCtx, testHelper.Postgres(), "ledger")
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(th.CloseFunc(t))
-			q := th.Queries()
+			q := New(th.Postgres())
 
 			for accountID, balance := range accountsSetup {
 				if err := q.CreateLedgerAccount(testCtx, CreateLedgerAccount{
@@ -416,12 +416,14 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 				accounts = append(accounts, acc)
 			}
 			// Fork a new connection to a new schema so we can test in parallel.
-			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Queries())
+			th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Postgres(), "ledger")
 			if err != nil {
 				t.Fatal(err)
 			}
+			tq := New(th.Postgres())
+
 			for _, account := range test.accounts {
-				if err := th.Queries().CreateAccountBalance(context.Background(), account); err != nil {
+				if err := tq.CreateAccountBalance(context.Background(), account); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -431,7 +433,7 @@ func TestSelectAccountsBalanceForMovement(t *testing.T) {
 				gotInfo          map[string]internal.MovementEndingBalance
 			)
 			// Test inside the transaction as we are doing SELECT FOR UPDATE.
-			gotErr := th.Queries().WithTransact(context.Background(), sql.LevelReadUncommitted, func(ctx context.Context, q *Queries) error {
+			gotErr := tq.WithTransact(context.Background(), sql.LevelReadUncommitted, func(ctx context.Context, q *Queries) error {
 				bulkUpdateParams, gotInfo, err = selectAccountsBalanceForMovement(ctx, q, test.accountChanges, test.createdAt, accounts)
 				return err
 			})

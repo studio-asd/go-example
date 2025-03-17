@@ -14,19 +14,21 @@ import (
 	prototesting "github.com/studio-asd/go-example/internal/testing/proto"
 	ledgerv1 "github.com/studio-asd/go-example/proto/api/ledger/v1"
 	"github.com/studio-asd/go-example/services/ledger"
+	ledgerpg "github.com/studio-asd/go-example/services/ledger/internal/postgres"
 )
 
 func TestTransact(t *testing.T) {
 	t.Parallel()
 
-	tq, err := testHelper.ForkPostgresSchema(context.Background(), testQueries)
+	th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Postgres(), "ledger")
 	if err != nil {
 		t.Fatal(err)
 	}
-	tl := New(tq.Queries().Postgres())
+	tl := New(th.Postgres())
+	tq := ledgerpg.New(th.Postgres())
 
 	newTableQuery := "CREATE TABLE IF NOT EXISTS trasact_test(id int PRIMARY KEY);"
-	err = tq.Queries().Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
+	err = tq.Do(context.Background(), func(ctx context.Context, pg *postgres.Postgres) error {
 		_, err := pg.Exec(ctx, newTableQuery)
 		return err
 	})
@@ -143,11 +145,11 @@ func TestTransactCorrectness(t *testing.T) {
 	// Then we will try to move all the 100 to the second account using goroutines, then at the end of the test
 	// we will check whether the first account gone below 0.
 	t.Run("negative not allowed", func(t *testing.T) {
-		th, err := testHelper.ForkPostgresSchema(context.Background(), testAPI.queries)
+		th, err := testHelper.ForkPostgresSchema(context.Background(), testHelper.Postgres(), "ledger")
 		if err != nil {
 			t.Fatal(err)
 		}
-		a := New(th.Queries().Postgres())
+		a := New(th.Postgres())
 
 		accountsResp, err := a.CreateAccounts(context.Background(), &ledgerv1.CreateLedgerAccountsRequest{
 			Accounts: []*ledgerv1.CreateLedgerAccountsRequest_Account{
@@ -193,7 +195,7 @@ func TestTransactCorrectness(t *testing.T) {
 		wg := sync.WaitGroup{}
 		// Spawn 20 goroutines and do a transfer of 10 for each goroutine. With 20 goroutines, we should have 10 success transactions
 		// and 10 failed transactions with total of 100 of money movements.
-		for i := 0; i < 20; i++ {
+		for _ = range 20 {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()

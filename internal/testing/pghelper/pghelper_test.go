@@ -24,15 +24,15 @@ func (t *testQuery) Postgres() *postgres.Postgres {
 func TestFork(t *testing.T) {
 	th, err := New(context.Background(), Config{
 		DatabaseName: "test_fork",
-	}, newTestQuery)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	var loopNum = 10
 	var schemas = make(map[string]struct{})
-	for i := 0; i < loopNum; i++ {
-		newTh, err := th.ForkPostgresSchema(context.Background(), th.Queries())
+	for _ = range loopNum {
+		newTh, err := th.ForkPostgresSchema(context.Background(), th.Postgres(), "public")
 		if err != nil {
 			t.Fatal(err)
 		}

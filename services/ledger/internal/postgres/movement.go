@@ -179,7 +179,7 @@ func selectAccountsBalanceForMovement(ctx context.Context, q *Queries, changes m
 		"last_ledger_id",
 		"last_movement_id",
 	).
-		From("accounts_balance").
+		From("ledger.accounts_balance").
 		Where(squirrel.Eq{"account_id": accounts}).
 		Suffix("FOR UPDATE").
 		PlaceholderFormat(squirrel.Dollar).

@@ -1,0 +1,16 @@
+version: "3.7"
+services:
+  loki:
+    image: public.ecr.aws/bitnami/grafana-loki:3.4.2
+    ports:
+      - 3100:3100
+    volumes:
+      - ./loki-config.yaml:/etc/loki/loki-config.yaml
+  promtail:
+    image: public.ecr.aws/bitnami/promtail:3.4.2
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/promtail-config.yaml
+  grafana:
+    image: public.ecr.aws/bitnami/grafana:11.5.2
+    ports:
+      - 3000:3000

@@ -5,13 +5,19 @@
 package postgres
 
 import (
+	"net"
+	"net/netip"
 	"time"
 )
 
 type UserDataUserSession struct {
-	UserID          int64
-	RandomNumber    int32
-	CreatedTime     int64
-	SessionMetadata []byte
-	ExpiredAt       time.Time
+	UserID               int64
+	RandomNumber         int32
+	CreatedTime          int64
+	CreatedFromIp        netip.Addr
+	CreatedFromMacaddr   net.HardwareAddr
+	CreatedFromLoc       string
+	CreatedFromUserAgent string
+	SessionMetadata      []byte
+	ExpiredAt            time.Time
 }

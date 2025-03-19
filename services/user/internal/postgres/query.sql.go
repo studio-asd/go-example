@@ -7,6 +7,8 @@ package postgres
 
 import (
 	"context"
+	"net"
+	"net/netip"
 	"time"
 )
 
@@ -70,22 +72,85 @@ func (q *Queries) CreateUserPII(ctx context.Context, arg CreateUserPIIParams) er
 	return err
 }
 
+const createUserSecret = `-- name: CreateUserSecret :exec
+INSERT INTO user_data.user_secrets(
+    user_id,
+    secret_key,
+    secret_type,
+    current_secret_version,
+    created_at
+) VALUES($1,$2,$3,$4,$5)
+`
+
+type CreateUserSecretParams struct {
+	UserID               int64
+	SecretKey            string
+	SecretType           int32
+	CurrentSecretVersion int64
+	CreatedAt            time.Time
+}
+
+func (q *Queries) CreateUserSecret(ctx context.Context, arg CreateUserSecretParams) error {
+	_, err := q.db.Exec(ctx, createUserSecret,
+		arg.UserID,
+		arg.SecretKey,
+		arg.SecretType,
+		arg.CurrentSecretVersion,
+		arg.CreatedAt,
+	)
+	return err
+}
+
+const createUserSecretVersion = `-- name: CreateUserSecretVersion :exec
+INSERT INTO user_data.user_secret_versions(
+    secret_id,
+    secret_version,
+    secret_value,
+    created_at
+) VALUES($1,$2,$3,$4)
+`
+
+type CreateUserSecretVersionParams struct {
+	SecretID      int64
+	SecretVersion int64
+	SecretValue   string
+	CreatedAt     time.Time
+}
+
+func (q *Queries) CreateUserSecretVersion(ctx context.Context, arg CreateUserSecretVersionParams) error {
+	_, err := q.db.Exec(ctx, createUserSecretVersion,
+		arg.SecretID,
+		arg.SecretVersion,
+		arg.SecretValue,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const createUserSession = `-- name: CreateUserSession :exec
 INSERT INTO user_data.user_sessions(
 	user_id,
 	random_number,
 	created_time,
+	created_from_ip,
+	created_from_macaddr,
+	created_from_loc,
+	created_from_user_agent,
 	session_metadata,
 	expired_at
-) VALUES($1,$2,$3,$4,$5)
+) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
 `
 
 type CreateUserSessionParams struct {
-	UserID          int64
-	RandomNumber    int32
-	CreatedTime     int64
-	SessionMetadata []byte
-	ExpiredAt       time.Time
+	UserID               int64
+	RandomNumber         int32
+	CreatedTime          int64
+	CreatedFromIp        netip.Addr
+	CreatedFromMacaddr   net.HardwareAddr
+	CreatedFromLoc       string
+	CreatedFromUserAgent string
+	SessionMetadata      []byte
+	ExpiredAt            time.Time
 }
 
 func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionParams) error {
@@ -93,6 +158,10 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 		arg.UserID,
 		arg.RandomNumber,
 		arg.CreatedTime,
+		arg.CreatedFromIp,
+		arg.CreatedFromMacaddr,
+		arg.CreatedFromLoc,
+		arg.CreatedFromUserAgent,
 		arg.SessionMetadata,
 		arg.ExpiredAt,
 	)
@@ -100,7 +169,7 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 }
 
 const getUserSession = `-- name: GetUserSession :one
-SELECT user_id, random_number, created_time, session_metadata, expired_at
+SELECT user_id, random_number, created_time, created_from_ip, created_from_macaddr, created_from_loc, created_from_user_agent, session_metadata, expired_at
 FROM user_data.user_sessions
 WHERE user_id = $1
 	AND random_number = $2
@@ -120,6 +189,10 @@ func (q *Queries) GetUserSession(ctx context.Context, arg GetUserSessionParams) 
 		&i.UserID,
 		&i.RandomNumber,
 		&i.CreatedTime,
+		&i.CreatedFromIp,
+		&i.CreatedFromMacaddr,
+		&i.CreatedFromLoc,
+		&i.CreatedFromUserAgent,
 		&i.SessionMetadata,
 		&i.ExpiredAt,
 	)

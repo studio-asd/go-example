@@ -61,6 +61,13 @@ generate: $(DOCKERFILE) $(GEN_DIR)
 	@cp -r $(GEN_DIR)/github.com/studio-asd/go-example/proto/$(proto_folder)/* ./$(proto_folder)
 	@rm -rf $(GEN_DIR) 2>/dev/null
 
+.PHONY: protoc
+protoc:
+	@echo "Invoking protoc command..."
+	@docker run --platform $(DEFAULT_PLATFORM) --rm --volume ${PWD}:/generate \
+    	$(IMAGE_NAME):$(VERSION) \
+        -c "protoc ${protoc_command}"
+
 api_dirs := \
 	testdata/v1 \
 	ledger/v1 \

@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package go_example.api.wallet.v1;
+package go_example.api.user.v1;
 option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 
 import "buf/validate/validate.proto";
@@ -42,7 +42,7 @@ message CreateRoleRequest {
   string name = 1 [ (buf.validate.field).required = true ];
   // Permissions register the permissions inside the role, and only allowed
   // permissions can be registered inside a role.
-  repeated Permissoin permissions = 2;
+  repeated Permission permissions = 2;
   string description = 3;
 }
 
@@ -53,7 +53,7 @@ message CreateRoleResponse {
 
 message CreateUserPINRequest {
     string user_id = 1 [ (buf.validate.field).required = true ];
-    int pin = 2 [ (buf.validate.field).required = true ];
+    int32 pin = 2 [ (buf.validate.field).required = true ];
 }
 
 message CreateUserPINResponse {

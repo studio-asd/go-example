@@ -13,7 +13,7 @@ RUN go mod init github.com/studio-asd/go-example && \
     google.golang.org/grpc/cmd/protoc-gen-go-grpc \
     github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2 && \
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.5 && \
     go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway \
     github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2 \
     google.golang.org/grpc/cmd/protoc-gen-go-grpc

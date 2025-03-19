@@ -38,10 +38,23 @@ CREATE TABLE user_data.users_pii (
 );
 
 CREATE TABLE IF NOT EXISTS user_data.user_secrets (
-    id varchar PRIMARY KEY,
-    secret_type int NOT NULL,
+    secret_id bigint generated always as identity primary key,
+    user_id bigint NOT NULL,
+    -- secret_key is a key identifier for the user so its easier for them to identify
+    -- what the purpose of the secret is.
+    -- An example of the secret_key is "user_password".
     secret_key varchar NOT NULL,
-    created_at timestamp NOT NULL
+    secret_type int NOT NULL,
+    current_secret_version bigint NOT NULL,
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz
+);
+
+create table if not exists user_data.user_secret_versions (
+    secret_id bigint PRIMARY KEY,
+    secret_version bigint not null,
+    secret_value varchar not null,
+    created_at timestamptz not null
 );
 
 CREATE TABLE IF NOT EXISTS user_data.user_sessions (
@@ -58,30 +71,30 @@ CREATE TABLE IF NOT EXISTS user_data.user_sessions (
     created_from_loc varchar NOT NULL,
     created_from_user_agent varchar NOT NULL,
     session_metadata jsonb NOT NULL,
-    expired_at timestamp NOT NULL,
+    expired_at timestamptz NOT NULL,
     PRIMARY KEY (user_id, random_number, created_time)
 );
 
 CREATE TABLE IF NOT EXISTS user_data.user_roles (
     user_id bigint PRIMARY KEY,
     role_id bigint NOT NULL,
-    created_at timestamp NOT NULL,
-    expired_at timestamp NOT NULL,
+    created_at timestamptz NOT NULL,
+    expired_at timestamptz NOT NULL,
     UNIQUE (user_id, role_id)
 );
 
 CREATE TABLE IF NOT EXISTS user_data.security_roles (
     role_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_name varchar NOT NULL,
-    created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL
 );
 
 -- security_role_permissions maps role to permissions as one role can have more than one permission.
 CREATE TABLE IF NOT EXISTS user_data.security_role_permissions (
     role_id bigint PRIMARY KEY,
     permission_id bigint NOT NULL,
-    created_at timestamp NOT NULL,
+    created_at timestamptz NOT NULL,
     -- prevent the role for having the same permissions.
     UNIQUE (role_id, permission_id)
 );
@@ -95,6 +108,6 @@ CREATE TABLE IF NOT EXISTS user_data.security_permissions (
     permission_type varchar NOT NULL,
     permission_key varchar NOT NULL,
     permission_value varchar NOT NULL,
-    created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz NOT NULL
 );

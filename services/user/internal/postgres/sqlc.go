@@ -5,7 +5,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : user_data
-// generated_time  : 2025-03-17T23:34:03+07:00
+// generated_time  : 2025-03-19T16:07:46+07:00
 
 package postgres
 
@@ -28,8 +28,10 @@ func New(db *postgres.Postgres) *Queries {
 
 // WithMetrics wraps the queries to ensure the query metrics are recorded with the name. If name is empty then the function will skip the
 // metrics recording.
-func (q *Queries) WithMetrics(ctx context.Context, name string, fn func(context.Context, *postgres.Postgres) error) error {
-	return q.db.WithMetrics(ctx, name, fn)
+func (q *Queries) WithMetrics(ctx context.Context, name string, fn func(context.Context, *Queries) error) error {
+	return q.db.WithMetrics(ctx, name, func(ctx context.Context, p *postgres.Postgres) error {
+		return fn(ctx, New(p))
+	})
 }
 
 // WithTransact wraps the queries inside a database transaction. The transaction will be committed if no error returned

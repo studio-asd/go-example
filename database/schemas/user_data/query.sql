@@ -35,3 +35,21 @@ FROM user_data.user_sessions
 WHERE user_id = $1
 	AND random_number = $2
 	AND created_time = $3;
+
+
+-- name: CreateUserSecret :exec
+INSERT INTO user_data.user_secrets(
+    user_id,
+    secret_key,
+    secret_type,
+    current_secret_version,
+    created_at
+) VALUES($1,$2,$3,$4,$5);
+
+-- name: CreateUserSecretVersion :exec
+INSERT INTO user_data.user_secret_versions(
+    secret_id,
+    secret_version,
+    secret_value,
+    created_at
+) VALUES($1,$2,$3,$4);

@@ -4,7 +4,7 @@ package go_example.api.user.v1;
 option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 
 import "google/api/annotations.proto";
-import "api/ledger/v1/user.proto";
+import "api/user/v1/user.proto";
 
 service UserService {
   rpc Register(RegisterRequest) returns (RegisterResponse) {

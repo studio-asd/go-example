@@ -22,7 +22,8 @@ func init() {
 	validator, err = protovalidate.New(
 		protovalidate.WithFailFast(),
 		protovalidate.WithMessages(
-			&userv1.RegisterRequest{},
+			&userv1.RegisterUserRequest{},
+			&userv1.LoginRequest{},
 		),
 	)
 	if err != nil {
@@ -50,5 +51,14 @@ func (a *API) Init(ctx srun.Context) error {
 	return nil
 }
 
-func (a *API) RegisterUser(ctx context.Context, req *userv1.RegisterRequest) (*userv1.RegisterResponse, error) {
+func (a *API) GRPC() *GRPC {
+	return newGRPC(a)
+}
+
+func (a *API) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
+	return nil, nil
+}
+
+func (a *API) LoginRequest(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
+	return nil, nil
 }

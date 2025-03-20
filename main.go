@@ -11,6 +11,7 @@ import (
 
 	"github.com/studio-asd/go-example/services"
 	ledgerapi "github.com/studio-asd/go-example/services/ledger/api"
+	userapi "github.com/studio-asd/go-example/services/user/api"
 )
 
 type Config struct {
@@ -40,9 +41,10 @@ func run(ctx context.Context, runner srun.ServiceRunner) error {
 	}
 
 	ledgerAPI := ledgerapi.New(res.Container().Postgres().MustGetPostgres("go_example").Primary())
+	userAPI := userapi.New(res.Container().Postgres().MustGetPostgres("user").Primary())
 	grpcServer := res.Container().GRPC().Server.MustGetServer("main")
 
-	svc := services.New(ledgerAPI)
+	svc := services.New(ledgerAPI, userAPI)
 	svc.Register(grpcServer)
 
 	return runner.Register(

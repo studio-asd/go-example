@@ -159,7 +159,7 @@ func (q *Queries) Move(ctx context.Context, le ledger.MovementLedgerEntries) (in
 		}
 		return nil
 	}
-	err := q.WithMetrics(ctx, "ledgerMovement", func(ctx context.Context, p *postgres.Postgres) error {
+	err := q.WithMetrics(ctx, "ledgerMovement", func(ctx context.Context, q *Queries) error {
 		return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
 	})
 	return result, err

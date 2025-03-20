@@ -36,7 +36,7 @@ func (q *Queries) CreateLedgerAccounts(ctx context.Context, c ...CreateLedgerAcc
 		}
 		return err
 	}
-	return q.WithMetrics(ctx, "createLedgerAccounts", func(context.Context, *postgres.Postgres) error {
+	return q.WithMetrics(ctx, "createLedgerAccounts", func(ctx context.Context, q *Queries) error {
 		return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
 	})
 }
@@ -79,7 +79,7 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 		}
 		return nil
 	}
-	return q.WithMetrics(ctx, "createLedgerAccount", func(context.Context, *postgres.Postgres) error {
+	return q.WithMetrics(ctx, "createLedgerAccount", func(ctx context.Context, q *Queries) error {
 		return q.ensureInTransact(ctx, sql.LevelReadCommitted, fn)
 	})
 }
@@ -88,8 +88,8 @@ func (q *Queries) CreateLedgerAccount(ctx context.Context, c CreateLedgerAccount
 // the account information(O(1)) rather than looking from the entire accounts range(O(n)).
 func (q *Queries) GetAccountsBalanceMappedByAccID(ctx context.Context, accounts ...string) (map[string]GetAccountsBalanceRow, error) {
 	accountsBalance := make(map[string]GetAccountsBalanceRow)
-	err := q.WithMetrics(ctx, "getAccountsBalanceMappedbyAccID", func(ctx context.Context, p *postgres.Postgres) error {
-		return p.RunQuery(ctx, getAccountsBalance, func(rows *postgres.RowsCompat) error {
+	err := q.WithMetrics(ctx, "getAccountsBalanceMappedbyAccID", func(ctx context.Context, q *Queries) error {
+		return q.db.RunQuery(ctx, getAccountsBalance, func(rows *postgres.RowsCompat) error {
 			var i GetAccountsBalanceRow
 			if err := rows.Scan(
 				&i.AccountID,

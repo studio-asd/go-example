@@ -7,7 +7,7 @@ import "google/api/annotations.proto";
 import "api/user/v1/user.proto";
 
 service UserService {
-  rpc Register(RegisterRequest) returns (RegisterResponse) {
+  rpc Register(RegisterUserRequest) returns (RegisterUserResponse) {
     option (google.api.http) = {
       post : "/v1/user/register",
       body : "*"

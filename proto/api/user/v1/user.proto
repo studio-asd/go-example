@@ -7,10 +7,10 @@ import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
 enum SecretType {
-    SECRET_TYPE_UNSPECIFIED = 0;
-    SECRET_TYPE_PASSWORD = 1;
-    SECRET_TYPE_API_TOKEN = 20;
-    SECRET_TYPE_USER_PIN = 30;
+  SECRET_TYPE_UNSPECIFIED = 0;
+  SECRET_TYPE_PASSWORD = 1;
+  SECRET_TYPE_API_TOKEN = 20;
+  SECRET_TYPE_USER_PIN = 30;
 }
 
 message LoginRequest {
@@ -23,12 +23,12 @@ message LoginResponse {
   google.protobuf.Timestamp login_at = 2;
 }
 
-message RegisterRequest {
+message RegisterUserRequest {
   string email = 1 [ (buf.validate.field).required = true ];
   string password = 2 [ (buf.validate.field).required = true ];
 }
 
-message RegisterResponse {
+message RegisterUserResponse {
   string user_id = 1;
   google.protobuf.Timestamp created_at = 2;
 }
@@ -52,11 +52,11 @@ message CreateRoleResponse {
 }
 
 message CreateUserPINRequest {
-    string user_id = 1 [ (buf.validate.field).required = true ];
-    int32 pin = 2 [ (buf.validate.field).required = true ];
+  string user_id = 1 [ (buf.validate.field).required = true ];
+  int32 pin = 2 [ (buf.validate.field).required = true ];
 }
 
 message CreateUserPINResponse {
-    string user_id = 1;
-    google.protobuf.Timestamp created_at = 2;
+  string user_id = 1;
+  google.protobuf.Timestamp created_at = 2;
 }

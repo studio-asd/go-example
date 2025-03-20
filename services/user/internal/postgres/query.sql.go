@@ -7,7 +7,7 @@ package postgres
 
 import (
 	"context"
-	"net"
+	"database/sql"
 	"net/netip"
 	"time"
 )
@@ -72,17 +72,19 @@ func (q *Queries) CreateUserPII(ctx context.Context, arg CreateUserPIIParams) er
 	return err
 }
 
-const createUserSecret = `-- name: CreateUserSecret :exec
+const createUserSecret = `-- name: CreateUserSecret :one
 INSERT INTO user_data.user_secrets(
+	external_id,
     user_id,
     secret_key,
     secret_type,
     current_secret_version,
     created_at
-) VALUES($1,$2,$3,$4,$5)
+) VALUES($1,$2,$3,$4,$5,$6) RETURNING secret_id
 `
 
 type CreateUserSecretParams struct {
+	ExternalID           string
 	UserID               int64
 	SecretKey            string
 	SecretType           int32
@@ -90,15 +92,18 @@ type CreateUserSecretParams struct {
 	CreatedAt            time.Time
 }
 
-func (q *Queries) CreateUserSecret(ctx context.Context, arg CreateUserSecretParams) error {
-	_, err := q.db.Exec(ctx, createUserSecret,
+func (q *Queries) CreateUserSecret(ctx context.Context, arg CreateUserSecretParams) (int64, error) {
+	row := q.db.QueryRow(ctx, createUserSecret,
+		arg.ExternalID,
 		arg.UserID,
 		arg.SecretKey,
 		arg.SecretType,
 		arg.CurrentSecretVersion,
 		arg.CreatedAt,
 	)
-	return err
+	var secret_id int64
+	err := row.Scan(&secret_id)
+	return secret_id, err
 }
 
 const createUserSecretVersion = `-- name: CreateUserSecretVersion :exec
@@ -133,12 +138,11 @@ INSERT INTO user_data.user_sessions(
 	random_number,
 	created_time,
 	created_from_ip,
-	created_from_macaddr,
 	created_from_loc,
 	created_from_user_agent,
 	session_metadata,
 	expired_at
-) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
 `
 
 type CreateUserSessionParams struct {
@@ -146,8 +150,7 @@ type CreateUserSessionParams struct {
 	RandomNumber         int32
 	CreatedTime          int64
 	CreatedFromIp        netip.Addr
-	CreatedFromMacaddr   net.HardwareAddr
-	CreatedFromLoc       string
+	CreatedFromLoc       sql.NullString
 	CreatedFromUserAgent string
 	SessionMetadata      []byte
 	ExpiredAt            time.Time
@@ -159,7 +162,6 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 		arg.RandomNumber,
 		arg.CreatedTime,
 		arg.CreatedFromIp,
-		arg.CreatedFromMacaddr,
 		arg.CreatedFromLoc,
 		arg.CreatedFromUserAgent,
 		arg.SessionMetadata,
@@ -168,8 +170,135 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 	return err
 }
 
+const getUserSecret = `-- name: GetUserSecret :one
+SELECT secret_id, external_id, user_id, secret_key, secret_type, current_secret_version, created_at, updated_at
+FROM user_data.user_secrets
+WHERE user_id = $1
+	AND secret_key = $2
+	AND secret_type = $3
+`
+
+type GetUserSecretParams struct {
+	UserID     int64
+	SecretKey  string
+	SecretType int32
+}
+
+func (q *Queries) GetUserSecret(ctx context.Context, arg GetUserSecretParams) (UserDataUserSecret, error) {
+	row := q.db.QueryRow(ctx, getUserSecret, arg.UserID, arg.SecretKey, arg.SecretType)
+	var i UserDataUserSecret
+	err := row.Scan(
+		&i.SecretID,
+		&i.ExternalID,
+		&i.UserID,
+		&i.SecretKey,
+		&i.SecretType,
+		&i.CurrentSecretVersion,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserSecretByType = `-- name: GetUserSecretByType :many
+SELECT secret_id, external_id, user_id, secret_key, secret_type, current_secret_version, created_at, updated_at
+FROM user_data.user_secrets
+WHERE user_id = $1
+	AND secret_type = $2
+`
+
+type GetUserSecretByTypeParams struct {
+	UserID     int64
+	SecretType int32
+}
+
+func (q *Queries) GetUserSecretByType(ctx context.Context, arg GetUserSecretByTypeParams) ([]UserDataUserSecret, error) {
+	rows, err := q.db.Query(ctx, getUserSecretByType, arg.UserID, arg.SecretType)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserDataUserSecret
+	for rows.Next() {
+		var i UserDataUserSecret
+		if err := rows.Scan(
+			&i.SecretID,
+			&i.ExternalID,
+			&i.UserID,
+			&i.SecretKey,
+			&i.SecretType,
+			&i.CurrentSecretVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserSecretValue = `-- name: GetUserSecretValue :one
+SELECT us.secret_id,
+	us.external_id,
+	us.user_id,
+	us.secret_key,
+	us.secret_type,
+	us.current_secret_version,
+	us.created_at,
+	-- The updated_at is the same with the new version created_at so we don't
+	-- have to retrieve more information from usv.
+	us.updated_at,
+	usv.secret_value
+FROM user_data.user_secrets us,
+	user_data.user_secret_versions usv
+WHERE us.user_id = $1
+	AND us.secret_key = $2
+	AND us.secret_type = $3
+	AND us.current_secret_version = usv.secret_version
+	AND us.secret_id = usv.secret_id
+`
+
+type GetUserSecretValueParams struct {
+	UserID     int64
+	SecretKey  string
+	SecretType int32
+}
+
+type GetUserSecretValueRow struct {
+	SecretID             int64
+	ExternalID           string
+	UserID               int64
+	SecretKey            string
+	SecretType           int32
+	CurrentSecretVersion int64
+	CreatedAt            time.Time
+	UpdatedAt            sql.NullTime
+	SecretValue          string
+}
+
+func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValueParams) (GetUserSecretValueRow, error) {
+	row := q.db.QueryRow(ctx, getUserSecretValue, arg.UserID, arg.SecretKey, arg.SecretType)
+	var i GetUserSecretValueRow
+	err := row.Scan(
+		&i.SecretID,
+		&i.ExternalID,
+		&i.UserID,
+		&i.SecretKey,
+		&i.SecretType,
+		&i.CurrentSecretVersion,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SecretValue,
+	)
+	return i, err
+}
+
 const getUserSession = `-- name: GetUserSession :one
-SELECT user_id, random_number, created_time, created_from_ip, created_from_macaddr, created_from_loc, created_from_user_agent, session_metadata, expired_at
+SELECT user_id, random_number, created_time, created_from_ip, created_from_loc, created_from_user_agent, session_metadata, expired_at
 FROM user_data.user_sessions
 WHERE user_id = $1
 	AND random_number = $2
@@ -190,7 +319,6 @@ func (q *Queries) GetUserSession(ctx context.Context, arg GetUserSessionParams) 
 		&i.RandomNumber,
 		&i.CreatedTime,
 		&i.CreatedFromIp,
-		&i.CreatedFromMacaddr,
 		&i.CreatedFromLoc,
 		&i.CreatedFromUserAgent,
 		&i.SessionMetadata,

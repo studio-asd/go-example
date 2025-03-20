@@ -5,7 +5,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : go_example
-// generated_time  : 2025-03-19T16:07:45+07:00
+// generated_time  : 2025-03-20T12:27:27+07:00
 
 package postgres
 

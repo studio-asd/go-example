@@ -39,6 +39,8 @@ CREATE TABLE user_data.users_pii (
 
 CREATE TABLE IF NOT EXISTS user_data.user_secrets (
     secret_id bigint generated always as identity primary key,
+    -- external_id is the id that used to identify a secret from the client side.
+    external_id varchar NOT NULL,
     user_id bigint NOT NULL,
     -- secret_key is a key identifier for the user so its easier for them to identify
     -- what the purpose of the secret is.
@@ -47,14 +49,16 @@ CREATE TABLE IF NOT EXISTS user_data.user_secrets (
     secret_type int NOT NULL,
     current_secret_version bigint NOT NULL,
     created_at timestamptz NOT NULL,
-    updated_at timestamptz
+    updated_at timestamptz,
+    -- The secret key is unique per user and type.
+    UNIQUE(user_id, secret_key, secret_type)
 );
 
-create table if not exists user_data.user_secret_versions (
+CREATE TABLE IF NOT EXISTS user_data.user_secret_versions (
     secret_id bigint PRIMARY KEY,
-    secret_version bigint not null,
-    secret_value varchar not null,
-    created_at timestamptz not null
+    secret_version bigint NOT NULL,
+    secret_value varchar NOT NULL,
+    created_at timestamptz NOT NULL 
 );
 
 CREATE TABLE IF NOT EXISTS user_data.user_sessions (
@@ -66,9 +70,8 @@ CREATE TABLE IF NOT EXISTS user_data.user_sessions (
     random_number int NOT NULL,
     created_time bigint NOT NULL,
     created_from_ip inet NOT NULL,
-    -- created_from_macaddr stores the mac address of the device that created the session if available.
-    created_from_macaddr macaddr,
-    created_from_loc varchar NOT NULL,
+    -- created_from_loc tracks from where the session is created if available.
+    created_from_loc varchar,
     created_from_user_agent varchar NOT NULL,
     session_metadata jsonb NOT NULL,
     expired_at timestamptz NOT NULL,

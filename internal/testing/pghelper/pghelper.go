@@ -140,6 +140,9 @@ func (th *Helper) Close() error {
 				return err
 			}
 			err = pgtest.DropDatabase(context.Background(), url)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if err == nil {

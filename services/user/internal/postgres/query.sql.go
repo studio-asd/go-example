@@ -13,7 +13,7 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO user_data.users (
+INSERT INTO users (
 	external_id,
 	user_email,
 	created_at,
@@ -25,7 +25,7 @@ type CreateUserParams struct {
 	ExternalID string
 	UserEmail  string
 	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	UpdatedAt  sql.NullTime
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
@@ -41,7 +41,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, 
 }
 
 const createUserPII = `-- name: CreateUserPII :exec
-INSERT INTO user_data.users_pii(
+INSERT INTO users_pii(
 	user_id,
 	phone_number,
 	identity_number,
@@ -73,7 +73,7 @@ func (q *Queries) CreateUserPII(ctx context.Context, arg CreateUserPIIParams) er
 }
 
 const createUserSecret = `-- name: CreateUserSecret :one
-INSERT INTO user_data.user_secrets(
+INSERT INTO user_secrets(
 	external_id,
     user_id,
     secret_key,
@@ -107,7 +107,7 @@ func (q *Queries) CreateUserSecret(ctx context.Context, arg CreateUserSecretPara
 }
 
 const createUserSecretVersion = `-- name: CreateUserSecretVersion :exec
-INSERT INTO user_data.user_secret_versions(
+INSERT INTO user_secret_versions(
     secret_id,
     secret_version,
     secret_value,
@@ -133,7 +133,7 @@ func (q *Queries) CreateUserSecretVersion(ctx context.Context, arg CreateUserSec
 }
 
 const createUserSession = `-- name: CreateUserSession :exec
-INSERT INTO user_data.user_sessions(
+INSERT INTO user_sessions(
 	user_id,
 	random_number,
 	created_time,
@@ -171,8 +171,15 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 }
 
 const getUserSecret = `-- name: GetUserSecret :one
-SELECT secret_id, external_id, user_id, secret_key, secret_type, current_secret_version, created_at, updated_at
-FROM user_data.user_secrets
+SELECT secret_id,
+	external_id,
+	user_id,
+	secret_key,
+	secret_type,
+	current_secret_version,
+	created_at,
+	updated_at
+FROM user_secrets
 WHERE user_id = $1
 	AND secret_key = $2
 	AND secret_type = $3
@@ -184,9 +191,9 @@ type GetUserSecretParams struct {
 	SecretType int32
 }
 
-func (q *Queries) GetUserSecret(ctx context.Context, arg GetUserSecretParams) (UserDataUserSecret, error) {
+func (q *Queries) GetUserSecret(ctx context.Context, arg GetUserSecretParams) (UserSecret, error) {
 	row := q.db.QueryRow(ctx, getUserSecret, arg.UserID, arg.SecretKey, arg.SecretType)
-	var i UserDataUserSecret
+	var i UserSecret
 	err := row.Scan(
 		&i.SecretID,
 		&i.ExternalID,
@@ -201,8 +208,15 @@ func (q *Queries) GetUserSecret(ctx context.Context, arg GetUserSecretParams) (U
 }
 
 const getUserSecretByType = `-- name: GetUserSecretByType :many
-SELECT secret_id, external_id, user_id, secret_key, secret_type, current_secret_version, created_at, updated_at
-FROM user_data.user_secrets
+SELECT secret_id,
+	external_id,
+	user_id,
+	secret_key,
+	secret_type,
+	current_secret_version,
+	created_at,
+	updated_at
+FROM user_secrets
 WHERE user_id = $1
 	AND secret_type = $2
 `
@@ -212,15 +226,15 @@ type GetUserSecretByTypeParams struct {
 	SecretType int32
 }
 
-func (q *Queries) GetUserSecretByType(ctx context.Context, arg GetUserSecretByTypeParams) ([]UserDataUserSecret, error) {
+func (q *Queries) GetUserSecretByType(ctx context.Context, arg GetUserSecretByTypeParams) ([]UserSecret, error) {
 	rows, err := q.db.Query(ctx, getUserSecretByType, arg.UserID, arg.SecretType)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []UserDataUserSecret
+	var items []UserSecret
 	for rows.Next() {
-		var i UserDataUserSecret
+		var i UserSecret
 		if err := rows.Scan(
 			&i.SecretID,
 			&i.ExternalID,
@@ -253,8 +267,8 @@ SELECT us.secret_id,
 	-- have to retrieve more information from usv.
 	us.updated_at,
 	usv.secret_value
-FROM user_data.user_secrets us,
-	user_data.user_secret_versions usv
+FROM user_secrets us,
+	user_secret_versions usv
 WHERE us.user_id = $1
 	AND us.secret_key = $2
 	AND us.secret_type = $3
@@ -298,8 +312,15 @@ func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValue
 }
 
 const getUserSession = `-- name: GetUserSession :one
-SELECT user_id, random_number, created_time, created_from_ip, created_from_loc, created_from_user_agent, session_metadata, expired_at
-FROM user_data.user_sessions
+SELECT user_id,
+	random_number,
+	created_time,
+	created_from_ip,
+	created_from_loc,
+	created_from_user_agent,
+	session_metadata,
+	expired_at
+FROM user_sessions
 WHERE user_id = $1
 	AND random_number = $2
 	AND created_time = $3
@@ -311,9 +332,9 @@ type GetUserSessionParams struct {
 	CreatedTime  int64
 }
 
-func (q *Queries) GetUserSession(ctx context.Context, arg GetUserSessionParams) (UserDataUserSession, error) {
+func (q *Queries) GetUserSession(ctx context.Context, arg GetUserSessionParams) (UserSession, error) {
 	row := q.db.QueryRow(ctx, getUserSession, arg.UserID, arg.RandomNumber, arg.CreatedTime)
-	var i UserDataUserSession
+	var i UserSession
 	err := row.Scan(
 		&i.UserID,
 		&i.RandomNumber,

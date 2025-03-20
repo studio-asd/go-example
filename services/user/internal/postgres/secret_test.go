@@ -60,7 +60,7 @@ func TestCreateNewSecret(t *testing.T) {
 	}
 
 	// Fork the schema so we don't mix the data between tests.
-	th, err := testHelper.ForkPostgresSchema(t.Context(), testQueries.Postgres(), "user_data")
+	th, err := testHelper.ForkPostgresSchema(t.Context(), testQueries.Postgres(), "public")
 	if err != nil {
 		t.Fatal(err)
 	}

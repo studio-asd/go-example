@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type UserDataUserSecret struct {
+type UserSecret struct {
 	SecretID             int64
 	ExternalID           string
 	UserID               int64
@@ -21,7 +21,7 @@ type UserDataUserSecret struct {
 	UpdatedAt            sql.NullTime
 }
 
-type UserDataUserSession struct {
+type UserSession struct {
 	UserID               int64
 	RandomNumber         int32
 	CreatedTime          int64

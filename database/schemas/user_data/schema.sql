@@ -1,34 +1,33 @@
-DROP SCHEMA IF EXISTS user_data;
+DROP TABLE IF EXISTS users;
 
-CREATE SCHEMA IF NOT EXISTS user_data;
+DROP TABLE IF EXISTS users_pii;
 
-DROP TABLE IF EXISTS user_data.users;
+DROP TABLE IF EXISTS user_secrets;
 
-DROP TABLE IF EXISTS user_data.users_pii;
+DROP TABLE IF EXISTS user_sessions;
 
-DROP TABLE IF EXISTS user_data.user_secrets;
+DROP TABLE IF EXISTS user_roles;
 
-DROP TABLE IF EXISTS user_data.user_sessions;
+DROP TABLE IF EXISTS security_roles;
 
-DROP TABLE IF EXISTS user_data.user_roles;
+DROP TABLE IF EXISTS security_role_permissions;
 
-DROP TABLE IF EXISTS user_data.security_roles;
+DROP TABLE IF EXISTS security_permissions;
 
-DROP TABLE IF EXISTS user_data.security_role_permissions;
-
-DROP TABLE IF EXISTS user_data.security_permissions;
-
-CREATE TABLE IF NOT EXISTS user_data.users (
+CREATE TABLE IF NOT EXISTS users (
     user_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     -- external_id is used as unique identifier for the user in external API.
     -- We use uuid_v4 to generate the external_id.
     external_id varchar NOT NULL,
     user_email varchar NOT NULL,
     created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL
+    updated_at timestamp
 );
 
-CREATE TABLE user_data.users_pii (
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_user_email ON users("user_email");
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_external_id ON users("external_id");
+
+CREATE TABLE users_pii (
     user_id bigint PRIMARY KEY,
     phone_number VARCHAR NOT NULL,
     identity_number VARCHAR NOT NULL,
@@ -37,7 +36,7 @@ CREATE TABLE user_data.users_pii (
     updated_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS user_data.user_secrets (
+CREATE TABLE IF NOT EXISTS user_secrets (
     secret_id bigint generated always as identity primary key,
     -- external_id is the id that used to identify a secret from the client side.
     external_id varchar NOT NULL,
@@ -51,17 +50,30 @@ CREATE TABLE IF NOT EXISTS user_data.user_secrets (
     created_at timestamptz NOT NULL,
     updated_at timestamptz,
     -- The secret key is unique per user and type.
-    UNIQUE(user_id, secret_key, secret_type)
+    UNIQUE(user_id, secret_key, secret_type),
+    UNIQUE(external_id)
 );
 
-CREATE TABLE IF NOT EXISTS user_data.user_secret_versions (
-    secret_id bigint PRIMARY KEY,
+-- This index is used to ensure all secret_key is unique per user and secret type. Other than that the index is also useful to retrieve a specific
+-- secret by user_id, secret_key and secret_type, for example in the login scenario because we already know the secret_key and secret_type.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_ussecrets_uid_sk_st ON user_secrets("user_id", "secret_key", "secret_type");
+-- This index is used to ensure all external id is unique and we can rertieve the secret by external id.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_ussecrets_external_id ON user_secrets("external_id");
+-- This index is used to retrieve all secrets for a user under a specific secret type.
+CREATE INDEX IF NOT EXISTS idx_ussecrets_uid_st ON user_secrets("user_id", "secret_type");
+
+CREATE TABLE IF NOT EXISTS user_secret_versions (
+    secret_id bigint NOT NULL,
     secret_version bigint NOT NULL,
     secret_value varchar NOT NULL,
-    created_at timestamptz NOT NULL 
+    created_at timestamptz NOT NULL ,
+    PRIMARY KEY(secret_id, secret_version)
 );
 
-CREATE TABLE IF NOT EXISTS user_data.user_sessions (
+-- This index is used to retrieve all secret versions for a specific secret id.
+CREATE INDEX IF NOT EXISTS idx_ussecrets_ver_sid ON user_secrets("secret_id");
+
+CREATE TABLE IF NOT EXISTS user_sessions (
     user_id bigint NOT NULL,
     -- random_number is a pure random number generated to give the uniqueness to the session
     -- identifier as we use user_id, random_number and created_time to identify the session.
@@ -78,7 +90,7 @@ CREATE TABLE IF NOT EXISTS user_data.user_sessions (
     PRIMARY KEY (user_id, random_number, created_time)
 );
 
-CREATE TABLE IF NOT EXISTS user_data.user_roles (
+CREATE TABLE IF NOT EXISTS user_roles (
     user_id bigint PRIMARY KEY,
     role_id bigint NOT NULL,
     created_at timestamptz NOT NULL,
@@ -86,7 +98,7 @@ CREATE TABLE IF NOT EXISTS user_data.user_roles (
     UNIQUE (user_id, role_id)
 );
 
-CREATE TABLE IF NOT EXISTS user_data.security_roles (
+CREATE TABLE IF NOT EXISTS security_roles (
     role_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_name varchar NOT NULL,
     created_at timestamptz NOT NULL,
@@ -94,7 +106,7 @@ CREATE TABLE IF NOT EXISTS user_data.security_roles (
 );
 
 -- security_role_permissions maps role to permissions as one role can have more than one permission.
-CREATE TABLE IF NOT EXISTS user_data.security_role_permissions (
+CREATE TABLE IF NOT EXISTS security_role_permissions (
     role_id bigint PRIMARY KEY,
     permission_id bigint NOT NULL,
     created_at timestamptz NOT NULL,
@@ -102,7 +114,7 @@ CREATE TABLE IF NOT EXISTS user_data.security_role_permissions (
     UNIQUE (role_id, permission_id)
 );
 
-CREATE TABLE IF NOT EXISTS user_data.security_permissions (
+CREATE TABLE IF NOT EXISTS security_permissions (
     permission_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     permission_name varchar NOT NULL,
     -- permission_type is the granular type of permission. For example, 'api_endpoint', 'file_access'.

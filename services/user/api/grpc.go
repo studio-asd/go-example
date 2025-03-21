@@ -4,6 +4,7 @@ import (
 	"context"
 
 	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 type GRPC struct {
@@ -29,4 +30,10 @@ func (a *GRPC) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.Log
 		return nil, err
 	}
 	return nil, nil
+}
+
+func (a *GRPC) Info(ctx context.Context, e *emptypb.Empty) (*userv1.InfoResponse, error) {
+	return &userv1.InfoResponse{
+		UserId: "user",
+	}, nil
 }

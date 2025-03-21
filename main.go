@@ -45,7 +45,7 @@ func run(ctx context.Context, runner srun.ServiceRunner) error {
 	grpcServer := res.Container().GRPC().Server.MustGetServer("main")
 
 	svc := services.New(ledgerAPI, userAPI)
-	svc.Register(grpcServer)
+	svc.RegisterAPIServices(grpcServer)
 
 	return runner.Register(
 		srun.RegisterRunnerAwareServices(res),

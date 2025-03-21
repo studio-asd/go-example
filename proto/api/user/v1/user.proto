@@ -60,3 +60,9 @@ message CreateUserPINResponse {
   string user_id = 1;
   google.protobuf.Timestamp created_at = 2;
 }
+
+message InfoResponse {
+  string user_id = 1;
+  string email = 2;
+  google.protobuf.Timestamp created_at = 3;
+}

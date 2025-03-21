@@ -4,6 +4,7 @@ package go_example.api.user.v1;
 option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 import "api/user/v1/user.proto";
 
 service UserService {
@@ -18,6 +19,12 @@ service UserService {
     option (google.api.http) = {
       post : "/v1/user/login",
       body : "*"
+    };
+  }
+
+  rpc Info(google.protobuf.Empty) returns (InfoResponse) {
+    option (google.api.http) = {
+      get : "/v1/user/info",
     };
   }
 }

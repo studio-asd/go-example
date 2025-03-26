@@ -20,10 +20,16 @@ func (q *Queries) RegisterUser(ctx context.Context, user RegisterUser) error {
 	fn := func(ctx context.Context, q *Queries) error {
 		userID, err := q.CreateUser(ctx, CreateUserParams{
 			ExternalID: user.UUID,
-			UserEmail:  user.Email,
 			CreatedAt:  user.CreatedAt,
 		})
 		if err != nil {
+			return err
+		}
+		if err := q.CreateUserPII(ctx, CreateUserPIIParams{
+			UserID:    userID,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt,
+		}); err != nil {
 			return err
 		}
 		if err := q.CreateNewSecret(ctx, CreateNewSecret{

@@ -6,9 +6,25 @@ package postgres
 
 import (
 	"database/sql"
-	"net/netip"
 	"time"
 )
+
+type User struct {
+	UserID     int64
+	ExternalID string
+	CreatedAt  time.Time
+	UpdatedAt  sql.NullTime
+}
+
+type UserPii struct {
+	UserID         int64
+	Email          string
+	PhoneNumber    sql.NullString
+	IdentityNumber sql.NullString
+	IdentityType   sql.NullInt32
+	CreatedAt      time.Time
+	UpdatedAt      sql.NullTime
+}
 
 type UserSecret struct {
 	SecretID             int64
@@ -19,15 +35,4 @@ type UserSecret struct {
 	CurrentSecretVersion int64
 	CreatedAt            time.Time
 	UpdatedAt            sql.NullTime
-}
-
-type UserSession struct {
-	UserID               int64
-	RandomNumber         int32
-	CreatedTime          int64
-	CreatedFromIp        netip.Addr
-	CreatedFromLoc       sql.NullString
-	CreatedFromUserAgent string
-	SessionMetadata      []byte
-	ExpiredAt            time.Time
 }

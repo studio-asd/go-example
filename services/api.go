@@ -2,11 +2,9 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/studio-asd/pkg/resources"
@@ -20,30 +18,23 @@ import (
 type Services struct {
 	ledger *ledgerapi.API
 	user   *userapi.API
-	// noAuthMethods stores the http patterns that don't require authentication. PLEASE be careful on adding more methods
-	// here as we need to make sure that the method is really doesn't require authentication.
-	//
-	// In practice, we should write a description of each method why it doesn't require authentication.
-	noAuthPatterns map[string]string
+	auth   *serviceAuth
 }
 
 func New(ledger *ledgerapi.API, user *userapi.API) *Services {
 	return &Services{
 		ledger: ledger,
 		user:   user,
-		noAuthPatterns: map[string]string{
-			// For debugging.
-			"/v1/user/info": http.MethodGet,
+		auth: &serviceAuth{
+			noAuthPatterns: map[string]string{
+				// For debugging.
+				"/v1/user/info": http.MethodGet,
+			},
 		},
 	}
 }
 
 func (s *Services) RegisterAPIServices(grpcServer *resources.GRPCServerObject) error {
-	// gRPC Server.
-	grpcServer.RegisterService(func(reg grpc.ServiceRegistrar) {
-		ledgerv1.RegisterLedgerServiceServer(reg, s.ledger.GRPC())
-		userv1.RegisterUserServiceServer(reg, s.user.GRPC())
-	})
 	// gRPC Gateway.
 	err := grpcServer.RegisterGatewayService(func(gateway *resources.GRPCGatewayObject) error {
 		gateway.RegisterMetadataHandler(metadataForwarder)
@@ -66,47 +57,27 @@ func (s *Services) RegisterAPIServices(grpcServer *resources.GRPCServerObject) e
 }
 
 func (s *Services) middlewares() []runtime.Middleware {
-	authMD := func(hf runtime.HandlerFunc) runtime.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-			// Retrieve the http pattern name from the context. Since we are using grpc-gateway, the pattern is not available via r.Pattern
-			// and both runtime.HTTPPathPattern and runtime.RPCMethod will reteurn an empty value.
-			// Unfortunately the HTTP pattern is not available in grpc gateway generated code so we need to type it by our own.
-			ptrn, ok := runtime.HTTPPattern(r.Context())
-			// This means the request is coming from non-gateway handler, so we can't handle it.
-			// We will immediately return internal server error(500) in this case.
-			if !ok {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			httpPathPattern := ptrn.String()
-
-			// Check whether we can go on with the request and whether the request need further authentication or not.
-			// If the pattern and method is a match then we should go without authentication.
-			httpMethod, ok := s.noAuthPatterns[httpPathPattern]
-			if ok && httpMethod == r.Method {
-				hf(w, r, pathParams)
-				return
-			}
-
-			// switch r.Header.Get(headerClientType) {
-			// case clientTypeWeb:
-			// 	handleWebAuthentication(w, r)
-			// case clientTypeMobile:
-			// }
-		}
-	}
-
 	return []runtime.Middleware{
-		authMD,
+		s.auth.middleware,
 	}
 }
 
+// metadataForwarder is always executed after middleware and before the actual handler is being executed. So we can always rely on this function
+// to forward the metadata to the context.
 func metadataForwarder(ctx context.Context, r *http.Request) metadata.MD {
-	ptrn, ok := runtime.HTTPPattern(r.Context())
-	// This means the request is coming from non-gateway handler, so we can't handle it.
-	// We will immediately return internal server error(500) in this case.
-	if ok {
-		fmt.Println("OK BOS", ptrn.String())
+	headers := map[string]string{
+		"User-Agent":      r.Header.Get("User-Agent"),
+		"Authorization":   r.Header.Get("Authorization"),
+		"X-Forwarded-For": r.Header.Get("X-Forwarded-For"),
 	}
-	return nil
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		md = metadata.New(headers)
+		return md
+	}
+	for k, v := range headers {
+		md.Append(k, v)
+	}
+	return md
 }

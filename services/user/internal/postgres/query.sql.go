@@ -10,59 +10,58 @@ import (
 	"database/sql"
 	"net/netip"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
 	external_id,
-	user_email,
 	created_at,
 	updated_at
-) VALUES($1,$2,$3,$4) RETURNING user_id
+) VALUES($1,$2,$3) RETURNING user_id
 `
 
 type CreateUserParams struct {
 	ExternalID string
-	UserEmail  string
 	CreatedAt  time.Time
 	UpdatedAt  sql.NullTime
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createUser,
-		arg.ExternalID,
-		arg.UserEmail,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
+	row := q.db.QueryRow(ctx, createUser, arg.ExternalID, arg.CreatedAt, arg.UpdatedAt)
 	var user_id int64
 	err := row.Scan(&user_id)
 	return user_id, err
 }
 
 const createUserPII = `-- name: CreateUserPII :exec
-INSERT INTO users_pii(
+INSERT INTO user_pii (
 	user_id,
+	email,
 	phone_number,
 	identity_number,
 	identity_type,
 	created_at,
 	updated_at
-) VALUES($1,$2,$3,$4,$5,$6)
+) VALUES($1,$2,$3,$4,$5,$6,$7)
 `
 
 type CreateUserPIIParams struct {
 	UserID         int64
-	PhoneNumber    string
-	IdentityNumber string
-	IdentityType   int32
+	Email          string
+	PhoneNumber    sql.NullString
+	IdentityNumber sql.NullString
+	IdentityType   sql.NullInt32
 	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	UpdatedAt      sql.NullTime
 }
 
 func (q *Queries) CreateUserPII(ctx context.Context, arg CreateUserPIIParams) error {
 	_, err := q.db.Exec(ctx, createUserPII,
 		arg.UserID,
+		arg.Email,
 		arg.PhoneNumber,
 		arg.IdentityNumber,
 		arg.IdentityType,
@@ -134,40 +133,94 @@ func (q *Queries) CreateUserSecretVersion(ctx context.Context, arg CreateUserSec
 
 const createUserSession = `-- name: CreateUserSession :exec
 INSERT INTO user_sessions(
+	session_id,
+	session_type,
 	user_id,
-	random_number,
-	created_time,
+	random_id,
 	created_from_ip,
 	created_from_loc,
 	created_from_user_agent,
 	session_metadata,
+	created_at,
 	expired_at
-) VALUES($1,$2,$3,$4,$5,$6,$7,$8)
+) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 `
 
 type CreateUserSessionParams struct {
-	UserID               int64
-	RandomNumber         int32
-	CreatedTime          int64
+	SessionID            uuid.UUID
+	SessionType          int32
+	UserID               pgtype.Int8
+	RandomID             string
 	CreatedFromIp        netip.Addr
 	CreatedFromLoc       sql.NullString
 	CreatedFromUserAgent string
 	SessionMetadata      []byte
+	CreatedAt            time.Time
 	ExpiredAt            time.Time
 }
 
 func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionParams) error {
 	_, err := q.db.Exec(ctx, createUserSession,
+		arg.SessionID,
+		arg.SessionType,
 		arg.UserID,
-		arg.RandomNumber,
-		arg.CreatedTime,
+		arg.RandomID,
 		arg.CreatedFromIp,
 		arg.CreatedFromLoc,
 		arg.CreatedFromUserAgent,
 		arg.SessionMetadata,
+		arg.CreatedAt,
 		arg.ExpiredAt,
 	)
 	return err
+}
+
+const getUserByExternalID = `-- name: GetUserByExternalID :one
+SELECT user_id,
+	external_id,
+	created_at,
+	updated_at
+FROM users
+WHERE external_id = $1
+`
+
+func (q *Queries) GetUserByExternalID(ctx context.Context, externalID string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByExternalID, externalID)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.ExternalID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserPII = `-- name: GetUserPII :one
+SELECT user_id,
+	email,
+	phone_number,
+	identity_number,
+	identity_type,
+	created_at,
+	updated_at
+FROM user_pii
+WHERE user_id = $1
+`
+
+func (q *Queries) GetUserPII(ctx context.Context, userID int64) (UserPii, error) {
+	row := q.db.QueryRow(ctx, getUserPII, userID)
+	var i UserPii
+	err := row.Scan(
+		&i.UserID,
+		&i.Email,
+		&i.PhoneNumber,
+		&i.IdentityNumber,
+		&i.IdentityType,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getUserSecret = `-- name: GetUserSecret :one
@@ -203,6 +256,54 @@ func (q *Queries) GetUserSecret(ctx context.Context, arg GetUserSecretParams) (U
 		&i.CurrentSecretVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserSecretByExternalID = `-- name: GetUserSecretByExternalID :one
+SELECT us.secret_id,
+	us.external_id,
+	us.user_id,
+	us.secret_key,
+	us.secret_type,
+	us.current_secret_version,
+	us.created_at,
+	-- The updated_at is the same with the new version created_at so we don't
+	-- have to retrieve more information from usv.
+	us.updated_at,
+	usv.secret_value
+FROM user_secrets us,
+	user_secret_versions usv
+WHERE us.external_id = $1
+	AND us.current_secret_version = usv.secret_version
+	AND us.secret_id = usv.secret_id
+`
+
+type GetUserSecretByExternalIDRow struct {
+	SecretID             int64
+	ExternalID           string
+	UserID               int64
+	SecretKey            string
+	SecretType           int32
+	CurrentSecretVersion int64
+	CreatedAt            time.Time
+	UpdatedAt            sql.NullTime
+	SecretValue          string
+}
+
+func (q *Queries) GetUserSecretByExternalID(ctx context.Context, externalID string) (GetUserSecretByExternalIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserSecretByExternalID, externalID)
+	var i GetUserSecretByExternalIDRow
+	err := row.Scan(
+		&i.SecretID,
+		&i.ExternalID,
+		&i.UserID,
+		&i.SecretKey,
+		&i.SecretType,
+		&i.CurrentSecretVersion,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SecretValue,
 	)
 	return i, err
 }
@@ -312,37 +413,53 @@ func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValue
 }
 
 const getUserSession = `-- name: GetUserSession :one
-SELECT user_id,
-	random_number,
-	created_time,
-	created_from_ip,
-	created_from_loc,
-	created_from_user_agent,
-	session_metadata,
-	expired_at
-FROM user_sessions
-WHERE user_id = $1
-	AND random_number = $2
-	AND created_time = $3
+SELECT us.session_id,
+	us.previous_sesision_id,
+	us.session_type,
+	us.user_id,
+	up.email,
+	us.random_id,
+	us.created_from_ip,
+	us.created_from_loc,
+	us.created_from_user_agent,
+	us.session_metadata,
+	us.created_at,
+	us.expired_at
+FROM user_sessions us
+	LEFT JOIN user_pii up ON us.user_id = up.user_id
+WHERE us.session_id = $1
 `
 
-type GetUserSessionParams struct {
-	UserID       int64
-	RandomNumber int32
-	CreatedTime  int64
+type GetUserSessionRow struct {
+	SessionID            uuid.UUID
+	PreviousSesisionID   uuid.NullUUID
+	SessionType          int32
+	UserID               sql.NullInt64
+	Email                sql.NullString
+	RandomID             string
+	CreatedFromIp        netip.Addr
+	CreatedFromLoc       sql.NullString
+	CreatedFromUserAgent string
+	SessionMetadata      []byte
+	CreatedAt            time.Time
+	ExpiredAt            time.Time
 }
 
-func (q *Queries) GetUserSession(ctx context.Context, arg GetUserSessionParams) (UserSession, error) {
-	row := q.db.QueryRow(ctx, getUserSession, arg.UserID, arg.RandomNumber, arg.CreatedTime)
-	var i UserSession
+func (q *Queries) GetUserSession(ctx context.Context, sessionID uuid.UUID) (GetUserSessionRow, error) {
+	row := q.db.QueryRow(ctx, getUserSession, sessionID)
+	var i GetUserSessionRow
 	err := row.Scan(
+		&i.SessionID,
+		&i.PreviousSesisionID,
+		&i.SessionType,
 		&i.UserID,
-		&i.RandomNumber,
-		&i.CreatedTime,
+		&i.Email,
+		&i.RandomID,
 		&i.CreatedFromIp,
 		&i.CreatedFromLoc,
 		&i.CreatedFromUserAgent,
 		&i.SessionMetadata,
+		&i.CreatedAt,
 		&i.ExpiredAt,
 	)
 	return i, err

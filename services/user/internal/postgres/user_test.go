@@ -5,7 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/studio-asd/pkg/postgres"
+
+	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
 )
 
 func TestRegisterUser(t *testing.T) {
@@ -13,9 +17,12 @@ func TestRegisterUser(t *testing.T) {
 
 	createdAt := time.Now()
 	tests := []struct {
-		name     string
-		register RegisterUser
-		err      error
+		name                  string
+		register              RegisterUser
+		expectUserTable       User
+		expectUserPIITable    UserPii
+		expectUserSecretTable GetUserSecretByExternalIDRow
+		err                   error
 	}{
 		{
 			name: "a new user",
@@ -25,6 +32,26 @@ func TestRegisterUser(t *testing.T) {
 				Password:         "a password",
 				PasswordSecretID: "one",
 				CreatedAt:        createdAt,
+			},
+			expectUserTable: User{
+				UserID:     1,
+				ExternalID: "one",
+				CreatedAt:  createdAt,
+			},
+			expectUserPIITable: UserPii{
+				UserID:    1,
+				Email:     "testing@email.com",
+				CreatedAt: createdAt,
+			},
+			expectUserSecretTable: GetUserSecretByExternalIDRow{
+				SecretID:             1,
+				ExternalID:           "one",
+				UserID:               1,
+				SecretKey:            "user_password",
+				SecretType:           int32(userv1.SecretType_SECRET_TYPE_PASSWORD),
+				SecretValue:          "a password",
+				CurrentSecretVersion: 1,
+				CreatedAt:            createdAt,
 			},
 			err: nil,
 		},
@@ -61,6 +88,26 @@ func TestRegisterUser(t *testing.T) {
 				PasswordSecretID: "three",
 				CreatedAt:        createdAt,
 			},
+			expectUserTable: User{
+				UserID:     4,
+				ExternalID: "three",
+				CreatedAt:  createdAt,
+			},
+			expectUserPIITable: UserPii{
+				UserID:    4,
+				Email:     "testing_3@email.com",
+				CreatedAt: createdAt,
+			},
+			expectUserSecretTable: GetUserSecretByExternalIDRow{
+				SecretID:             2,
+				ExternalID:           "three",
+				UserID:               4,
+				SecretKey:            "user_password",
+				SecretType:           int32(userv1.SecretType_SECRET_TYPE_PASSWORD),
+				SecretValue:          "a password",
+				CurrentSecretVersion: 1,
+				CreatedAt:            createdAt,
+			},
 			err: nil,
 		},
 	}
@@ -77,6 +124,30 @@ func TestRegisterUser(t *testing.T) {
 			err := tq.RegisterUser(t.Context(), test.register)
 			if !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
+			}
+			if err != nil {
+				return
+			}
+			user, err := tq.GetUserByExternalID(t.Context(), test.register.UUID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(test.expectUserTable, user); diff != "" {
+				t.Fatalf("user_table (-want/+got)\n%s", diff)
+			}
+			userPII, err := tq.GetUserPII(t.Context(), user.UserID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(test.expectUserPIITable, userPII); diff != "" {
+				t.Fatalf("user_pii_table (-want/+got)\n%s", diff)
+			}
+			userSecret, err := tq.GetUserSecretByExternalID(t.Context(), test.register.PasswordSecretID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff(test.expectUserSecretTable, userSecret); diff != "" {
+				t.Fatalf("user_secret_table (-want/+got)\n%s", diff)
 			}
 		})
 	}

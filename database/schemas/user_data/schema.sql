@@ -19,22 +19,23 @@ CREATE TABLE IF NOT EXISTS users (
     -- external_id is used as unique identifier for the user in external API.
     -- We use uuid_v4 to generate the external_id.
     external_id varchar NOT NULL,
-    user_email varchar NOT NULL,
-    created_at timestamp NOT NULL,
-    updated_at timestamp
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_user_email ON users("user_email");
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_external_id ON users("external_id");
 
-CREATE TABLE users_pii (
+CREATE TABLE user_pii (
     user_id bigint PRIMARY KEY,
-    phone_number VARCHAR NOT NULL,
-    identity_number VARCHAR NOT NULL,
-    identity_type INT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL
+    email varchar NOT NULL,
+    phone_number varchar,
+    identity_number varchar,
+    identity_type int,
+    created_at timestamptz NOT NULL,
+    updated_at timestamptz
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_pii_email ON user_pii("email");
 
 CREATE TABLE IF NOT EXISTS user_secrets (
     secret_id bigint generated always as identity primary key,
@@ -74,21 +75,33 @@ CREATE TABLE IF NOT EXISTS user_secret_versions (
 CREATE INDEX IF NOT EXISTS idx_ussecrets_ver_sid ON user_secrets("secret_id");
 
 CREATE TABLE IF NOT EXISTS user_sessions (
-    user_id bigint NOT NULL,
-    -- random_number is a pure random number generated to give the uniqueness to the session
-    -- identifier as we use user_id, random_number and created_time to identify the session.
-    -- The idea is to form a base64(user_id, random_number, created_time) to form a token and
+    session_id uuid PRIMARY KEY,
+    -- previous_sesision_id is used to track the previous session id if available. As we are allowing
+    -- guess, the guess might create a new session as an authenticated user. Otherwise it will be an
+    -- authenticated user that creates a new session.
+    previous_sesision_id uuid,
+    -- session_type is used to track the type of session. For example, 'authenticated', 'guess'.
+    session_type int NOT NULL,
+    -- user_id is the user that creates the session. The user_id can be NULL in case of guess session.
+    user_id bigint,
+    -- random_id is a pure random number generated to give the uniqueness to the session
+    -- identifier as we use user_id, random_id and created_at to identify the session.
+    -- The idea is to form a base64(user_id, random_id, created_at) to form a token and
     -- use it as a session identifier on the client side.
-    random_number int NOT NULL,
-    created_time bigint NOT NULL,
+    random_id VARCHAR NOT NULL,
+    -- retrieving the end user IP address is sometimes tricky, but we will still store it anyway
+    -- as tracking the IP is imporant for the session.
     created_from_ip inet NOT NULL,
     -- created_from_loc tracks from where the session is created if available.
     created_from_loc varchar,
     created_from_user_agent varchar NOT NULL,
-    session_metadata jsonb NOT NULL,
-    expired_at timestamptz NOT NULL,
-    PRIMARY KEY (user_id, random_number, created_time)
+    -- session_metadata stores information for the session. The field can be null in case of guess session.
+    session_metadata jsonb,
+    created_at timestamptz NOT NULL,
+    expired_at timestamptz NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_us_session_user_id ON user_sessions("user_id") WHERE user_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS user_roles (
     user_id bigint PRIMARY KEY,

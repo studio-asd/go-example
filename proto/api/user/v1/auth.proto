@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package go_example.api.user.v1;
+option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
+
+import "google/protobuf/timestamp.proto";
+
+message AuthornizationRequest { string session_token = 1; }
+
+message AuthorizationResponse {
+  string user_id = 1;
+  string email = 2;
+  string session_id = 3;
+  string session_token = 4;
+  google.protobuf.Timestamp session_expired_at = 5;
+}

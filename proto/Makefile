@@ -47,7 +47,7 @@ endif
 # generate use $(DOCKERFILE) and $(GEN_DIR) as dependency. This means the $(DOCKERFILE) command to ensure the image is exists and $(GEN_DIR) to ensure
 # the directory to generated proto files will always be invoked when executing this command.
 generate: $(DOCKERFILE) $(GEN_DIR)
-	@echo "Generating protobuf files for $(proto_folder)/$(target)"
+	@echo "Generating protobuf files for $(target)"
 	@docker run --platform $(DEFAULT_PLATFORM) --rm --volume ${PWD}:/generate \
     	$(IMAGE_NAME):$(VERSION) \
         -c "protoc \
@@ -57,8 +57,8 @@ generate: $(DOCKERFILE) $(GEN_DIR)
         --go-grpc_out=$(DOCKER_GEN_DIR) \
         --grpc-gateway_out=$(DOCKER_GEN_DIR) \
         --grpc-gateway_opt logtostderr=true \
-        $(proto_folder)/$(target)/*.proto"
-	@cp -r $(GEN_DIR)/github.com/studio-asd/go-example/proto/$(proto_folder)/* ./$(proto_folder)
+        $(target)/*.proto"
+	@cp -r $(GEN_DIR)/github.com/studio-asd/go-example/proto/$(target)/* ./$(target)
 	@rm -rf $(GEN_DIR) 2>/dev/null
 
 .PHONY: protoc
@@ -68,24 +68,22 @@ protoc:
     	$(IMAGE_NAME):$(VERSION) \
         -c "protoc ${protoc_command}"
 
-api_dirs := \
-	testdata/v1 \
-	ledger/v1 \
-	wallet/v1 \
-	user/v1
+# proto dirs list all the proto folders that we have in the project so we can generate all of them at once.
+# There are rules that need to be followed to generate the proto files:
+# 1. The types proto files should be generated first before the api proto files.
+# 2. The api proto files can import the types proto files but not vice-versa.
+proto_dirs := \
+	testdata/protovalidate/v1 \
+	types/user/v1 \
+	api/testdata/v1 \
+	api/ledger/v1 \
+	api/wallet/v1 \
+	api/user/v1
 
-# api_dirs will loop through the api_dirs variable above, so we will invoke every value inside it like we loop through an array.
-# For example, it will invoke $(MAKE) generate proto_folder=api target=testdata/v1.
-$(api_dirs):
-	@$(MAKE) generate proto_folder=api target=$@
-	@sleep 0.2
-
-testdata_dirs := \
-	protovalidate/v1
-
-$(testdata_dirs):
-	@$(MAKE) generate proto_folder=testdata target=$@
+.PHONY: $(proto_dirs)
+$(proto_dirs):
+	@$(MAKE) generate target=$@
 	@sleep 0.2
 
 .PHONY: protogenall
-protogenall: $(api_dirs) $(testdata_dirs)
+protogenall: $(proto_dirs)

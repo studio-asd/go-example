@@ -132,6 +132,14 @@ sql:
               import: "database/sql"
               type: "NullInt32"
             nullable: true
+          - db_type: "bigint"
+            go_type:
+              type: "int64"
+          - db_type: "bigint"
+            go_type:
+              import: "database/sql"
+              type: "NullInt64"
+            nullable: true
           - db_type: "pg_catalog.int8"
             go_type:
               type: "int64"

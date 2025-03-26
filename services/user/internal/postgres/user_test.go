@@ -9,7 +9,7 @@ import (
 
 	"github.com/studio-asd/pkg/postgres"
 
-	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
+	userv1 "github.com/studio-asd/go-example/proto/types/user/v1"
 )
 
 func TestRegisterUser(t *testing.T) {
@@ -48,7 +48,7 @@ func TestRegisterUser(t *testing.T) {
 				ExternalID:           "one",
 				UserID:               1,
 				SecretKey:            "user_password",
-				SecretType:           int32(userv1.SecretType_SECRET_TYPE_PASSWORD),
+				SecretType:           int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
 				SecretValue:          "a password",
 				CurrentSecretVersion: 1,
 				CreatedAt:            createdAt,
@@ -103,7 +103,7 @@ func TestRegisterUser(t *testing.T) {
 				ExternalID:           "three",
 				UserID:               4,
 				SecretKey:            "user_password",
-				SecretType:           int32(userv1.SecretType_SECRET_TYPE_PASSWORD),
+				SecretType:           int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
 				SecretValue:          "a password",
 				CurrentSecretVersion: 1,
 				CreatedAt:            createdAt,

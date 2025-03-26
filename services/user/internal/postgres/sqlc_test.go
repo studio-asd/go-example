@@ -4,7 +4,7 @@
 // sqlc_config     : sqlc.yaml
 // sqlc_sql_package: pgx/v5
 // database        : user_data
-// generated_time  : 2025-03-26T16:25:09+07:00
+// generated_time  : 2025-03-26T23:55:27+07:00
 
 package postgres
 

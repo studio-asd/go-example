@@ -80,9 +80,13 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     -- guess, the guess might create a new session as an authenticated user. Otherwise it will be an
     -- authenticated user that creates a new session.
     previous_sesision_id uuid,
-    -- session_type is used to track the type of session. For example, 'authenticated', 'guess'.
+    -- session_type is used to track the type of session. For example, 'authenticated', 'guest'.
     session_type int NOT NULL,
-    -- user_id is the user that creates the session. The user_id can be NULL in case of guess session.
+    -- user_id is the user that creates the session. The user_id can be NULL in case of guest session.
+    -- The question might be, what if the user_id is NULL while the session_type is 'authenticated'?
+    -- This kind of thing can happen because of bug in the program, and because there is no further validation
+    -- in the database, it is possible to happen. In this case, the session will be invalid even though the
+    -- client can generate the correct session_id.
     user_id bigint,
     -- random_id is a pure random number generated to give the uniqueness to the session
     -- identifier as we use user_id, random_id and created_at to identify the session.
@@ -95,7 +99,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
     -- created_from_loc tracks from where the session is created if available.
     created_from_loc varchar,
     created_from_user_agent varchar NOT NULL,
-    -- session_metadata stores information for the session. The field can be null in case of guess session.
+    -- session_metadata stores information for the session. The field can be null in case of guest session.
     session_metadata jsonb,
     created_at timestamptz NOT NULL,
     expired_at timestamptz NOT NULL

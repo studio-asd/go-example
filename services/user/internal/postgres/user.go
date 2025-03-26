@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
+	userv1 "github.com/studio-asd/go-example/proto/types/user/v1"
 )
 
 type RegisterUser struct {
@@ -36,7 +36,7 @@ func (q *Queries) RegisterUser(ctx context.Context, user RegisterUser) error {
 			ExternalID: user.PasswordSecretID,
 			UserID:     userID,
 			Key:        "user_password",
-			Type:       int32(userv1.SecretType_SECRET_TYPE_PASSWORD),
+			Type:       int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
 			Value:      user.Password,
 			CreatedAt:  user.CreatedAt,
 		}); err != nil {

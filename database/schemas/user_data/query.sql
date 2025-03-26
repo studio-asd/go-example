@@ -63,7 +63,9 @@ SELECT us.session_id,
 	us.created_at,
 	us.expired_at
 FROM user_sessions us
-	LEFT JOIN user_pii up ON us.user_id = up.user_id
+	LEFT JOIN user_pii up ON 
+		us.user_id IS NOT NULL AND 
+		us.user_id = up.user_id
 WHERE us.session_id = $1;
 
 -- name: CreateUserSecret :one

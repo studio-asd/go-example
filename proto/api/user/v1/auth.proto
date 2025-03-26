@@ -4,6 +4,7 @@ package go_example.api.user.v1;
 option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 
 import "google/protobuf/timestamp.proto";
+import "types/user/v1/user.proto";
 
 message AuthornizationRequest { string session_token = 1; }
 
@@ -13,4 +14,5 @@ message AuthorizationResponse {
   string session_id = 3;
   string session_token = 4;
   google.protobuf.Timestamp session_expired_at = 5;
+  go_example.types.user.v1.UserSessionType session_type = 6;
 }

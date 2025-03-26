@@ -6,11 +6,11 @@ option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 import "buf/validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 
-enum SecretType {
-  SECRET_TYPE_UNSPECIFIED = 0;
-  SECRET_TYPE_PASSWORD = 1;
-  SECRET_TYPE_API_TOKEN = 20;
-  SECRET_TYPE_USER_PIN = 30;
+enum UserSecretType {
+  USER_SECRET_TYPE_UNSPECIFIED = 0;
+  USER_SECRET_TYPE_PASSWORD = 1;
+  USER_SECRET_TYPE_API_TOKEN = 20;
+  USER_SECRET_TYPE_USER_PIN = 30;
 }
 
 message LoginRequest {

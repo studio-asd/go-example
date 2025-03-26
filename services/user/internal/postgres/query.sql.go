@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createUser = `-- name: CreateUser :one
@@ -149,7 +148,7 @@ INSERT INTO user_sessions(
 type CreateUserSessionParams struct {
 	SessionID            uuid.UUID
 	SessionType          int32
-	UserID               pgtype.Int8
+	UserID               sql.NullInt64
 	RandomID             string
 	CreatedFromIp        netip.Addr
 	CreatedFromLoc       sql.NullString
@@ -426,7 +425,9 @@ SELECT us.session_id,
 	us.created_at,
 	us.expired_at
 FROM user_sessions us
-	LEFT JOIN user_pii up ON us.user_id = up.user_id
+	LEFT JOIN user_pii up ON 
+		us.user_id IS NOT NULL AND 
+		us.user_id = up.user_id
 WHERE us.session_id = $1
 `
 

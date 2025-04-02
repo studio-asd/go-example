@@ -1,4 +1,4 @@
-package services
+package server
 
 import (
 	"context"
@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
+	"github.com/studio-asd/go-example/services"
 	userapi "github.com/studio-asd/go-example/services/user/api"
 )
 
@@ -32,10 +34,13 @@ func (s *serviceAuth) middleware(hf runtime.HandlerFunc) runtime.HandlerFunc {
 			return
 		}
 		// Check whether the user is allowed to access the resource or not.
-		if err := s.authorize(r.Context(), ptrn.String(), r.Method, r.Header.Get("Authorization")); err != nil {
+		ctx, err := s.authorize(r.Context(), ptrn.String(), r.Method, r.Header.Get("Authorization"))
+		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
+		// Inject the context provided by the authorization to the subsequent handlers.
+		r = r.WithContext(ctx)
 		hf(w, r, pathParams)
 	}
 }
@@ -57,5 +62,16 @@ func (s *serviceAuth) authorize(ctx context.Context, httpPathPattern, reqHttpMet
 	}
 	authToken := strings.TrimPrefix(authHeader, "Bearer ")
 	// Authenticate the user token as the session is stored within the user domain.
-	return s.userapi.AuthorizeUser(ctx, authToken)
+	resp, err := s.userapi.AuthorizeUser(ctx, &userv1.AuthorizationRequest{
+		SessionToken: authToken,
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Set all the metadata to the incoming context.
+	newCtx := services.SetGRPCMetadataToContext(ctx, map[string]string{
+		services.MetadataUserID:    resp.GetUserId(),
+		services.MetadataUserEmail: resp.GetEmail(),
+	})
+	return newCtx, nil
 }

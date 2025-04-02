@@ -6,7 +6,7 @@ option go_package = "github.com/studio-asd/go-example/proto/api/user/v1";
 import "google/protobuf/timestamp.proto";
 import "types/user/v1/user.proto";
 
-message AuthornizationRequest { string session_token = 1; }
+message AuthorizationRequest { string session_token = 1; }
 
 message AuthorizationResponse {
   string user_id = 1;

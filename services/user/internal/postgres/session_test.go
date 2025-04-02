@@ -15,6 +15,10 @@ import (
 
 // TestGetUserSession retrieve the user session information including the user information.
 func TestGetUserSession(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
 	t.Parallel()
 	createdAt := time.Now()
 

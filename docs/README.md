@@ -3,7 +3,7 @@
 Hello, welcome to a Go project example where we will learn together on:
 
 1. [Structuring the example-Go project, and the rationale behind the structure](project-structure.md)
-1. How to build & test the project.
+1. [How to build & test the project.](build-test.md)
 1. How the project using protobuf and its ecosystem.
 1. How database schema & migration is handled.
 1. Diving into the `ledger` and `wallet` project.

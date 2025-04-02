@@ -4,17 +4,21 @@
 
 version: "2"
 sql:
-  - schema: "schema.sql"
+  # Name is used for schema name, please use the schema name on where the query is executed.
+  # If the "public" schema is used, the schema name should be "public".
+  - name: "user"
+    schema: "../schema.sql"
     queries: "query.sql"
     engine: "postgresql"
     gen:
       go:
         package: "postgres"
         # The database internal package is always placed under the '/[service_name]/postgres'.
-        out: "../../../services/ledger/internal/postgres"
+        out: "../../../../services/rbac/internal/postgres"
         sql_package: "pgx/v5"
         output_db_file_name: "sqlc.go"
         output_models_file_name: "types.sql.go"
+        omit_unused_structs: true
         # Almost of the overrides rules are taken from Brandur's article on how he is moving from pgxV4 to pgxV5.
         # (https://brandur.org/fragments/pgx-v5-sqlc-upgrade).
         #
@@ -104,7 +108,47 @@ sql:
               import: "database/sql"
               type: "NullTime"
             nullable: true
+          - db_type: "pg_catalog.int2"
+            go_type:
+              type: "int16"
+          - db_type: "pg_catalog.int2"
+            go_type:
+              import: "database/sql"
+              type: "NullInt16"
+            nullable: true
+          - db_type: "integer"
+            go_type:
+              type: "int32"
+          - db_type: "integer"
+            go_type:
+              import: "database/sql"
+              type: "NullInt32"
+            nullable: true
+          - db_type: "pg_catalog.int4"
+            go_type:
+              type: "int32"
+          - db_type: "pg_catalog.int4"
+            go_type:
+              import: "database/sql"
+              type: "NullInt32"
+            nullable: true
+          - db_type: "bigint"
+            go_type:
+              type: "int64"
+          - db_type: "bigint"
+            go_type:
+              import: "database/sql"
+              type: "NullInt64"
+            nullable: true
+          - db_type: "pg_catalog.int8"
+            go_type:
+              type: "int64"
+          - db_type: "pg_catalog.int8"
+            go_type:
+              import: "database/sql"
+              type: "NullInt64"
+            nullable: true
     database:
-      uri: "postgres://postgres:postgres@localhost:5432/ledger?sslmode=disable"
+      uri: "postgres://postgres:postgres@localhost:5432/user_data?sslmode=disable"
     rules:
       - sqlc/db-prepare

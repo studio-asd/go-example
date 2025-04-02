@@ -13,14 +13,16 @@ func (p password) String() string {
 	return "*****"
 }
 
-// createUserPassword creates the user password from the existing rawPassword.
-func createUserPassword(rawPassword string) (password, error) {
+// encryptUserPassword encrypts the user password from the existing rawPassword.
+func encryptUserPassword(rawPassword string) (password, error) {
 	// Please NOTE that we are using bcrypt to hash the password and the algorithm has a limitation of 72 characters.
 	//
 	// Okta previosuly has security incident because they are allowing more than 72 characters for the password while
 	// they are using bcrypt algorithm to hash the password. https://trust.okta.com/security-advisories/okta-ad-ldap-delegated-authentication-username/.
 	//
 	// Yo can look at one of the interesting read here: https://n0rdy.foo/posts/20250121/okta-bcrypt-lessons-for-better-apis/.
+	//
+	// Go's bcrypt package has already done this, but we will still do this for awareness.
 	if len(rawPassword) > 72 {
 		return "", errors.New("password length cannot be more than 72 characters")
 	}

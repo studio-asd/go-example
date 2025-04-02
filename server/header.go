@@ -1,4 +1,4 @@
-package services
+package server
 
 const (
 	headerClientType = "X-Client-Type"

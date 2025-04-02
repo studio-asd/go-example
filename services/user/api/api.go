@@ -24,6 +24,8 @@ func init() {
 		protovalidate.WithMessages(
 			&userv1.RegisterUserRequest{},
 			&userv1.LoginRequest{},
+			&userv1.LoginEmailPassword{},
+			&userv1.AuthorizationRequest{},
 		),
 	)
 	if err != nil {
@@ -60,5 +62,13 @@ func (a *API) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest)
 }
 
 func (a *API) LoginRequest(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
-	return nil, nil
+	if err := validator.Validate(req); err != nil {
+		return nil, err
+	}
+	switch req.GetLogin() {
+	case &userv1.LoginRequest_LoginPassword{}:
+		return a.loginPassword(ctx, req.GetLoginPassword())
+	default:
+		return nil, nil
+	}
 }

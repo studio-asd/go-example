@@ -14,6 +14,10 @@ import (
 // TestCreateNewSecret runs in parallel with the other tests but internally it runs sequentially.
 // This is because in the test we need a deterministic order of secret_id.
 func TestCreateNewSecret(t *testing.T) {
+	if testing.Short() {
+		return
+	}
+
 	t.Parallel()
 	createdAt := time.Now()
 
@@ -57,6 +61,31 @@ func TestCreateNewSecret(t *testing.T) {
 				CreatedAt:  createdAt,
 			},
 			err: postgres.ErrUniqueViolation,
+		},
+		{
+			name: "with salt",
+			secret: CreateNewSecret{
+				ExternalID: "three",
+				UserID:     2,
+				Key:        "user_password",
+				Value:      "a password",
+				Salt:       "a salt",
+				Type:       1,
+				CreatedAt:  createdAt,
+			},
+			expect: GetUserSecretValueRow{
+				SecretID:             3,
+				ExternalID:           "three",
+				UserID:               2,
+				SecretKey:            "user_password",
+				SecretSalt:           sql.NullString{String: "a salt", Valid: true},
+				SecretType:           1,
+				CurrentSecretVersion: 1,
+				CreatedAt:            createdAt,
+				UpdatedAt:            sql.NullTime{},
+				SecretValue:          "a password",
+			},
+			err: nil,
 		},
 	}
 

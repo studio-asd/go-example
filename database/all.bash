@@ -42,6 +42,7 @@ sqlc_exec() {
 	   echo "directory parameter is needed"
 	   exit 1;
 	elif [[ -d ${1} ]]; then
+		echo "dir=${1}"
 	    # schema_dir is taken from the first directory from the whole generation path. For example, in case of go-example/ledger
 		# we will take the go-example as the schema dir.
 	    db_schema_dir=$(echo $1 | cut -d / -f1)
@@ -51,18 +52,22 @@ sqlc_exec() {
 		db_found=$(PGPASSWORD=postgres ${pgexec} -XtAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'")
         if  [[ "${db_found}" != "" ]]; then
             echo "database ${db_name} already exists"
-            exit 0;
+			cd $1
+		else
+			PGPASSWORD=postgres ${pgexec} -c "CREATE DATABASE ${db_name}"
+			cd $1
+			# The mounted volume is in '/data' so we need to seek the schema there.
+			PGPASSWORD=postgres ${pgexec} -d $db_name -f /data/$db_schema_dir/schema.sql
         fi
 
-		PGPASSWORD=postgres ${pgexec} -c "CREATE DATABASE ${db_name}"
-		cd $1
-		# The mounted volume is in '/data' so we need to seek the schema there.
-		PGPASSWORD=postgres ${pgexec} -d $db_name -f /data/$db_schema_dir/schema.sql
 		sqlc $2
 		if [[ "$2" = "generate" ]]; then
 			go run $origin_dir/main.go gengo . --sqlc_config=sqlc.yaml --db_schema_dir=${db_schema_dir} --db_name=${db_name}
 		fi
-		cd -
+
+        if  [[ "${db_found}" == "" ]]; then
+			cd -
+		fi
 	fi
 	# Move to before schema dir.
 	cd -

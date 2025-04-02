@@ -1,4 +1,4 @@
-package services
+package server
 
 import (
 	"context"
@@ -15,14 +15,14 @@ import (
 	userapi "github.com/studio-asd/go-example/services/user/api"
 )
 
-type Services struct {
+type Server struct {
 	ledger *ledgerapi.API
 	user   *userapi.API
 	auth   *serviceAuth
 }
 
-func New(ledger *ledgerapi.API, user *userapi.API) *Services {
-	return &Services{
+func New(ledger *ledgerapi.API, user *userapi.API) *Server {
+	return &Server{
 		ledger: ledger,
 		user:   user,
 		auth: &serviceAuth{
@@ -34,7 +34,7 @@ func New(ledger *ledgerapi.API, user *userapi.API) *Services {
 	}
 }
 
-func (s *Services) RegisterAPIServices(grpcServer *resources.GRPCServerObject) error {
+func (s *Server) RegisterAPIServices(grpcServer *resources.GRPCServerObject) error {
 	// gRPC Gateway.
 	err := grpcServer.RegisterGatewayService(func(gateway *resources.GRPCGatewayObject) error {
 		gateway.RegisterMetadataHandler(metadataForwarder)
@@ -56,7 +56,7 @@ func (s *Services) RegisterAPIServices(grpcServer *resources.GRPCServerObject) e
 	return nil
 }
 
-func (s *Services) middlewares() []runtime.Middleware {
+func (s *Server) middlewares() []runtime.Middleware {
 	return []runtime.Middleware{
 		s.auth.middleware,
 	}

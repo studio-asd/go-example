@@ -109,14 +109,16 @@ INSERT INTO user_secret_versions(
     secret_id,
     secret_version,
     secret_value,
+	secret_salt,
     created_at
-) VALUES($1,$2,$3,$4)
+) VALUES($1,$2,$3,$4,$5)
 `
 
 type CreateUserSecretVersionParams struct {
 	SecretID      int64
 	SecretVersion int64
 	SecretValue   string
+	SecretSalt    sql.NullString
 	CreatedAt     time.Time
 }
 
@@ -125,6 +127,7 @@ func (q *Queries) CreateUserSecretVersion(ctx context.Context, arg CreateUserSec
 		arg.SecretID,
 		arg.SecretVersion,
 		arg.SecretValue,
+		arg.SecretSalt,
 		arg.CreatedAt,
 	)
 	return err
@@ -174,23 +177,68 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 	return err
 }
 
-const getUserByExternalID = `-- name: GetUserByExternalID :one
-SELECT user_id,
-	external_id,
-	created_at,
-	updated_at
-FROM users
-WHERE external_id = $1
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT usr.user_id,
+usr.external_id,
+usr.created_at,
+usr.updated_at,
+upi.email
+FROM users usr,
+    user_pii upi
+WHERE upi.email = $1
+    AND usr.user_id = upi.user_id
 `
 
-func (q *Queries) GetUserByExternalID(ctx context.Context, externalID string) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByExternalID, externalID)
-	var i User
+type GetUserByEmailRow struct {
+	UserID     int64
+	ExternalID string
+	CreatedAt  time.Time
+	UpdatedAt  sql.NullTime
+	Email      string
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.UserID,
 		&i.ExternalID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Email,
+	)
+	return i, err
+}
+
+const getUserByExternalID = `-- name: GetUserByExternalID :one
+SELECT usr.user_id,
+	usr.external_id,
+	usr.created_at,
+	usr.updated_at,
+	upi.email
+FROM users usr,
+    user_pii upi
+WHERE usr.external_id = $1
+    AND usr.user_id = upi.user_id
+`
+
+type GetUserByExternalIDRow struct {
+	UserID     int64
+	ExternalID string
+	CreatedAt  time.Time
+	UpdatedAt  sql.NullTime
+	Email      string
+}
+
+func (q *Queries) GetUserByExternalID(ctx context.Context, externalID string) (GetUserByExternalIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByExternalID, externalID)
+	var i GetUserByExternalIDRow
+	err := row.Scan(
+		&i.UserID,
+		&i.ExternalID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
 	)
 	return i, err
 }
@@ -270,7 +318,8 @@ SELECT us.secret_id,
 	-- The updated_at is the same with the new version created_at so we don't
 	-- have to retrieve more information from usv.
 	us.updated_at,
-	usv.secret_value
+	usv.secret_value,
+	usv.secret_salt
 FROM user_secrets us,
 	user_secret_versions usv
 WHERE us.external_id = $1
@@ -288,6 +337,7 @@ type GetUserSecretByExternalIDRow struct {
 	CreatedAt            time.Time
 	UpdatedAt            sql.NullTime
 	SecretValue          string
+	SecretSalt           sql.NullString
 }
 
 func (q *Queries) GetUserSecretByExternalID(ctx context.Context, externalID string) (GetUserSecretByExternalIDRow, error) {
@@ -303,6 +353,7 @@ func (q *Queries) GetUserSecretByExternalID(ctx context.Context, externalID stri
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SecretValue,
+		&i.SecretSalt,
 	)
 	return i, err
 }
@@ -366,7 +417,8 @@ SELECT us.secret_id,
 	-- The updated_at is the same with the new version created_at so we don't
 	-- have to retrieve more information from usv.
 	us.updated_at,
-	usv.secret_value
+	usv.secret_value,
+	usv.secret_salt
 FROM user_secrets us,
 	user_secret_versions usv
 WHERE us.user_id = $1
@@ -392,6 +444,7 @@ type GetUserSecretValueRow struct {
 	CreatedAt            time.Time
 	UpdatedAt            sql.NullTime
 	SecretValue          string
+	SecretSalt           sql.NullString
 }
 
 func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValueParams) (GetUserSecretValueRow, error) {
@@ -407,6 +460,7 @@ func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValue
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SecretValue,
+		&i.SecretSalt,
 	)
 	return i, err
 }
@@ -425,8 +479,8 @@ SELECT us.session_id,
 	us.created_at,
 	us.expired_at
 FROM user_sessions us
-	LEFT JOIN user_pii up ON 
-		us.user_id IS NOT NULL AND 
+	LEFT JOIN user_pii up ON
+		us.user_id IS NOT NULL AND
 		us.user_id = up.user_id
 WHERE us.session_id = $1
 `

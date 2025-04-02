@@ -6,12 +6,26 @@ INSERT INTO users (
 ) VALUES($1,$2,$3) RETURNING user_id;
 
 -- name: GetUserByExternalID :one
-SELECT user_id,
-	external_id,
-	created_at,
-	updated_at
-FROM users
-WHERE external_id = $1;
+SELECT usr.user_id,
+	usr.external_id,
+	usr.created_at,
+	usr.updated_at,
+	upi.email
+FROM users usr,
+    user_pii upi
+WHERE usr.external_id = $1
+    AND usr.user_id = upi.user_id;
+
+-- name: GetUserByEmail :one
+SELECT usr.user_id,
+usr.external_id,
+usr.created_at,
+usr.updated_at,
+upi.email
+FROM users usr,
+    user_pii upi
+WHERE upi.email = $1
+    AND usr.user_id = upi.user_id;
 
 -- name: CreateUserPII :exec
 INSERT INTO user_pii (
@@ -63,8 +77,8 @@ SELECT us.session_id,
 	us.created_at,
 	us.expired_at
 FROM user_sessions us
-	LEFT JOIN user_pii up ON 
-		us.user_id IS NOT NULL AND 
+	LEFT JOIN user_pii up ON
+		us.user_id IS NOT NULL AND
 		us.user_id = up.user_id
 WHERE us.session_id = $1;
 
@@ -83,8 +97,9 @@ INSERT INTO user_secret_versions(
     secret_id,
     secret_version,
     secret_value,
+	secret_salt,
     created_at
-) VALUES($1,$2,$3,$4);
+) VALUES($1,$2,$3,$4,$5);
 
 -- name: GetUserSecret :one
 SELECT secret_id,
@@ -124,7 +139,8 @@ SELECT us.secret_id,
 	-- The updated_at is the same with the new version created_at so we don't
 	-- have to retrieve more information from usv.
 	us.updated_at,
-	usv.secret_value
+	usv.secret_value,
+	usv.secret_salt
 FROM user_secrets us,
 	user_secret_versions usv
 WHERE us.user_id = $1
@@ -144,7 +160,8 @@ SELECT us.secret_id,
 	-- The updated_at is the same with the new version created_at so we don't
 	-- have to retrieve more information from usv.
 	us.updated_at,
-	usv.secret_value
+	usv.secret_value,
+	usv.secret_salt
 FROM user_secrets us,
 	user_secret_versions usv
 WHERE us.external_id = $1

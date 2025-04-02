@@ -15,6 +15,10 @@ import (
 func TestRegisterUser(t *testing.T) {
 	t.Parallel()
 
+	if testing.Short() {
+		t.Skip()
+	}
+
 	createdAt := time.Now()
 	tests := []struct {
 		name                  string

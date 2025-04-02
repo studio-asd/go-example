@@ -9,13 +9,6 @@ import (
 	"time"
 )
 
-type User struct {
-	UserID     int64
-	ExternalID string
-	CreatedAt  time.Time
-	UpdatedAt  sql.NullTime
-}
-
 type UserPii struct {
 	UserID         int64
 	Email          string

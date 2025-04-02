@@ -13,9 +13,13 @@ enum UserSecretType {
   USER_SECRET_TYPE_USER_PIN = 30;
 }
 
-message LoginRequest {
+message LoginEmailPassword {
   string email = 1 [ (buf.validate.field).required = true ];
   string password = 2 [ (buf.validate.field).required = true ];
+}
+
+message LoginRequest {
+  oneof login { LoginEmailPassword login_password = 1; }
 }
 
 message LoginResponse {

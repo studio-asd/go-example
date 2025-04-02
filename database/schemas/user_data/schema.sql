@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
     -- external_id is used as unique identifier for the user in external API.
     -- We use uuid_v4 to generate the external_id.
     external_id varchar NOT NULL,
+    security_roles varchar[] NOT NULL,
     created_at timestamptz NOT NULL,
     updated_at timestamptz
 );
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS user_secret_versions (
     secret_id bigint NOT NULL,
     secret_version bigint NOT NULL,
     secret_value varchar NOT NULL,
+    secret_salt varchar,
     created_at timestamptz NOT NULL ,
     PRIMARY KEY(secret_id, secret_version)
 );
@@ -107,19 +109,11 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_us_session_user_id ON user_sessions("user_id") WHERE user_id IS NOT NULL;
 
-CREATE TABLE IF NOT EXISTS user_roles (
-    user_id bigint PRIMARY KEY,
-    role_id bigint NOT NULL,
-    created_at timestamptz NOT NULL,
-    expired_at timestamptz NOT NULL,
-    UNIQUE (user_id, role_id)
-);
-
 CREATE TABLE IF NOT EXISTS security_roles (
     role_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_name varchar NOT NULL,
     created_at timestamptz NOT NULL,
-    updated_at timestamptz NOT NULL
+    updated_at timestamptz
 );
 
 -- security_role_permissions maps role to permissions as one role can have more than one permission.
@@ -137,9 +131,12 @@ CREATE TABLE IF NOT EXISTS security_permissions (
     -- permission_type is the granular type of permission. For example, 'api_endpoint', 'file_access'.
     -- We don't want to use enum for the permission_type because we might want to add much more permission
     -- type in the future and adding more of them will changes to the enum.
-    permission_type varchar NOT NULL,
+    permission_type int NOT NULL,
     permission_key varchar NOT NULL,
     permission_value varchar NOT NULL,
     created_at timestamptz NOT NULL,
-    updated_at timestamptz NOT NULL
+    updated_at timestamptz
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sec_perm_name  ON security_permissions("permission_name");
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sec_perm_type_key  ON security_permissions("permission_type", "permission_key");

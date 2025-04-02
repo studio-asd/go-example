@@ -9,7 +9,7 @@ import (
 	"github.com/studio-asd/pkg/resources"
 	"github.com/studio-asd/pkg/srun"
 
-	"github.com/studio-asd/go-example/services"
+	"github.com/studio-asd/go-example/server"
 	ledgerapi "github.com/studio-asd/go-example/services/ledger/api"
 	userapi "github.com/studio-asd/go-example/services/user/api"
 )
@@ -44,7 +44,7 @@ func run(ctx context.Context, runner srun.ServiceRunner) error {
 	userAPI := userapi.New(res.Container().Postgres().MustGetPostgres("user").Primary())
 	grpcServer := res.Container().GRPC().Server.MustGetServer("main")
 
-	svc := services.New(ledgerAPI, userAPI)
+	svc := server.New(ledgerAPI, userAPI)
 	svc.RegisterAPIServices(grpcServer)
 
 	return runner.Register(

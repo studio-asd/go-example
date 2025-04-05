@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package go_example.types.rbac.v1;
+option go_package = "github.com/studio-asd/go-example/proto/types/rbac/v1";
+
+import "google/protobuf/timestamp.proto";
+
+enum SecurityPermissionType {
+    PERMISSION_TYPE_UNSPECIFIED = 0;
+    PERMISSION_TYPE_READ = 1;
+    PERMISSION_TYPE_WRITE = 2;
+    PERMISSION_TYPE_DELETE = 3;
+}
+
+message SecurityRole {
+    string id = 1;
+    string name = 2;
+    repeated SecurityPermission permissions = 3;
+    google.protobuf.Timestamp created_at = 20;
+    google.protobuf.Timestamp updated_at = 21;
+}
+
+message SecurityPermission {
+    string id = 1;
+    string name = 2;
+    repeated SecurityPermissionType permissions = 3;
+    string permission_key = 4;
+    string permission_value = 5;
+    google.protobuf.Timestamp created_at = 20;
+    google.protobuf.Timestamp updated_at = 21;
+}

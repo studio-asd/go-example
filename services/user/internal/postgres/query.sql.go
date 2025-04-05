@@ -177,6 +177,39 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 	return err
 }
 
+const getUser = `-- name: GetUser :one
+SELECT usr.user_id,
+	usr.external_id,
+	usr.created_at,
+	usr.updated_at,
+	upi.email
+FROM users usr,
+    user_pii upi
+WHERE usr.user_id = $1
+    AND usr.user_id = upi.user_id
+`
+
+type GetUserRow struct {
+	UserID     int64
+	ExternalID string
+	CreatedAt  time.Time
+	UpdatedAt  sql.NullTime
+	Email      string
+}
+
+func (q *Queries) GetUser(ctx context.Context, userID int64) (GetUserRow, error) {
+	row := q.db.QueryRow(ctx, getUser, userID)
+	var i GetUserRow
+	err := row.Scan(
+		&i.UserID,
+		&i.ExternalID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT usr.user_id,
 usr.external_id,

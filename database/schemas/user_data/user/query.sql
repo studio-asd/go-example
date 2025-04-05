@@ -4,6 +4,17 @@ INSERT INTO users (
 	created_at,
 	updated_at
 ) VALUES($1,$2,$3) RETURNING user_id;
+--
+-- name: GetUser :one
+SELECT usr.user_id,
+	usr.external_id,
+	usr.created_at,
+	usr.updated_at,
+	upi.email
+FROM users usr,
+    user_pii upi
+WHERE usr.user_id = $1
+    AND usr.user_id = upi.user_id;
 
 -- name: GetUserByExternalID :one
 SELECT usr.user_id,

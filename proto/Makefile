@@ -74,10 +74,12 @@ protoc:
 # 2. The api proto files can import the types proto files but not vice-versa.
 proto_dirs := \
 	testdata/protovalidate/v1 \
+	types/rbac/v1 \
 	types/user/v1 \
 	api/testdata/v1 \
 	api/ledger/v1 \
 	api/wallet/v1 \
+	api/rbac/v1 \
 	api/user/v1
 
 .PHONY: $(proto_dirs)

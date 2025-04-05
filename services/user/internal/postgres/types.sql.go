@@ -6,8 +6,44 @@ package postgres
 
 import (
 	"database/sql"
+	"net/netip"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+type SecurityPermission struct {
+	PermissionID         int64
+	PermissionExternalID string
+	PermissionName       string
+	PermissionType       int32
+	PermissionKey        string
+	PermissionValue      string
+	CreatedAt            time.Time
+	UpdatedAt            sql.NullTime
+}
+
+type SecurityRole struct {
+	RoleID         int64
+	RoleExternalID string
+	RoleName       string
+	CreatedAt      time.Time
+	UpdatedAt      sql.NullTime
+}
+
+type SecurityRolePermission struct {
+	RoleID       int64
+	PermissionID int64
+	CreatedAt    time.Time
+}
+
+type User struct {
+	UserID        int64
+	ExternalID    string
+	SecurityRoles []string
+	CreatedAt     time.Time
+	UpdatedAt     sql.NullTime
+}
 
 type UserPii struct {
 	UserID         int64
@@ -28,4 +64,26 @@ type UserSecret struct {
 	CurrentSecretVersion int64
 	CreatedAt            time.Time
 	UpdatedAt            sql.NullTime
+}
+
+type UserSecretVersion struct {
+	SecretID      int64
+	SecretVersion int64
+	SecretValue   string
+	SecretSalt    sql.NullString
+	CreatedAt     time.Time
+}
+
+type UserSession struct {
+	SessionID            uuid.UUID
+	PreviousSesisionID   uuid.NullUUID
+	SessionType          int32
+	UserID               sql.NullInt64
+	RandomID             string
+	CreatedFromIp        netip.Addr
+	CreatedFromLoc       sql.NullString
+	CreatedFromUserAgent string
+	SessionMetadata      []byte
+	CreatedAt            time.Time
+	ExpiredAt            time.Time
 }

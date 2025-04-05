@@ -18,7 +18,7 @@ sql:
         sql_package: "pgx/v5"
         output_db_file_name: "sqlc.go"
         output_models_file_name: "types.sql.go"
-        omit_unused_structs: true
+        omit_unused_structs: false
         # Almost of the overrides rules are taken from Brandur's article on how he is moving from pgxV4 to pgxV5.
         # (https://brandur.org/fragments/pgx-v5-sqlc-upgrade).
         #

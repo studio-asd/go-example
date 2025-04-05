@@ -111,6 +111,7 @@ CREATE INDEX IF NOT EXISTS idx_us_session_user_id ON user_sessions("user_id") WH
 
 CREATE TABLE IF NOT EXISTS security_roles (
     role_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    role_external_id varchar NOT NULL,
     role_name varchar NOT NULL,
     created_at timestamptz NOT NULL,
     updated_at timestamptz
@@ -127,6 +128,7 @@ CREATE TABLE IF NOT EXISTS security_role_permissions (
 
 CREATE TABLE IF NOT EXISTS security_permissions (
     permission_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    permission_external_id varchar NOT NULL,
     permission_name varchar NOT NULL,
     -- permission_type is the granular type of permission. For example, 'api_endpoint', 'file_access'.
     -- We don't want to use enum for the permission_type because we might want to add much more permission

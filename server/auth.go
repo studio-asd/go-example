@@ -14,6 +14,15 @@ import (
 
 type serviceAuth struct {
 	userapi *userapi.API
+	// pathPatternPemission stores the map of the HTTP path pattern and its method assosiated with its required permission.
+	// All patterns should be recorded here, otherwise we will always give an unauthorize response to the client.
+	// By default, even guest should have a session, thus they will always be authenticated in some sense.
+	//
+	// For example:
+	// - [GET:/v1/user/info] = user:read
+	// - [POST:/v1/rbac/permission] = admin:write
+	// - [POST:/v1/rbac/role] = admin:write
+	pathPatternsPermission map[string]string
 	// noAuthMethods stores the http patterns that don't require authentication. PLEASE be careful on adding more methods
 	// here as we need to make sure that the method is really doesn't require authentication.
 	//

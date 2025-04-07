@@ -7,9 +7,11 @@ package postgres
 import (
 	"database/sql"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
-type LedgerAccount struct {
+type Account struct {
 	AccountID       string
 	Name            string
 	Description     string
@@ -19,11 +21,147 @@ type LedgerAccount struct {
 	UpdatedAt       sql.NullTime
 }
 
-type LedgerMovement struct {
+type AccountsBalance struct {
+	AccountID       string
+	ParentAccountID sql.NullString
+	CurrencyID      int32
+	AllowNegative   bool
+	Balance         decimal.Decimal
+	LastMovementID  string
+	LastLedgerID    string
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
+}
+
+type AccountsBalanceHistory struct {
+	HistoryID          int64
+	MovementID         string
+	LedgerID           string
+	AccountID          string
+	Balance            decimal.Decimal
+	PreviousBalance    decimal.Decimal
+	PreviousMovementID string
+	PreviousLedgerID   string
+	CreatedAt          time.Time
+}
+
+type AccountsLedger struct {
+	InternalID       int64
+	LedgerID         string
+	MovementID       string
+	AccountID        string
+	MovementSequence int32
+	CurrencyID       int32
+	Amount           decimal.Decimal
+	PreviousLedgerID string
+	CreatedAt        time.Time
+	ClientID         sql.NullString
+	ReversalOf       sql.NullString
+}
+
+type Movement struct {
 	MovementID         string
 	IdempotencyKey     string
 	CreatedAt          time.Time
 	UpdatedAt          sql.NullTime
 	ReversedAt         sql.NullTime
 	ReversalMovementID sql.NullString
+}
+
+type ReversedMovement struct {
+	MovementID         string
+	ReversalMovementID string
+	ReversalReason     string
+	CreatedAt          time.Time
+}
+
+type WalletAccount struct {
+	WalletID        string
+	LedgerAccountID string
+	UserID          string
+	WalletStatus    int32
+	WalletOwner     int32
+	WalletType      int32
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
+}
+
+type WalletBankWithdrawal struct {
+	TransactionID string
+	BankName      string
+	CreatedAt     time.Time
+}
+
+type WalletChargeback struct {
+	TransactionID  string
+	ChargebackType int32
+	Amount         decimal.Decimal
+	Reason         string
+	CreatedAt      time.Time
+}
+
+type WalletDeposit struct {
+	TransactionID   string
+	DepositWalletID string
+	UserWalletID    string
+	Amount          decimal.Decimal
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
+}
+
+type WalletEwalletWithdrawal struct {
+	TransactionID string
+	EwalletName   string
+	CreatedAt     time.Time
+}
+
+type WalletReversal struct {
+	TransactionID         string
+	ReversedTransactionID string
+	CreatedAt             time.Time
+}
+
+type WalletTransaction struct {
+	TransactionID     string
+	TransactionType   int32
+	TransactionStatus int32
+	IdempotencyKey    string
+	CreatedAt         time.Time
+	UpdatedAt         sql.NullTime
+	FinishedAt        sql.NullTime
+}
+
+type WalletTransfer struct {
+	TransactionID string
+	FromWalletID  string
+	ToWalletID    string
+	Amount        decimal.Decimal
+	CreatedAt     time.Time
+}
+
+type WalletUser struct {
+	UserID               string
+	UserType             string
+	UserStatus           int32
+	IntermediaryWalletID string
+	ChargebackWalletID   string
+	CreatedAt            time.Time
+	UpdatedAt            sql.NullTime
+}
+
+type WalletWithdrawal struct {
+	TransactionID            string
+	WithdrawalWalletID       string
+	UserWalletID             string
+	UserIntermediaryWalletID string
+	Amount                   decimal.Decimal
+	WithdrawalFee            decimal.Decimal
+	FinalAmount              decimal.Decimal
+	WithdrawalStatus         int32
+	WithdrawalChannel        int32
+	WithdrawalViaPg          bool
+	WithdrawalPgVendor       sql.NullString
+	CreatedAt                time.Time
+	UpdatedAt                sql.NullTime
+	FinishedAt               sql.NullTime
 }

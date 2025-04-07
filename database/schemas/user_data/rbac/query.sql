@@ -8,7 +8,7 @@ SELECT permission_id,
     updated_at
 FROM security_permissions
 WHERE permission_id = ANY($1::bigint[]);
---
+
 -- name: GetPermissionsByExternalIDs :many
 SELECT permission_id,
     permission_external_id,

@@ -1,5 +1,5 @@
 -- name: CreateAccount :exec
-INSERT INTO ledger.accounts(
+INSERT INTO accounts(
 	account_id,
 	name,
 	description,
@@ -9,7 +9,7 @@ INSERT INTO ledger.accounts(
 ) VALUES($1,$2,$3,$4,$5,$6);
 
 -- name: CreateAccountBalance :exec
-INSERT INTO ledger.accounts_balance(
+INSERT INTO accounts_balance(
 	account_id,
 	parent_account_id,
 	allow_negative,
@@ -22,7 +22,7 @@ INSERT INTO ledger.accounts_balance(
 
 -- name: GetAccounts :many
 SELECT *
-FROM ledger.accounts
+FROM accounts
 WHERE account_id = ANY($1::varchar[])
 ORDER BY created_at;
 
@@ -36,8 +36,8 @@ SELECT ab.account_id,
 	ab.last_movement_id,
 	ab.created_at,
 	ab.updated_at
-FROM ledger.accounts_balance ab,
-	ledger.accounts ac
+FROM accounts_balance ab,
+	accounts ac
 WHERE ab.account_id = ANY($1::varchar[])
 	AND ab.account_id = ac.account_id;
 
@@ -46,11 +46,11 @@ SELECT movement_id,
     idempotency_key,
     created_at,
     updated_at
-FROM ledger.movements
+FROM movements
 WHERE idempotency_key = $1;
 
 -- name: CreateMovement :exec
-INSERT INTO ledger.movements(
+INSERT INTO movements(
 	movement_id,
 	idempotency_key,
 	created_at,
@@ -58,7 +58,7 @@ INSERT INTO ledger.movements(
 ) VALUES($1,$2,$3,$4);
 
 -- name: GetMovement :one
-SELECT * FROM ledger.movements
+SELECT * FROM movements
 WHERE movement_id = $1;
 
 -- name: GetAccountsLedgerByMovementID :many
@@ -71,7 +71,7 @@ SELECT ledger_id,
 	client_id,
 	created_at,
 	client_id
-FROM ledger.accounts_ledger
+FROM accounts_ledger
 WHERE movement_id = $1
 ORDER BY created_at;
 
@@ -84,13 +84,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE account_id = $1
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE parent_account_id = $1
     GROUP BY parent_account_id
 )
@@ -117,13 +117,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE account_id = ANY($1::varchar[])
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE parent_account_id = ANY($1::varchar[])
     GROUP BY parent_account_id
 )
@@ -150,13 +150,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE account_id = ANY($1::varchar[])
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE parent_account_id = ANY($1::varchar[])
     GROUP BY parent_account_id
 )

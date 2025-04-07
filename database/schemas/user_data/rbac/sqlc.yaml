@@ -7,7 +7,7 @@ sql:
   # Name is used for schema name, please use the schema name on where the query is executed.
   # If the "public" schema is used, the schema name should be "public".
   - name: "user"
-    schema: "../schema.sql"
+    schema: "../migrations"
     queries: "query.sql"
     engine: "postgresql"
     gen:

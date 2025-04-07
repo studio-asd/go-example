@@ -14,7 +14,7 @@ import (
 )
 
 const createAccount = `-- name: CreateAccount :exec
-INSERT INTO ledger.accounts(
+INSERT INTO accounts(
 	account_id,
 	name,
 	description,
@@ -46,7 +46,7 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) er
 }
 
 const createAccountBalance = `-- name: CreateAccountBalance :exec
-INSERT INTO ledger.accounts_balance(
+INSERT INTO accounts_balance(
 	account_id,
 	parent_account_id,
 	allow_negative,
@@ -84,7 +84,7 @@ func (q *Queries) CreateAccountBalance(ctx context.Context, arg CreateAccountBal
 }
 
 const createMovement = `-- name: CreateMovement :exec
-INSERT INTO ledger.movements(
+INSERT INTO movements(
 	movement_id,
 	idempotency_key,
 	created_at,
@@ -111,20 +111,20 @@ func (q *Queries) CreateMovement(ctx context.Context, arg CreateMovementParams) 
 
 const getAccounts = `-- name: GetAccounts :many
 SELECT account_id, name, description, parent_account_id, currency_id, created_at, updated_at
-FROM ledger.accounts
+FROM accounts
 WHERE account_id = ANY($1::varchar[])
 ORDER BY created_at
 `
 
-func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]LedgerAccount, error) {
+func (q *Queries) GetAccounts(ctx context.Context, dollar_1 []string) ([]Account, error) {
 	rows, err := q.db.Query(ctx, getAccounts, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LedgerAccount
+	var items []Account
 	for rows.Next() {
-		var i LedgerAccount
+		var i Account
 		if err := rows.Scan(
 			&i.AccountID,
 			&i.Name,
@@ -154,8 +154,8 @@ SELECT ab.account_id,
 	ab.last_movement_id,
 	ab.created_at,
 	ab.updated_at
-FROM ledger.accounts_balance ab,
-	ledger.accounts ac
+FROM accounts_balance ab,
+	accounts ac
 WHERE ab.account_id = ANY($1::varchar[])
 	AND ab.account_id = ac.account_id
 `
@@ -211,13 +211,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE account_id = $1
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE parent_account_id = $1
     GROUP BY parent_account_id
 )
@@ -274,13 +274,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE account_id = ANY($1::varchar[])
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE parent_account_id = ANY($1::varchar[])
     GROUP BY parent_account_id
 )
@@ -350,13 +350,13 @@ WITH sum_main AS (
         last_movement_id,
         currency_id,
         created_at
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE account_id = ANY($1::varchar[])
 ),
 child_accounts AS (
     SELECT parent_account_id as account_id,
         SUM(balance) as balance
-    FROM ledger.accounts_balance
+    FROM accounts_balance
     WHERE parent_account_id = ANY($1::varchar[])
     GROUP BY parent_account_id
 )
@@ -428,7 +428,7 @@ SELECT ledger_id,
 	client_id,
 	created_at,
 	client_id
-FROM ledger.accounts_ledger
+FROM accounts_ledger
 WHERE movement_id = $1
 ORDER BY created_at
 `
@@ -476,13 +476,13 @@ func (q *Queries) GetAccountsLedgerByMovementID(ctx context.Context, movementID 
 }
 
 const getMovement = `-- name: GetMovement :one
-SELECT movement_id, idempotency_key, created_at, updated_at, reversed_at, reversal_movement_id FROM ledger.movements
+SELECT movement_id, idempotency_key, created_at, updated_at, reversed_at, reversal_movement_id FROM movements
 WHERE movement_id = $1
 `
 
-func (q *Queries) GetMovement(ctx context.Context, movementID string) (LedgerMovement, error) {
+func (q *Queries) GetMovement(ctx context.Context, movementID string) (Movement, error) {
 	row := q.db.QueryRow(ctx, getMovement, movementID)
-	var i LedgerMovement
+	var i Movement
 	err := row.Scan(
 		&i.MovementID,
 		&i.IdempotencyKey,
@@ -499,7 +499,7 @@ SELECT movement_id,
     idempotency_key,
     created_at,
     updated_at
-FROM ledger.movements
+FROM movements
 WHERE idempotency_key = $1
 `
 

@@ -20,7 +20,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 	tests := []struct {
 		name                  string
 		createAccounts        []CreateLedgerAccount
-		expectAccounts        []LedgerAccount
+		expectAccounts        []Account
 		expectAccountsBalance []GetAccountsBalanceRow
 		// isolatedSchema fork the schema and creates a new schema for the test.
 		isolatedSchema bool
@@ -44,7 +44,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 					CreatedAt:       now.Add(time.Second * 2),
 				},
 			},
-			expectAccounts: []LedgerAccount{
+			expectAccounts: []Account{
 				{
 					AccountID:  "one",
 					CurrencyID: 1,
@@ -86,7 +86,7 @@ func TestCreateLedgerAccounts(t *testing.T) {
 					CreatedAt:     now.Add(time.Second * 3),
 				},
 			},
-			expectAccounts: []LedgerAccount{
+			expectAccounts: []Account{
 				{
 					AccountID:  "one_one",
 					CurrencyID: 1,

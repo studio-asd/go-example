@@ -98,7 +98,7 @@ func TestMove(t *testing.T) {
 				},
 				Time: createdAt,
 			},
-			expectMovement: LedgerMovement{
+			expectMovement: Movement{
 				MovementID:     "one",
 				IdempotencyKey: "one",
 				CreatedAt:      createdAt,

@@ -4,32 +4,13 @@ package database
 
 import (
     "embed"
-    "testing"
-
-	"github.com/golang-migrate/migrate/v4/source"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 //go:embed migrations
-var embeddedSchema embed.FS
+var EmbeddedSchema embed.FS
 
 const (
     // DatabaseName is the name of the database.
     DatabaseName = "go_example"
-	PostgresDSN = "postgres://postgres:postgres@localhost:5432/go_example"
+    PostgresDSN = "postgres://postgres:postgres@localhost:5432/go_example"
 )
-
-// MigrationSchemas returns a golang-migrate's source.Driver that reads from the embedded filesystem.
-func MigrationSchemas() source.Driver {
-    // We should not return the embedded filesystem in non-testing code. We will only use this code for a template generated
-    // code that helps us in testing.
-	if !testing.Testing() {
-		panic("This function should not be called in non testing-code")
-	}
-
-	embeddedFS, err := iofs.New(embeddedSchema, "migrations")
-	if err != nil {
-		panic(err)
-	}
-	return embeddedFS
-}

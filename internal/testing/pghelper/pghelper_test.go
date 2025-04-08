@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/studio-asd/pkg/postgres"
+
+	"github.com/studio-asd/go-example/internal/testing/pghelper/testdata"
 )
 
 var _ PGQuery = (*testQuery)(nil)
@@ -23,7 +25,8 @@ func (t *testQuery) Postgres() *postgres.Postgres {
 
 func TestFork(t *testing.T) {
 	th, err := New(context.Background(), Config{
-		DatabaseName: "test_fork",
+		DatabaseName:   "test_fork",
+		EmbeddedSchema: testdata.EmbeddedSchema,
 	})
 	if err != nil {
 		t.Fatal(err)

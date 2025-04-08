@@ -34,7 +34,7 @@ func TestMove(t *testing.T) {
 		name                  string
 		entries               ledger.MovementLedgerEntries
 		expectMovementResult  internal.MovementResult
-		expectMovement        LedgerMovement
+		expectMovement        Movement
 		expectAccountsBalance map[string]GetAccountsBalanceRow
 		expectAccountsLedger  []GetAccountsLedgerByMovementIDRow
 	}{

@@ -12,6 +12,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+
 	"github.com/studio-asd/pkg/postgres"
 	"github.com/studio-asd/pkg/testing/pgtest"
 
@@ -40,6 +44,9 @@ type Config struct {
 	//
 	// This option is helpful for debugging in case we want to connect directly to the PostgreSQL database.
 	DontDropOnClose bool
+	// SkipPrepare is used to skip the creation of the database and applying all schemas into it. The environment varialbe
+	// is useful to skip the preparation when a multiple packages tests is being performed.
+	SkipPrepare bool
 }
 
 func (c Config) validate() error {
@@ -77,9 +84,9 @@ func New(ctx context.Context, config Config) (*Helper, error) {
 		pg  *postgres.Postgres
 		err error
 		// TEST_PG_DSN can be used to set different DSN for flexible test setup.
-		pgDSN = env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/"+config.DatabaseName)
+		pgDSN = env.GetEnvOrDefault("TEST_PG_DSN", "postgres://postgres:postgres@localhost:5432/"+config.DatabaseName+"?sslmode=disable")
 	)
-	if !SkipPrepare() {
+	if !SkipPrepare(config.SkipPrepare) {
 		pg, err = prepareTest(ctx, pgDSN, config.EmbeddedSchema)
 		if err != nil {
 			return nil, err
@@ -87,6 +94,9 @@ func New(ctx context.Context, config Config) (*Helper, error) {
 	} else {
 		config, err := postgres.NewConfigFromDSN(pgDSN)
 		if err != nil {
+			return nil, err
+		}
+		if err := pgtest.CreateDatabase(ctx, pgDSN, false); err != nil {
 			return nil, err
 		}
 		pg, err = postgres.Connect(ctx, config)
@@ -135,11 +145,11 @@ func (th *Helper) Close() error {
 		if !th.config.DontDropOnClose {
 			// Drop the database after test so we will always have a fresh database when we start the test.
 			config := th.conn.Config()
-			url, _, err := config.DSN()
+			dsn, err := config.DSN()
 			if err != nil {
 				return err
 			}
-			err = pgtest.DropDatabase(context.Background(), url)
+			err = pgtest.DropDatabase(context.Background(), dsn.URL())
 			if err != nil {
 				return err
 			}
@@ -200,6 +210,27 @@ func prepareTest(ctx context.Context, pgDSN string, embeddedSchema embed.FS) (*p
 		return nil, err
 	}
 
+	if reflect.ValueOf(embeddedSchema).IsZero() {
+		return nil, errors.New("embedded schema is empty")
+	}
+
+	embeddedFS, err := iofs.New(embeddedSchema, "migrations")
+	if err != nil {
+		return nil, err
+	}
+	mg, err := migrate.NewWithSourceInstance("iofs", embeddedFS, pgDSN)
+	if err != nil {
+		return nil, err
+	}
+	if err := mg.Up(); err != nil {
+		return nil, err
+	}
+	sourceErr, dbErr := mg.Close()
+	if sourceErr != nil || dbErr != nil {
+		errs := errors.Join(dbErr, sourceErr)
+		return nil, errs
+	}
+	//
 	// Create a new connection with the correct database name.
 	config, err := postgres.NewConfigFromDSN(pgDSN)
 	if err != nil {
@@ -210,25 +241,15 @@ func prepareTest(ctx context.Context, pgDSN string, embeddedSchema embed.FS) (*p
 	if err != nil {
 		return nil, err
 	}
-	// If the embeddedSchema is nil or empty, return the test connection without applying the schema.
-	if reflect.ValueOf(embeddedSchema).IsZero() {
-		return testConn, nil
-	}
-
-	out, err := embeddedSchema.ReadFile("schema.sql")
-	if err != nil {
-		return nil, err
-	}
-	_, err = testConn.Exec(context.Background(), string(out))
-	if err != nil {
-		return nil, err
-	}
 	return testConn, nil
 }
 
 // SkipPrepare returns the value of PGTEST_SKIP_PREPARE to decide whether test preparation need to be skipped or not.
 // It is rather useful for other package to understand this as they may want to use a separate database name or
 // using other configurations if test preparation is not skipped.
-func SkipPrepare() bool {
-	return skipPrepareTest == "1"
+func SkipPrepare(skipPrepareFlag bool) bool {
+	if skipPrepareTest == "1" {
+		return true
+	}
+	return skipPrepareFlag
 }

@@ -135,8 +135,9 @@ up() {
 
     PGPASSWORD=postgres ${pgexec} -c "CREATE DATABASE ${db_name}"
     cd $1
-    # The mounted volume is in '/data' so we need to seek the schema there.
-    PGPASSWORD=postgres ${pgexec} -d $db_name -f /data/$db_schema_dir/schema.sql
+    # Migrate up using golang-migrate CLI. In this case we will not specify the version of the migration because we want
+	# to migrate up all migrations.
+	migrate -verbose -source file://${schema_dir}/${db_schema_dir}/migrations -database postgres://postgres:postgres@localhost:5432/${db_name}?sslmode=disable up
     cd -
     # Move to before schema dir
 	cd -

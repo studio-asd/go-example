@@ -7,12 +7,13 @@ The bootstrap service is responsible for initializing the application and settin
 The bootstrap service works by registering all the bootstrap functions in the application for a certain version of the application. This is why you will see something like this in the [bootstrap.go](bootstrap.go):
 
 ```go
-func init() {
-	bootstrapper = &Bootstrap{
-		versions: map[string]bootstrapFunc{
-			"v0": v0Bootstrap,
-		},
-	}
+// Put the bootstrapper for each version here, although we will re-sort and check the bootstrapper later on, please always
+// put the new bootstrapper below the previous one.
+b := []bootstrapper{
+	&v0Bootstrapper{
+		goExampleDBMigrator: goExampleDBMigrator,
+		userDBMigrator:      userDBMigrator,
+	},
 }
 ```
 
@@ -34,3 +35,9 @@ Currently, this is enough because we are building a small service with as tiny d
 1. When we are altering a database schema that causes locks on a certain table that frequently used. This can cause downtime for the application as thet table will not be accessible.
 1. When we CANNOT create database index concurrently for some reasons. Most of the time, this is not a problem because we can use `CREATE INDEX CONCURRENTLY` to create the index without locking the table.
 1. When there are multiple dependencies that need to be changed at the same time and we cannot guarantee the consistency of the data between the dependencies. This means a more complex setup and plan need to be executed to ensure the data is consistent and correct.
+
+## Security
+
+As of now the bootstrap service is running with full user previledge, thus it can do database migrations and altering the schema of the database. While this is not ideal for Security and dangerous in practice, this bootstrap service is only intended for showcase and not to be used in production environment.
+
+In a production environment, its better to build a different `binary` to bootstrap the service so it can use a different user with different priviledge from the application.

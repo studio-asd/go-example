@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"golang.org/x/mod/semver"
@@ -13,6 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
 	pg "github.com/studio-asd/pkg/postgres"
+	"github.com/studio-asd/pkg/srun"
 
 	goexampledbchema "github.com/studio-asd/go-example/database/schemas/go-example"
 	userdbschema "github.com/studio-asd/go-example/database/schemas/user_data"
@@ -26,6 +28,7 @@ type bootstrapper interface {
 
 // Bootstrap service bootstraps the application by inserting the necessary data into the database.
 type Bootstrap struct {
+	logger        *slog.Logger
 	bootstrappers []bootstrapper
 }
 
@@ -63,13 +66,20 @@ func New(params Params) (*Bootstrap, error) {
 	}, nil
 }
 
+func (b *Bootstrap) Init(ctx srun.Context) error {
+	b.logger = ctx.Logger
+	return nil
+}
+
 type ExecuteParams struct {
 	All     bool
 	Version string
 }
 
 func (b *Bootstrap) Execute(ctx context.Context, params ExecuteParams) error {
+	b.logger.InfoContext(ctx, "Executing bootstrap...")
 	if !params.All {
+		b.logger.InfoContext(ctx, "Selecting specific version for bootstrap", "bootstrap_version", params.Version)
 		versionIndex := slices.IndexFunc(b.bootstrappers, func(e bootstrapper) bool {
 			if e.Version() == params.Version {
 				return true
@@ -81,15 +91,17 @@ func (b *Bootstrap) Execute(ctx context.Context, params ExecuteParams) error {
 		}
 		boot := b.bootstrappers[versionIndex]
 		if err := boot.Run(ctx); err != nil {
-			return fmt.Errorf("[bootstrapper] failed to bootstrap for version %s: %v", params.Version, err)
+			return fmt.Errorf("[bootstrapper] failed to bootstrap for version %s: %v", boot.Version(), err)
 		}
 		if err := boot.Check(ctx); err != nil {
-			return fmt.Errorf("[bootstrapper] check is failing for version %s: %v", params.Version, err)
+			return fmt.Errorf("[bootstrapper] check is failing for version %s: %v", boot.Version(), err)
 		}
 		return nil
 	}
 
+	b.logger.InfoContext(ctx, "Selecting all versions for bootstrap")
 	for _, bs := range b.bootstrappers {
+		b.logger.InfoContext(ctx, "Running bootstrap", "boostrap_version", bs.Version())
 		if err := bs.Run(ctx); err != nil {
 			return fmt.Errorf("[bootstrapper] failed to bootstrap for version %s: %v", bs.Version(), err)
 		}

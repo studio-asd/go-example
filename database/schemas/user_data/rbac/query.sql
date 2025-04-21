@@ -36,12 +36,16 @@ INSERT INTO security_role_permissions(
 
 -- name: GetSecurityRolePermissions :many
 SELECT srp.role_id,
+    sr.role_name,
     sp.permission_id,
     sp.permission_external_id,
     sp.permission_name,
     sp.permission_type,
+    sp.permission_key,
     sp.permission_value
-FROM security_permissions sp
-JOIN security_role_permissions srp
-    ON sp.permission_id = srp.permission_id
-WHERE srp.role_id = $1;
+FROM security_roles sr,
+    security_permissions sp,
+    security_role_permissions srp
+WHERE sr.role_id = $1
+    AND sr.role_id = srp.role_id
+    AND srp.permission_id = sp.permission_id;

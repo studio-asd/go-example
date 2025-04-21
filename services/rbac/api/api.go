@@ -2,12 +2,14 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/studio-asd/pkg/srun"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/studio-asd/pkg/srun"
 
 	"github.com/studio-asd/go-example/internal/protovalidate"
 	rbacv1 "github.com/studio-asd/go-example/proto/api/rbac/v1"
@@ -87,5 +89,19 @@ func (a *API) CreatePermissions(ctx context.Context, req []*rbacv1.CreateSecurit
 }
 
 func (a *API) CreateRole(ctx context.Context, req *rbacv1.CreateSecurityRoleRequest) (*rbacv1.CreateSecurityRoleResponse, error) {
+	if err := validator.Validate(req); err != nil {
+		return nil, err
+	}
+
+	permissions, err := a.queries.GetPermissionsByExternalIDs(ctx, req.PermissionIds)
+	if err != nil {
+		return nil, err
+	}
+	// Do a quick check on whether all permissions exist. It would be better if we can bisect them by each id.
+	// There might be a case where the client pass the same and valid permission_id multiple times.
+	if len(permissions) != len(req.PermissionIds) {
+		return nil, errors.New("permission not found")
+	}
+
 	return nil, nil
 }

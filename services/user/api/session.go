@@ -12,10 +12,17 @@ import (
 
 	"github.com/google/uuid"
 
+	usertypev1 "github.com/studio-asd/go-example/proto/types/user/v1"
 	"github.com/studio-asd/go-example/services"
+	userpg "github.com/studio-asd/go-example/services/user/internal/postgres"
 )
 
-func (a *API) createLoginSession(ctx context.Context) (string, error) {
+type createLoginSessionRequest struct {
+	userID   int64
+	userUUID string
+}
+
+func (a *API) createLoginSession(ctx context.Context, req createLoginSessionRequest) (string, error) {
 	md, err := services.NewGRPCMetadataRetriever(ctx)
 	if err != nil {
 		return "", err
@@ -28,7 +35,7 @@ func (a *API) createLoginSession(ctx context.Context) (string, error) {
 	tokenRandomID := strconv.FormatInt(rand.Int64N(10), 10)
 	// Create a session token and persist the session.
 	sessionToken, err := encodeSessionToken(sessionTokenInfo{
-		UserID:              user.ExternalID,
+		UserID:              req.userUUID,
 		RandomID:            tokenRandomID,
 		CreataedAtTimestamp: tokenCreatedAt.UnixMilli(),
 	})
@@ -44,7 +51,7 @@ func (a *API) createLoginSession(ctx context.Context) (string, error) {
 	// 2. We don't want to include sensitive information in the token so that the client knows that information
 	//    is used to identify the user.
 	sessionID := generateSessionID(sessionIDParams{
-		UserID:             user.ExternalID,
+		UserID:             req.userUUID,
 		RandomID:           tokenRandomID,
 		CreatedAtTimestamp: tokenCreatedAt.UnixMilli(),
 		UserAgent:          md.UserAgent(),
@@ -53,7 +60,7 @@ func (a *API) createLoginSession(ctx context.Context) (string, error) {
 		SessionID:   sessionID,
 		SessionType: int32(usertypev1.UserSessionType_USER_SESSION_TYPE_AUTHENTICATED),
 		UserID: sql.NullInt64{
-			Int64: user.UserID,
+			Int64: req.userID,
 			Valid: true,
 		},
 		RandomID:             tokenRandomID,
@@ -87,8 +94,8 @@ func (s sessionTokenInfo) valid() error {
 		return errors.New("session_token: created at timestamp is invalid")
 	}
 	// Check whether the timestamp is makes sense, our session is only valid for 1 hour, so it doesn't makes sense
-	// to receive the session that was created 6 hours ago.
-	if time.Since(t) > time.Hour*6 {
+	// to receive the session that was created more than three(3) hours ago.
+	if time.Since(t) > time.Hour*3 {
 		return errors.New("session_token: created at timestamp is too old")
 	}
 	return nil

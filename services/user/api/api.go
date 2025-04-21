@@ -65,8 +65,9 @@ func (a *API) LoginRequest(ctx context.Context, req *userv1.LoginRequest) (*user
 	if err := validator.Validate(req); err != nil {
 		return nil, err
 	}
-	switch req.GetLogin() {
-	case &userv1.LoginRequest_LoginPassword{}:
+	switch req.GetLogin().(type) {
+	case *userv1.LoginRequest_LoginPassword:
+		req.ProtoReflect().Descriptor().FullName()
 		return a.loginPassword(ctx, req.GetLoginPassword())
 	default:
 		return nil, nil

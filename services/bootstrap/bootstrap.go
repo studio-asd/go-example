@@ -22,8 +22,10 @@ import (
 
 type bootstrapper interface {
 	Version() string
-	Run(context.Context) error
-	Check(context.Context) error
+	Upgrade(context.Context) error
+	CheckUpgrade(context.Context) error
+	Rollback(ctx context.Context) error
+	CheckRollback(ctx context.Context) error
 }
 
 // Bootstrap service bootstraps the application by inserting the necessary data into the database.
@@ -76,7 +78,7 @@ type ExecuteParams struct {
 	Version string
 }
 
-func (b *Bootstrap) Execute(ctx context.Context, params ExecuteParams) error {
+func (b *Bootstrap) Upgrade(ctx context.Context, params ExecuteParams) error {
 	b.logger.InfoContext(ctx, "Executing bootstrap...")
 	if !params.All {
 		b.logger.InfoContext(ctx, "Selecting specific version for bootstrap", "bootstrap_version", params.Version)
@@ -90,10 +92,10 @@ func (b *Bootstrap) Execute(ctx context.Context, params ExecuteParams) error {
 			return fmt.Errorf("version %s does not exists in the bootstrapper", params.Version)
 		}
 		boot := b.bootstrappers[versionIndex]
-		if err := boot.Run(ctx); err != nil {
+		if err := boot.Upgrade(ctx); err != nil {
 			return fmt.Errorf("[bootstrapper] failed to bootstrap for version %s: %v", boot.Version(), err)
 		}
-		if err := boot.Check(ctx); err != nil {
+		if err := boot.CheckUpgrade(ctx); err != nil {
 			return fmt.Errorf("[bootstrapper] check is failing for version %s: %v", boot.Version(), err)
 		}
 		return nil
@@ -102,10 +104,10 @@ func (b *Bootstrap) Execute(ctx context.Context, params ExecuteParams) error {
 	b.logger.InfoContext(ctx, "Selecting all versions for bootstrap")
 	for _, bs := range b.bootstrappers {
 		b.logger.InfoContext(ctx, "Running bootstrap", "boostrap_version", bs.Version())
-		if err := bs.Run(ctx); err != nil {
+		if err := bs.Upgrade(ctx); err != nil {
 			return fmt.Errorf("[bootstrapper] failed to bootstrap for version %s: %v", bs.Version(), err)
 		}
-		if err := bs.Check(ctx); err != nil {
+		if err := bs.CheckUpgrade(ctx); err != nil {
 			return fmt.Errorf("[bootstrapper] check is failing for version %s: %v", bs.Version(), err)
 		}
 	}

@@ -67,12 +67,12 @@ func TestBootstrapFromZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := b.Execute(t.Context(), ExecuteParams{All: true}); err != nil {
+	if err := b.Upgrade(t.Context(), ExecuteParams{All: true}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestExecute(t *testing.T) {
+func TestUpgrade(t *testing.T) {
 	t.Parallel()
 }
 
@@ -130,10 +130,18 @@ func (b *dummyBootstrapper) Version() string {
 	return b.V
 }
 
-func (b *dummyBootstrapper) Run(ctx context.Context) error {
+func (b *dummyBootstrapper) Upgrade(ctx context.Context) error {
 	return nil
 }
 
-func (b *dummyBootstrapper) Check(ctx context.Context) error {
+func (b *dummyBootstrapper) CheckUpgrade(ctx context.Context) error {
+	return nil
+}
+
+func (b *dummyBootstrapper) Rollback(ctx context.Context) error {
+	return nil
+}
+
+func (b *dummyBootstrapper) CheckRollback(ctx context.Context) error {
 	return nil
 }

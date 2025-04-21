@@ -24,7 +24,7 @@ downall:
 .PHONY: dbcomposeup
 dbcomposeup:
 	@docker compose -f $(REPOSITORY_ROOT)/database/docker-compose.yaml up -d --remove-orphans
-	@sleep 2
+	@sleep 5
 
 .PHONY: dbcomposedown
 dbcomposedown:

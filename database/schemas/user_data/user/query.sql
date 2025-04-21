@@ -160,7 +160,7 @@ WHERE us.user_id = $1
 	AND us.current_secret_version = usv.secret_version
 	AND us.secret_id = usv.secret_id;
 
--- name: GetUserSecretByExternalID :one
+-- name: GetUserSecresByExternalID :one
 SELECT us.secret_id,
 	us.external_id,
 	us.user_id,
@@ -176,5 +176,26 @@ SELECT us.secret_id,
 FROM user_secrets us,
 	user_secret_versions usv
 WHERE us.external_id = $1
+	AND us.current_secret_version = usv.secret_version
+	AND us.secret_id = usv.secret_id;
+
+-- name: GetUserSecretsByEmail :one
+SELECT us.secret_id,
+	us.external_id,
+	us.user_id,
+	us.secret_key,
+	us.secret_type,
+	us.current_secret_version,
+	us.created_at,
+	-- The updated_at is the same with the new version created_at so we don't
+	-- have to retrieve more information from usv.
+	us.updated_at,
+	usv.secret_value,
+	usv.secret_salt
+FROM user_secrets us,
+	user_secret_versions usv,
+	user_pii upi
+WHERE upi.email = $1
+    AND us.user_id = upi.user_id
 	AND us.current_secret_version = usv.secret_version
 	AND us.secret_id = usv.secret_id;

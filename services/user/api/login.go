@@ -44,10 +44,13 @@ func (a *API) loginPassword(ctx context.Context, req *userv1.LoginEmailPassword)
 	}
 	// Compare the generated password with the stored password
 	if genPassword != password(value.SecretValue) {
-		return nil, usersvc.ErrInvalidPassword
+		return nil, usersvc.ErrPasswordInvalid
 	}
 
-	sessionToken, err := a.createLoginSession(ctx)
+	sessionToken, err := a.createLoginSession(ctx, createLoginSessionRequest{
+		userID:   user.UserID,
+		userUUID: user.ExternalID,
+	})
 	if err != nil {
 		return nil, err
 	}

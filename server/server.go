@@ -7,7 +7,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/studio-asd/pkg/resources"
+	grpcserver "github.com/studio-asd/pkg/resources/grpc/server"
 
 	ledgerv1 "github.com/studio-asd/go-example/proto/api/ledger/v1"
 	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
@@ -34,9 +34,9 @@ func New(ledger *ledgerapi.API, user *userapi.API) *Server {
 	}
 }
 
-func (s *Server) RegisterAPIServices(grpcServer *resources.GRPCServerObject) error {
+func (s *Server) RegisterAPIServices(grpcServer *grpcserver.GRPCServer) error {
 	// gRPC Gateway.
-	err := grpcServer.RegisterGatewayService(func(gateway *resources.GRPCGatewayObject) error {
+	err := grpcServer.RegisterGatewayService(func(gateway *grpcserver.GRPCGateway) error {
 		gateway.RegisterMetadataHandler(metadataForwarder)
 		gateway.RegisterMiddleware(s.middlewares()...)
 		gateway.RegisterServiceHandler(func(mux *runtime.ServeMux) error {

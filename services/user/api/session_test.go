@@ -19,6 +19,7 @@ func TestDecodeSessionToken(t *testing.T) {
 		name         string
 		genTokenFunc func(t *testing.T) string
 		expect       sessionTokenInfo
+		validErr     error
 	}{
 		{
 			name: "valid token",
@@ -38,6 +39,7 @@ func TestDecodeSessionToken(t *testing.T) {
 				RandomID:            "1234",
 				CreataedAtTimestamp: createdAt.UnixMilli(),
 			},
+			validErr: nil,
 		},
 	}
 
@@ -53,6 +55,9 @@ func TestDecodeSessionToken(t *testing.T) {
 
 			if diff := cmp.Diff(test.expect, info); diff != "" {
 				t.Fatalf("(-want/+got): %s", diff)
+			}
+			if err := info.valid(); err != test.validErr {
+				t.Fatalf("expecting error %v but got %v", test.validErr, err)
 			}
 		})
 	}

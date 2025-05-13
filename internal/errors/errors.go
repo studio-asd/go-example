@@ -14,6 +14,7 @@ const (
 	KindBadRequest
 	KindUnauthorized
 	KindInternalError
+	KindUnavailable
 )
 
 func (k Kind) HTTPCode() int {
@@ -22,6 +23,8 @@ func (k Kind) HTTPCode() int {
 		return http.StatusBadRequest
 	case KindInternalError:
 		return http.StatusInternalServerError
+	case KindUnavailable:
+		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError
 	}
@@ -154,7 +157,7 @@ func NewFields(kv ...any) (f Fields) {
 	// Ensure that the Fields is never 'odd'. If they 'key' is not available then we
 	// should replace the 'key' with 'unknown?'.
 	newKvLen := kvlen + 1
-	newKV := make([]interface{}, newKvLen)
+	newKV := make([]any, newKvLen)
 	copy(newKV, kv)
 
 	tmp := newKV[newKvLen-2]

@@ -4,10 +4,12 @@ import (
 	"context"
 	"os"
 
+	"github.com/studio-asd/pkg/srun"
 	"gopkg.in/yaml.v3"
 
 	"github.com/studio-asd/pkg/resources"
-	"github.com/studio-asd/pkg/srun"
+	grpcserver "github.com/studio-asd/pkg/resources/grpc/server"
+	pgdb "github.com/studio-asd/pkg/resources/postgres"
 
 	"github.com/studio-asd/go-example/server"
 	"github.com/studio-asd/go-example/services/bootstrap"
@@ -41,8 +43,8 @@ func run(ctx context.Context, runner srun.ServiceRunner) error {
 		return err
 	}
 
-	goExamplePG := res.Container().Postgres().MustGetPostgres("go_example").Primary()
-	userPG := res.Container().Postgres().MustGetPostgres("user").Primary()
+	goExamplePG := resources.MustGet[pgdb.PostgresDB](res.Container(), "go_example").Primary()
+	userPG := resources.MustGet[pgdb.PostgresDB](res.Container(), "user").Primary()
 
 	bootStrapper, err := bootstrap.New(bootstrap.Params{
 		GoExampleDB: goExamplePG,
@@ -57,16 +59,16 @@ func run(ctx context.Context, runner srun.ServiceRunner) error {
 
 	ledgerAPI := ledgerapi.New(goExamplePG)
 	userAPI := userapi.New(userPG)
-	grpcServer := res.Container().GRPC().Server.MustGetServer("main")
+	grpcServer := resources.MustGet[*grpcserver.GRPCServer](res.Container(), "main")
 
 	svc := server.New(ledgerAPI, userAPI)
 	svc.RegisterAPIServices(grpcServer)
 
 	return runner.Register(
-		srun.RegisterInitAwareServices(
+		srun.RegisterInitServices(
 			ledgerAPI,
 			userAPI,
 		),
-		srun.RegisterRunnerAwareServices(res),
+		srun.RegisterRunnerServices(res),
 	)
 }

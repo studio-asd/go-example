@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/base64"
-	"errors"
 	"math/rand/v2"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 
 	usertypev1 "github.com/studio-asd/go-example/proto/types/user/v1"
 	"github.com/studio-asd/go-example/services"
+	usersvc "github.com/studio-asd/go-example/services/user"
 	userpg "github.com/studio-asd/go-example/services/user/internal/postgres"
 )
 
@@ -83,20 +83,20 @@ type sessionTokenInfo struct {
 
 func (s sessionTokenInfo) valid() error {
 	if s.UserID == "" {
-		return errors.New("session_token: user id is empty")
+		return usersvc.ErrSessionUserIDEmpty
 	}
 	if s.RandomID == "" {
-		return errors.New("session_token: random id is invalid")
+		return usersvc.ErrSessionRandomIDEmpty
 	}
 	t := time.UnixMilli(s.CreataedAtTimestamp)
 	// Check wether the timestamp is valid.
 	if t.IsZero() {
-		return errors.New("session_token: created at timestamp is invalid")
+		return usersvc.ErrSessionCreatedAtInvalid
 	}
 	// Check whether the timestamp is makes sense, our session is only valid for 1 hour, so it doesn't makes sense
 	// to receive the session that was created more than three(3) hours ago.
 	if time.Since(t) > time.Hour*3 {
-		return errors.New("session_token: created at timestamp is too old")
+		return usersvc.ErrSessionCreatedAtTooOld
 	}
 	return nil
 }

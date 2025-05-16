@@ -3,9 +3,12 @@ package api
 import (
 	"context"
 	"log/slog"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/studio-asd/pkg/postgres"
 	"github.com/studio-asd/pkg/srun"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/studio-asd/go-example/internal/protovalidate"
 	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
@@ -58,7 +61,28 @@ func (a *API) GRPC() *GRPC {
 }
 
 func (a *API) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
-	return nil, nil
+	password, err := encryptUserPassword(req.Password, randSalt())
+	if err != nil {
+		return nil, err
+	}
+
+	createdAt := time.Now()
+	userUUID := uuid.NewString()
+	_, err = a.queries.RegisterUserWithPassword(ctx, userpg.RegisterUserWithPassword{
+		UUID:               uuid.NewString(),
+		Email:              req.GetEmail(),
+		Password:           string(password),
+		PasswordSecretKey:  "user_password",
+		PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+		CreatedAt:          createdAt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &userv1.RegisterUserResponse{
+		UserId:    userUUID,
+		CreatedAt: timestamppb.New(createdAt),
+	}, nil
 }
 
 func (a *API) LoginRequest(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {

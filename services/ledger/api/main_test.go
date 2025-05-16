@@ -39,7 +39,7 @@ func run(m *testing.M) (code int, err error) {
 	if !testing.Short() {
 		dbName := "go_example"
 		// Use a different database name if we are not in the global test mode.
-		if !pghelper.SkipPrepare() {
+		if !pghelper.SkipPrepare(true) {
 			dbName = "ledger_api"
 		}
 		testHelper, err = pghelper.New(context.Background(), pghelper.Config{

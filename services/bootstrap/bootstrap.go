@@ -17,7 +17,7 @@ import (
 	"github.com/studio-asd/pkg/srun"
 
 	goexampledbchema "github.com/studio-asd/go-example/database/schemas/go-example"
-	userdbschema "github.com/studio-asd/go-example/database/schemas/user_data"
+	userdbschema "github.com/studio-asd/go-example/database/schemas/user-data"
 )
 
 type bootstrapper interface {
@@ -83,10 +83,7 @@ func (b *Bootstrap) Upgrade(ctx context.Context, params ExecuteParams) error {
 	if !params.All {
 		b.logger.InfoContext(ctx, "Selecting specific version for bootstrap", "bootstrap_version", params.Version)
 		versionIndex := slices.IndexFunc(b.bootstrappers, func(e bootstrapper) bool {
-			if e.Version() == params.Version {
-				return true
-			}
-			return false
+			return e.Version() == params.Version
 		})
 		if versionIndex == -1 {
 			return fmt.Errorf("version %s does not exists in the bootstrapper", params.Version)

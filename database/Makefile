@@ -7,7 +7,10 @@ dbinstall:
 	@echo "Installing database tools"
 ifeq (,$(shell which migrate))
 # Note that this will install the migrate CLI on a specific version but 'migrate -version' will always returns 'dev'.
-	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.2
+	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.3
+endif
+ifeq (,$(shell which sqlc))
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.29.0
 endif
 
 .PHONY: upall
@@ -32,8 +35,8 @@ dbcomposedown:
 
 gen_dirs := \
 	go-example/ledger \
-	user_data/user \
-	user_data/rbac
+	user-data/user \
+	user-data/rbac
 
 $(gen_dirs):
 ifeq (generate,$(command))

@@ -30,25 +30,27 @@ func TestGetUserSession(t *testing.T) {
 	tq := New(th.Postgres())
 
 	// Prepare some users.
-	usersRegister := []RegisterUser{
+	usersRegister := []RegisterUserWithPassword{
 		{
-			UUID:             "one",
-			Email:            "one@email.com",
-			Password:         "one",
-			PasswordSecretID: "one_password",
-			CreatedAt:        createdAt,
+			UUID:               "one",
+			Email:              "one@email.com",
+			Password:           "one",
+			PasswordSecretKey:  "user_password",
+			PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+			CreatedAt:          createdAt,
 		},
 		{
-			UUID:             "two",
-			Email:            "two@email.com",
-			Password:         "two",
-			PasswordSecretID: "two_password",
-			CreatedAt:        createdAt,
+			UUID:               "two",
+			Email:              "two@email.com",
+			Password:           "two",
+			PasswordSecretKey:  "user_password",
+			PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+			CreatedAt:          createdAt,
 		},
 	}
 
 	for _, user := range usersRegister {
-		if err := tq.RegisterUser(t.Context(), user); err != nil {
+		if _, err := tq.RegisterUserWithPassword(t.Context(), user); err != nil {
 			t.Fatal(err)
 		}
 	}

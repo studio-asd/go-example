@@ -8,17 +8,20 @@ import (
 	userv1 "github.com/studio-asd/go-example/proto/types/user/v1"
 )
 
-type RegisterUser struct {
-	UUID             string
-	Email            string
-	Password         string
-	PasswordSecretID string
-	CreatedAt        time.Time
+type RegisterUserWithPassword struct {
+	UUID               string
+	Email              string
+	Password           string
+	PasswordSecretKey  string
+	PasswordSecretType int32
+	CreatedAt          time.Time
 }
 
-func (q *Queries) RegisterUser(ctx context.Context, user RegisterUser) error {
+func (q *Queries) RegisterUserWithPassword(ctx context.Context, user RegisterUserWithPassword) (int64, error) {
+	var userID int64
 	fn := func(ctx context.Context, q *Queries) error {
-		userID, err := q.CreateUser(ctx, CreateUserParams{
+		var err error
+		userID, err = q.CreateUser(ctx, CreateUserParams{
 			ExternalID: user.UUID,
 			CreatedAt:  user.CreatedAt,
 		})
@@ -33,18 +36,18 @@ func (q *Queries) RegisterUser(ctx context.Context, user RegisterUser) error {
 			return err
 		}
 		if err := q.CreateNewSecret(ctx, CreateNewSecret{
-			ExternalID: user.PasswordSecretID,
-			UserID:     userID,
-			Key:        "user_password",
-			Type:       int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
-			Value:      user.Password,
-			CreatedAt:  user.CreatedAt,
+			UserID:    userID,
+			Key:       user.PasswordSecretKey,
+			Type:      int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+			Value:     user.Password,
+			CreatedAt: user.CreatedAt,
 		}); err != nil {
 			return err
 		}
 		return nil
 	}
-	return q.WithMetrics(ctx, "registerUser", func(ctx context.Context, q *Queries) error {
+	err := q.WithMetrics(ctx, "registerUserWithPassword", func(ctx context.Context, q *Queries) error {
 		return q.ensureInTransact(ctx, sql.LevelDefault, fn)
 	})
+	return userID, err
 }

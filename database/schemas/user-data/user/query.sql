@@ -152,17 +152,18 @@ SELECT us.secret_id,
 	us.updated_at,
 	usv.secret_value,
 	usv.secret_salt
-FROM user_secrets us,
+FROM users u,
+	user_secrets us,
 	user_secret_versions usv
-WHERE us.user_id = $1
+WHERE u.user_id = $1 
+	AND u.user_id = us.user_id 
 	AND us.secret_key = $2
 	AND us.secret_type = $3
 	AND us.current_secret_version = usv.secret_version
 	AND us.secret_id = usv.secret_id;
 
--- name: GetUserSecresByExternalID :one
+-- name: GetUserSecretByExternalID :one
 SELECT us.secret_id,
-	us.external_id,
 	us.user_id,
 	us.secret_key,
 	us.secret_type,
@@ -173,9 +174,11 @@ SELECT us.secret_id,
 	us.updated_at,
 	usv.secret_value,
 	usv.secret_salt
-FROM user_secrets us,
+FROM users u,
+	user_secrets us,
 	user_secret_versions usv
-WHERE us.external_id = $1
+WHERE u.external_id = $1
+	AND u.user_id = us.user_id
 	AND us.current_secret_version = usv.secret_version
 	AND us.secret_id = usv.secret_id;
 

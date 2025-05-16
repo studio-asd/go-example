@@ -24,8 +24,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_pii_email ON user_pii("email");
 
 CREATE TABLE IF NOT EXISTS user_secrets (
     secret_id bigint generated always as identity primary key,
-    -- external_id is the id that used to identify a secret from the client side.
-    external_id varchar NOT NULL,
     user_id bigint NOT NULL,
     -- secret_key is a key identifier for the user so its easier for them to identify
     -- what the purpose of the secret is.
@@ -36,15 +34,12 @@ CREATE TABLE IF NOT EXISTS user_secrets (
     created_at timestamptz NOT NULL,
     updated_at timestamptz,
     -- The secret key is unique per user and type.
-    UNIQUE(user_id, secret_key, secret_type),
-    UNIQUE(external_id)
+    UNIQUE(user_id, secret_key, secret_type)
 );
 
 -- This index is used to ensure all secret_key is unique per user and secret type. Other than that the index is also useful to retrieve a specific
 -- secret by user_id, secret_key and secret_type, for example in the login scenario because we already know the secret_key and secret_type.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_ussecrets_uid_sk_st ON user_secrets("user_id", "secret_key", "secret_type");
--- This index is used to ensure all external id is unique and we can rertieve the secret by external id.
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_ussecrets_external_id ON user_secrets("external_id");
 -- This index is used to retrieve all secrets for a user under a specific secret type.
 CREATE INDEX IF NOT EXISTS idx_ussecrets_uid_st ON user_secrets("user_id", "secret_type");
 

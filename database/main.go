@@ -86,7 +86,7 @@ type TemplateDataDatabaseConn struct {
 	Password     string
 }
 
-// parseFlags parse the strinbrew updategs arguments from(for example) os.Args and returns the Flags struct.
+// parseFlags parse the string arguments from(for example) os.Args and returns the Flags struct.
 func parseFlags(args []string) (f Flags, err error) {
 	// Parse all the flags needed for code generation.
 	fset := flag.NewFlagSet("global_flags", flag.ExitOnError)

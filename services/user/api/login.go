@@ -31,14 +31,7 @@ func (a *API) loginPassword(ctx context.Context, req *userv1.LoginEmailPassword)
 		return nil, errors.New("secret salt is not valid")
 	}
 
-	secretSalt := value.SecretSalt.String
-	prefixSalt := secretSalt[0:len(secretSalt)]
-	suffixSalt := secretSalt[len(secretSalt):]
-	// The raw passwrod is generated through hashing the password with a salt and constructed in a specific way.
-	// raw_password := prefixSalt + value.SecretValue + suffixSalt
-	rawPassword := prefixSalt + req.Password + suffixSalt
-	// Re-generate the password from the user parameter.
-	genPassword, err := encryptUserPassword(rawPassword)
+	genPassword, err := encryptUserPassword(req.Password, value.SecretSalt.String)
 	if err != nil {
 		return nil, err
 	}

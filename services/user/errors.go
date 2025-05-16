@@ -7,7 +7,10 @@ var (
 	ErrUserNotFound        = errors.New("user: not found")
 	ErrUserSessionNotFound = errors.New("user: session not found")
 	// Password errors.
-	ErrPasswordInvalid = errors.New("user: invalid password")
+	ErrPasswordInvalid   = errors.New("user: invalid password")
+	ErrPasswordSaltEmpty = errors.New("user: password salt is empty")
+	ErrPasswordTooShort  = errors.New("user: password is too short, minimum password length is 8 characters")
+	ErrPasswordTooLong   = errors.New("user: password is too long, maximum password length is 36 characters")
 	// Session errors.
 	ErrSessionExpired          = errors.New("session: session expired")
 	ErrSessionUserIDEmpty      = errors.New("session: user ID is empty")

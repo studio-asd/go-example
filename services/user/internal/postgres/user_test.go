@@ -22,7 +22,7 @@ func TestRegisterUser(t *testing.T) {
 	createdAt := time.Now()
 	tests := []struct {
 		name                  string
-		register              RegisterUser
+		register              RegisterUserWithPassword
 		expectUserTable       User
 		expectUserPIITable    UserPii
 		expectUserSecretTable GetUserSecretByExternalIDRow
@@ -30,12 +30,13 @@ func TestRegisterUser(t *testing.T) {
 	}{
 		{
 			name: "a new user",
-			register: RegisterUser{
-				UUID:             "one",
-				Email:            "testing@email.com",
-				Password:         "a password",
-				PasswordSecretID: "one",
-				CreatedAt:        createdAt,
+			register: RegisterUserWithPassword{
+				UUID:               "one",
+				Email:              "testing@email.com",
+				Password:           "a password",
+				PasswordSecretKey:  "user_password",
+				PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+				CreatedAt:          createdAt,
 			},
 			expectUserTable: User{
 				UserID:     1,
@@ -62,35 +63,38 @@ func TestRegisterUser(t *testing.T) {
 		// This test should fail because we are using the same email as the first test.
 		{
 			name: "new user same email",
-			register: RegisterUser{
-				UUID:             "two",
-				Email:            "testing@email.com",
-				Password:         "a password",
-				PasswordSecretID: "two",
-				CreatedAt:        createdAt,
+			register: RegisterUserWithPassword{
+				UUID:               "two",
+				Email:              "testing@email.com",
+				Password:           "a password",
+				PasswordSecretKey:  "one",
+				PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+				CreatedAt:          createdAt,
 			},
 			err: postgres.ErrUniqueViolation,
 		},
 		// This test should fail because the external id is the same as the first test.
 		{
 			name: "new user same external id",
-			register: RegisterUser{
-				UUID:             "one",
-				Email:            "testing_2@email.com",
-				Password:         "a password",
-				PasswordSecretID: "two",
-				CreatedAt:        createdAt,
+			register: RegisterUserWithPassword{
+				UUID:               "one",
+				Email:              "testing_2@email.com",
+				Password:           "a password",
+				PasswordSecretKey:  "user_password",
+				PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+				CreatedAt:          createdAt,
 			},
 			err: postgres.ErrUniqueViolation,
 		},
 		{
 			name: "new user different everything",
-			register: RegisterUser{
-				UUID:             "three",
-				Email:            "testing_3@email.com",
-				Password:         "a password",
-				PasswordSecretID: "three",
-				CreatedAt:        createdAt,
+			register: RegisterUserWithPassword{
+				UUID:               "three",
+				Email:              "testing_3@email.com",
+				Password:           "a password",
+				PasswordSecretKey:  "user_password",
+				PasswordSecretType: int32(userv1.UserSecretType_USER_SECRET_TYPE_PASSWORD),
+				CreatedAt:          createdAt,
 			},
 			expectUserTable: User{
 				UserID:     4,
@@ -125,7 +129,7 @@ func TestRegisterUser(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := tq.RegisterUser(t.Context(), test.register)
+			_, err := tq.RegisterUserWithPassword(t.Context(), test.register)
 			if !errors.Is(err, test.err) {
 				t.Fatalf("expecting error %v but got %v", test.err, err)
 			}
@@ -146,7 +150,7 @@ func TestRegisterUser(t *testing.T) {
 			if diff := cmp.Diff(test.expectUserPIITable, userPII); diff != "" {
 				t.Fatalf("user_pii_table (-want/+got)\n%s", diff)
 			}
-			userSecret, err := tq.GetUserSecretByExternalID(t.Context(), test.register.PasswordSecretID)
+			userSecret, err := tq.GetUserSecretByExternalID(t.Context(), test.register.UUID)
 			if err != nil {
 				t.Fatal(err)
 			}

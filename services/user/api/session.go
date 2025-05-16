@@ -111,7 +111,7 @@ func encodeSessionToken(info sessionTokenInfo) (string, error) {
 	if err := info.valid(); err != nil {
 		return "", err
 	}
-	sessionToken := base64.RawStdEncoding.EncodeToString([]byte(info.toSessionString()))
+	sessionToken := base64.StdEncoding.EncodeToString([]byte(info.toSessionString()))
 	return sessionToken, nil
 }
 

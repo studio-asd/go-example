@@ -7,20 +7,18 @@ import (
 )
 
 type CreateNewSecret struct {
-	ExternalID string
-	UserID     int64
-	Key        string
-	Value      string
-	Salt       string
-	Type       int32
-	CreatedAt  time.Time
+	UserID    int64
+	Key       string
+	Value     string
+	Salt      string
+	Type      int32
+	CreatedAt time.Time
 }
 
 // CreateNewSecret creartes a new secret for the user with version of one(1).
 func (q *Queries) CreateNewSecret(ctx context.Context, new CreateNewSecret) error {
 	fn := func(ctx context.Context, q *Queries) error {
 		secretID, err := q.CreateUserSecret(ctx, CreateUserSecretParams{
-			ExternalID: new.ExternalID,
 			UserID:     new.UserID,
 			SecretKey:  new.Key,
 			SecretType: new.Type,

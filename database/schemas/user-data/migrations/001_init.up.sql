@@ -1,14 +1,14 @@
 CREATE TABLE IF NOT EXISTS users (
     user_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    -- external_id is used as unique identifier for the user in external API.
-    -- We use uuid_v4 to generate the external_id.
-    external_id varchar NOT NULL,
+    -- user_uuid is used as unique identifier for the user in external API.
+    -- We use uuid_v4.
+    user_uuid uuid NOT NULL,
     security_roles varchar[] NOT NULL,
     created_at timestamptz NOT NULL,
     updated_at timestamptz
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_external_id ON users("external_id");
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_uuid ON users("user_uuid");
 
 CREATE TABLE user_pii (
     user_id bigint PRIMARY KEY,
@@ -24,6 +24,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unq_us_pii_email ON user_pii("email");
 
 CREATE TABLE IF NOT EXISTS user_secrets (
     secret_id bigint generated always as identity primary key,
+    secret_uuid uuid NOT NULL,
     user_id bigint NOT NULL,
     -- secret_key is a key identifier for the user so its easier for them to identify
     -- what the purpose of the secret is.
@@ -90,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_us_session_user_id ON user_sessions("user_id") WH
 
 CREATE TABLE IF NOT EXISTS security_roles (
     role_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    role_external_id varchar NOT NULL,
+    role_uuid uuid NOT NULL,
     role_name varchar NOT NULL,
     created_at timestamptz NOT NULL,
     updated_at timestamptz
@@ -98,21 +99,23 @@ CREATE TABLE IF NOT EXISTS security_roles (
 
 -- security_role_permissions maps role to permissions as one role can have more than one permission.
 CREATE TABLE IF NOT EXISTS security_role_permissions (
-    role_id bigint PRIMARY KEY,
+    role_id bigint NOT NULL,
     permission_id bigint NOT NULL,
     created_at timestamptz NOT NULL,
     -- prevent the role for having the same permissions.
-    UNIQUE (role_id, permission_id)
+    PRIMARY KEY(role_id, permission_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_sec_role_perm_role_id ON security_role_permissions("role_id");
 
 CREATE TABLE IF NOT EXISTS security_permissions (
     permission_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    permission_external_id varchar NOT NULL,
+    permission_uuid uuid NOT NULL,
     permission_name varchar NOT NULL,
     -- permission_type is the granular type of permission. For example, 'api_endpoint', 'file_access'.
     -- We don't want to use enum for the permission_type because we might want to add much more permission
     -- type in the future and adding more of them will changes to the enum.
-    permission_type int NOT NULL,
+    permission_type varchar NOT NULL,
     permission_key varchar NOT NULL,
     permission_value varchar NOT NULL,
     created_at timestamptz NOT NULL,

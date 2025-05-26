@@ -1,13 +1,13 @@
 -- name: CreateUser :one
 INSERT INTO users (
-	external_id,
+	user_uuid,
 	created_at,
 	updated_at
 ) VALUES($1,$2,$3) RETURNING user_id;
 --
 -- name: GetUser :one
 SELECT usr.user_id,
-	usr.external_id,
+	usr.user_uuid,
 	usr.created_at,
 	usr.updated_at,
 	upi.email
@@ -16,20 +16,20 @@ FROM users usr,
 WHERE usr.user_id = $1
     AND usr.user_id = upi.user_id;
 
--- name: GetUserByExternalID :one
+-- name: GetUserByUUID :one
 SELECT usr.user_id,
-	usr.external_id,
+	usr.user_uuid,
 	usr.created_at,
 	usr.updated_at,
 	upi.email
 FROM users usr,
     user_pii upi
-WHERE usr.external_id = $1
+WHERE usr.user_uuid = $1
     AND usr.user_id = upi.user_id;
 
 -- name: GetUserByEmail :one
 SELECT usr.user_id,
-usr.external_id,
+usr.user_uuid,
 usr.created_at,
 usr.updated_at,
 upi.email
@@ -95,7 +95,7 @@ WHERE us.session_id = $1;
 
 -- name: CreateUserSecret :one
 INSERT INTO user_secrets(
-	external_id,
+	secret_uuid,
     user_id,
     secret_key,
     secret_type,
@@ -114,7 +114,7 @@ INSERT INTO user_secret_versions(
 
 -- name: GetUserSecret :one
 SELECT secret_id,
-	external_id,
+	secret_uuid,
 	user_id,
 	secret_key,
 	secret_type,
@@ -128,7 +128,7 @@ WHERE user_id = $1
 
 -- name: GetUserSecretByType :many
 SELECT secret_id,
-	external_id,
+	secret_uuid,
 	user_id,
 	secret_key,
 	secret_type,
@@ -141,7 +141,7 @@ WHERE user_id = $1
 
 -- name: GetUserSecretValue :one
 SELECT us.secret_id,
-	us.external_id,
+	us.secret_uuid,
 	us.user_id,
 	us.secret_key,
 	us.secret_type,
@@ -162,8 +162,9 @@ WHERE u.user_id = $1
 	AND us.current_secret_version = usv.secret_version
 	AND us.secret_id = usv.secret_id;
 
--- name: GetUserSecretByExternalID :one
+-- name: GetUserSecretByUUID :one
 SELECT us.secret_id,
+	us.secret_uuid,
 	us.user_id,
 	us.secret_key,
 	us.secret_type,
@@ -177,14 +178,14 @@ SELECT us.secret_id,
 FROM users u,
 	user_secrets us,
 	user_secret_versions usv
-WHERE u.external_id = $1
+WHERE u.user_uuid = $1
 	AND u.user_id = us.user_id
 	AND us.current_secret_version = usv.secret_version
 	AND us.secret_id = usv.secret_id;
 
 -- name: GetUserSecretsByEmail :one
 SELECT us.secret_id,
-	us.external_id,
+	us.secret_uuid,
 	us.user_id,
 	us.secret_key,
 	us.secret_type,

@@ -16,20 +16,20 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-	external_id,
+	user_uuid,
 	created_at,
 	updated_at
 ) VALUES($1,$2,$3) RETURNING user_id
 `
 
 type CreateUserParams struct {
-	ExternalID string
-	CreatedAt  time.Time
-	UpdatedAt  sql.NullTime
+	UserUuid  uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.ExternalID, arg.CreatedAt, arg.UpdatedAt)
+	row := q.db.QueryRow(ctx, createUser, arg.UserUuid, arg.CreatedAt, arg.UpdatedAt)
 	var user_id int64
 	err := row.Scan(&user_id)
 	return user_id, err
@@ -72,7 +72,7 @@ func (q *Queries) CreateUserPII(ctx context.Context, arg CreateUserPIIParams) er
 
 const createUserSecret = `-- name: CreateUserSecret :one
 INSERT INTO user_secrets(
-	external_id,
+	secret_uuid,
     user_id,
     secret_key,
     secret_type,
@@ -82,7 +82,7 @@ INSERT INTO user_secrets(
 `
 
 type CreateUserSecretParams struct {
-	ExternalID           string
+	SecretUuid           uuid.UUID
 	UserID               int64
 	SecretKey            string
 	SecretType           int32
@@ -92,7 +92,7 @@ type CreateUserSecretParams struct {
 
 func (q *Queries) CreateUserSecret(ctx context.Context, arg CreateUserSecretParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createUserSecret,
-		arg.ExternalID,
+		arg.SecretUuid,
 		arg.UserID,
 		arg.SecretKey,
 		arg.SecretType,
@@ -179,7 +179,7 @@ func (q *Queries) CreateUserSession(ctx context.Context, arg CreateUserSessionPa
 
 const getUser = `-- name: GetUser :one
 SELECT usr.user_id,
-	usr.external_id,
+	usr.user_uuid,
 	usr.created_at,
 	usr.updated_at,
 	upi.email
@@ -190,11 +190,11 @@ WHERE usr.user_id = $1
 `
 
 type GetUserRow struct {
-	UserID     int64
-	ExternalID string
-	CreatedAt  time.Time
-	UpdatedAt  sql.NullTime
-	Email      string
+	UserID    int64
+	UserUuid  uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+	Email     string
 }
 
 func (q *Queries) GetUser(ctx context.Context, userID int64) (GetUserRow, error) {
@@ -202,7 +202,7 @@ func (q *Queries) GetUser(ctx context.Context, userID int64) (GetUserRow, error)
 	var i GetUserRow
 	err := row.Scan(
 		&i.UserID,
-		&i.ExternalID,
+		&i.UserUuid,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
@@ -212,7 +212,7 @@ func (q *Queries) GetUser(ctx context.Context, userID int64) (GetUserRow, error)
 
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT usr.user_id,
-usr.external_id,
+usr.user_uuid,
 usr.created_at,
 usr.updated_at,
 upi.email
@@ -223,11 +223,11 @@ WHERE upi.email = $1
 `
 
 type GetUserByEmailRow struct {
-	UserID     int64
-	ExternalID string
-	CreatedAt  time.Time
-	UpdatedAt  sql.NullTime
-	Email      string
+	UserID    int64
+	UserUuid  uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+	Email     string
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
@@ -235,7 +235,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.UserID,
-		&i.ExternalID,
+		&i.UserUuid,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
@@ -243,32 +243,32 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEm
 	return i, err
 }
 
-const getUserByExternalID = `-- name: GetUserByExternalID :one
+const getUserByUUID = `-- name: GetUserByUUID :one
 SELECT usr.user_id,
-	usr.external_id,
+	usr.user_uuid,
 	usr.created_at,
 	usr.updated_at,
 	upi.email
 FROM users usr,
     user_pii upi
-WHERE usr.external_id = $1
+WHERE usr.user_uuid = $1
     AND usr.user_id = upi.user_id
 `
 
-type GetUserByExternalIDRow struct {
-	UserID     int64
-	ExternalID string
-	CreatedAt  time.Time
-	UpdatedAt  sql.NullTime
-	Email      string
+type GetUserByUUIDRow struct {
+	UserID    int64
+	UserUuid  uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
+	Email     string
 }
 
-func (q *Queries) GetUserByExternalID(ctx context.Context, externalID string) (GetUserByExternalIDRow, error) {
-	row := q.db.QueryRow(ctx, getUserByExternalID, externalID)
-	var i GetUserByExternalIDRow
+func (q *Queries) GetUserByUUID(ctx context.Context, userUuid uuid.UUID) (GetUserByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByUUID, userUuid)
+	var i GetUserByUUIDRow
 	err := row.Scan(
 		&i.UserID,
-		&i.ExternalID,
+		&i.UserUuid,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
@@ -305,7 +305,7 @@ func (q *Queries) GetUserPII(ctx context.Context, userID int64) (UserPii, error)
 
 const getUserSecret = `-- name: GetUserSecret :one
 SELECT secret_id,
-	external_id,
+	secret_uuid,
 	user_id,
 	secret_key,
 	secret_type,
@@ -329,71 +329,20 @@ func (q *Queries) GetUserSecret(ctx context.Context, arg GetUserSecretParams) (U
 	var i UserSecret
 	err := row.Scan(
 		&i.SecretID,
-		&i.ExternalID,
+		&i.SecretUuid,
 		&i.UserID,
 		&i.SecretKey,
 		&i.SecretType,
 		&i.CurrentSecretVersion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getUserSecretByExternalID = `-- name: GetUserSecretByExternalID :one
-SELECT us.secret_id,
-	us.external_id,
-	us.user_id,
-	us.secret_key,
-	us.secret_type,
-	us.current_secret_version,
-	us.created_at,
-	-- The updated_at is the same with the new version created_at so we don't
-	-- have to retrieve more information from usv.
-	us.updated_at,
-	usv.secret_value,
-	usv.secret_salt
-FROM user_secrets us,
-	user_secret_versions usv
-WHERE us.external_id = $1
-	AND us.current_secret_version = usv.secret_version
-	AND us.secret_id = usv.secret_id
-`
-
-type GetUserSecretByExternalIDRow struct {
-	SecretID             int64
-	ExternalID           string
-	UserID               int64
-	SecretKey            string
-	SecretType           int32
-	CurrentSecretVersion int64
-	CreatedAt            time.Time
-	UpdatedAt            sql.NullTime
-	SecretValue          string
-	SecretSalt           sql.NullString
-}
-
-func (q *Queries) GetUserSecretByExternalID(ctx context.Context, externalID string) (GetUserSecretByExternalIDRow, error) {
-	row := q.db.QueryRow(ctx, getUserSecretByExternalID, externalID)
-	var i GetUserSecretByExternalIDRow
-	err := row.Scan(
-		&i.SecretID,
-		&i.ExternalID,
-		&i.UserID,
-		&i.SecretKey,
-		&i.SecretType,
-		&i.CurrentSecretVersion,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.SecretValue,
-		&i.SecretSalt,
 	)
 	return i, err
 }
 
 const getUserSecretByType = `-- name: GetUserSecretByType :many
 SELECT secret_id,
-	external_id,
+	secret_uuid,
 	user_id,
 	secret_key,
 	secret_type,
@@ -421,7 +370,7 @@ func (q *Queries) GetUserSecretByType(ctx context.Context, arg GetUserSecretByTy
 		var i UserSecret
 		if err := rows.Scan(
 			&i.SecretID,
-			&i.ExternalID,
+			&i.SecretUuid,
 			&i.UserID,
 			&i.SecretKey,
 			&i.SecretType,
@@ -439,9 +388,9 @@ func (q *Queries) GetUserSecretByType(ctx context.Context, arg GetUserSecretByTy
 	return items, nil
 }
 
-const getUserSecretValue = `-- name: GetUserSecretValue :one
+const getUserSecretByUUID = `-- name: GetUserSecretByUUID :one
 SELECT us.secret_id,
-	us.external_id,
+	us.secret_uuid,
 	us.user_id,
 	us.secret_key,
 	us.secret_type,
@@ -452,9 +401,64 @@ SELECT us.secret_id,
 	us.updated_at,
 	usv.secret_value,
 	usv.secret_salt
-FROM user_secrets us,
+FROM users u,
+	user_secrets us,
 	user_secret_versions usv
-WHERE us.user_id = $1
+WHERE u.user_uuid = $1
+	AND u.user_id = us.user_id
+	AND us.current_secret_version = usv.secret_version
+	AND us.secret_id = usv.secret_id
+`
+
+type GetUserSecretByUUIDRow struct {
+	SecretID             int64
+	SecretUuid           uuid.UUID
+	UserID               int64
+	SecretKey            string
+	SecretType           int32
+	CurrentSecretVersion int64
+	CreatedAt            time.Time
+	UpdatedAt            sql.NullTime
+	SecretValue          string
+	SecretSalt           sql.NullString
+}
+
+func (q *Queries) GetUserSecretByUUID(ctx context.Context, userUuid uuid.UUID) (GetUserSecretByUUIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserSecretByUUID, userUuid)
+	var i GetUserSecretByUUIDRow
+	err := row.Scan(
+		&i.SecretID,
+		&i.SecretUuid,
+		&i.UserID,
+		&i.SecretKey,
+		&i.SecretType,
+		&i.CurrentSecretVersion,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SecretValue,
+		&i.SecretSalt,
+	)
+	return i, err
+}
+
+const getUserSecretValue = `-- name: GetUserSecretValue :one
+SELECT us.secret_id,
+	us.secret_uuid,
+	us.user_id,
+	us.secret_key,
+	us.secret_type,
+	us.current_secret_version,
+	us.created_at,
+	-- The updated_at is the same with the new version created_at so we don't
+	-- have to retrieve more information from usv.
+	us.updated_at,
+	usv.secret_value,
+	usv.secret_salt
+FROM users u,
+	user_secrets us,
+	user_secret_versions usv
+WHERE u.user_id = $1 
+	AND u.user_id = us.user_id 
 	AND us.secret_key = $2
 	AND us.secret_type = $3
 	AND us.current_secret_version = usv.secret_version
@@ -469,7 +473,7 @@ type GetUserSecretValueParams struct {
 
 type GetUserSecretValueRow struct {
 	SecretID             int64
-	ExternalID           string
+	SecretUuid           uuid.UUID
 	UserID               int64
 	SecretKey            string
 	SecretType           int32
@@ -485,7 +489,7 @@ func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValue
 	var i GetUserSecretValueRow
 	err := row.Scan(
 		&i.SecretID,
-		&i.ExternalID,
+		&i.SecretUuid,
 		&i.UserID,
 		&i.SecretKey,
 		&i.SecretType,
@@ -500,7 +504,7 @@ func (q *Queries) GetUserSecretValue(ctx context.Context, arg GetUserSecretValue
 
 const getUserSecretsByEmail = `-- name: GetUserSecretsByEmail :one
 SELECT us.secret_id,
-	us.external_id,
+	us.secret_uuid,
 	us.user_id,
 	us.secret_key,
 	us.secret_type,
@@ -522,7 +526,7 @@ WHERE upi.email = $1
 
 type GetUserSecretsByEmailRow struct {
 	SecretID             int64
-	ExternalID           string
+	SecretUuid           uuid.UUID
 	UserID               int64
 	SecretKey            string
 	SecretType           int32
@@ -538,7 +542,7 @@ func (q *Queries) GetUserSecretsByEmail(ctx context.Context, email string) (GetU
 	var i GetUserSecretsByEmailRow
 	err := row.Scan(
 		&i.SecretID,
-		&i.ExternalID,
+		&i.SecretUuid,
 		&i.UserID,
 		&i.SecretKey,
 		&i.SecretType,

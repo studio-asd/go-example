@@ -9,24 +9,26 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const createSecurityRole = `-- name: CreateSecurityRole :one
 INSERT INTO security_roles(
-    role_external_id,
+    role_uuid,
     role_name,
     created_at
 ) VALUES ($1,$2,$3) RETURNING role_id
 `
 
 type CreateSecurityRoleParams struct {
-	RoleExternalID string
-	RoleName       string
-	CreatedAt      time.Time
+	RoleUuid  uuid.UUID
+	RoleName  string
+	CreatedAt time.Time
 }
 
 func (q *Queries) CreateSecurityRole(ctx context.Context, arg CreateSecurityRoleParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createSecurityRole, arg.RoleExternalID, arg.RoleName, arg.CreatedAt)
+	row := q.db.QueryRow(ctx, createSecurityRole, arg.RoleUuid, arg.RoleName, arg.CreatedAt)
 	var role_id int64
 	err := row.Scan(&role_id)
 	return role_id, err
@@ -53,7 +55,7 @@ func (q *Queries) CreateSecurityRolePermission(ctx context.Context, arg CreateSe
 
 const getPermissions = `-- name: GetPermissions :many
 SELECT permission_id,
-    permission_external_id,
+    permission_uuid,
     permission_name,
     permission_type,
     permission_value,
@@ -64,13 +66,13 @@ WHERE permission_id = ANY($1::bigint[])
 `
 
 type GetPermissionsRow struct {
-	PermissionID         int64
-	PermissionExternalID string
-	PermissionName       string
-	PermissionType       int32
-	PermissionValue      string
-	CreatedAt            time.Time
-	UpdatedAt            sql.NullTime
+	PermissionID    int64
+	PermissionUuid  uuid.UUID
+	PermissionName  string
+	PermissionType  string
+	PermissionValue string
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
 }
 
 func (q *Queries) GetPermissions(ctx context.Context, dollar_1 []int64) ([]GetPermissionsRow, error) {
@@ -84,7 +86,7 @@ func (q *Queries) GetPermissions(ctx context.Context, dollar_1 []int64) ([]GetPe
 		var i GetPermissionsRow
 		if err := rows.Scan(
 			&i.PermissionID,
-			&i.PermissionExternalID,
+			&i.PermissionUuid,
 			&i.PermissionName,
 			&i.PermissionType,
 			&i.PermissionValue,
@@ -101,40 +103,40 @@ func (q *Queries) GetPermissions(ctx context.Context, dollar_1 []int64) ([]GetPe
 	return items, nil
 }
 
-const getPermissionsByExternalIDs = `-- name: GetPermissionsByExternalIDs :many
+const getPermissionsByUUID = `-- name: GetPermissionsByUUID :many
 SELECT permission_id,
-    permission_external_id,
+    permission_uuid,
     permission_name,
     permission_type,
     permission_value,
     created_at,
     updated_at
 FROM security_permissions
-WHERE permission_external_id = ANY($1::varchar[])
+WHERE permission_uuid = ANY($1::uuid[])
 `
 
-type GetPermissionsByExternalIDsRow struct {
-	PermissionID         int64
-	PermissionExternalID string
-	PermissionName       string
-	PermissionType       int32
-	PermissionValue      string
-	CreatedAt            time.Time
-	UpdatedAt            sql.NullTime
+type GetPermissionsByUUIDRow struct {
+	PermissionID    int64
+	PermissionUuid  uuid.UUID
+	PermissionName  string
+	PermissionType  string
+	PermissionValue string
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
 }
 
-func (q *Queries) GetPermissionsByExternalIDs(ctx context.Context, dollar_1 []string) ([]GetPermissionsByExternalIDsRow, error) {
-	rows, err := q.db.Query(ctx, getPermissionsByExternalIDs, dollar_1)
+func (q *Queries) GetPermissionsByUUID(ctx context.Context, dollar_1 []uuid.UUID) ([]GetPermissionsByUUIDRow, error) {
+	rows, err := q.db.Query(ctx, getPermissionsByUUID, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPermissionsByExternalIDsRow
+	var items []GetPermissionsByUUIDRow
 	for rows.Next() {
-		var i GetPermissionsByExternalIDsRow
+		var i GetPermissionsByUUIDRow
 		if err := rows.Scan(
 			&i.PermissionID,
-			&i.PermissionExternalID,
+			&i.PermissionUuid,
 			&i.PermissionName,
 			&i.PermissionType,
 			&i.PermissionValue,
@@ -155,7 +157,7 @@ const getSecurityRolePermissions = `-- name: GetSecurityRolePermissions :many
 SELECT srp.role_id,
     sr.role_name,
     sp.permission_id,
-    sp.permission_external_id,
+    sp.permission_uuid,
     sp.permission_name,
     sp.permission_type,
     sp.permission_key,
@@ -166,17 +168,18 @@ FROM security_roles sr,
 WHERE sr.role_id = $1
     AND sr.role_id = srp.role_id
     AND srp.permission_id = sp.permission_id
+ORDER by srp.role_id, srp.permission_id
 `
 
 type GetSecurityRolePermissionsRow struct {
-	RoleID               int64
-	RoleName             string
-	PermissionID         int64
-	PermissionExternalID string
-	PermissionName       string
-	PermissionType       int32
-	PermissionKey        string
-	PermissionValue      string
+	RoleID          int64
+	RoleName        string
+	PermissionID    int64
+	PermissionUuid  uuid.UUID
+	PermissionName  string
+	PermissionType  string
+	PermissionKey   string
+	PermissionValue string
 }
 
 func (q *Queries) GetSecurityRolePermissions(ctx context.Context, roleID int64) ([]GetSecurityRolePermissionsRow, error) {
@@ -192,7 +195,7 @@ func (q *Queries) GetSecurityRolePermissions(ctx context.Context, roleID int64) 
 			&i.RoleID,
 			&i.RoleName,
 			&i.PermissionID,
-			&i.PermissionExternalID,
+			&i.PermissionUuid,
 			&i.PermissionName,
 			&i.PermissionType,
 			&i.PermissionKey,

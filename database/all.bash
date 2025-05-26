@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ex
+set -e
 
 origin_dir=$PWD
 repository_root=$(git rev-parse --show-toplevel)
@@ -50,7 +50,6 @@ sqlc_exec() {
 	    db_name=$(echo $db_schema_dir | sed -e 's/-/_/')
 
 		db_found=$(PGPASSWORD=postgres ${pgexec} -XtAc "SELECT 1 FROM pg_database WHERE datname='${db_name}'")
-		echo "after found"
         if  [[ "${db_found}" != "" ]]; then
             echo "database ${db_name} already exists"
 			cd $1

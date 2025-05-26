@@ -20,8 +20,9 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/studio-asd/go-example/internal/git"
 	"github.com/studio-asd/pkg/postgres"
+
+	"github.com/studio-asd/go-example/internal/git"
 )
 
 //go:embed go_template/*

@@ -13,22 +13,22 @@ import (
 )
 
 type SecurityPermission struct {
-	PermissionID         int64
-	PermissionExternalID string
-	PermissionName       string
-	PermissionType       int32
-	PermissionKey        string
-	PermissionValue      string
-	CreatedAt            time.Time
-	UpdatedAt            sql.NullTime
+	PermissionID    int64
+	PermissionUuid  uuid.UUID
+	PermissionName  string
+	PermissionType  string
+	PermissionKey   string
+	PermissionValue string
+	CreatedAt       time.Time
+	UpdatedAt       sql.NullTime
 }
 
 type SecurityRole struct {
-	RoleID         int64
-	RoleExternalID string
-	RoleName       string
-	CreatedAt      time.Time
-	UpdatedAt      sql.NullTime
+	RoleID    int64
+	RoleUuid  uuid.UUID
+	RoleName  string
+	CreatedAt time.Time
+	UpdatedAt sql.NullTime
 }
 
 type SecurityRolePermission struct {
@@ -39,7 +39,7 @@ type SecurityRolePermission struct {
 
 type User struct {
 	UserID        int64
-	ExternalID    string
+	UserUuid      uuid.UUID
 	SecurityRoles []string
 	CreatedAt     time.Time
 	UpdatedAt     sql.NullTime
@@ -57,7 +57,7 @@ type UserPii struct {
 
 type UserSecret struct {
 	SecretID             int64
-	ExternalID           string
+	SecretUuid           uuid.UUID
 	UserID               int64
 	SecretKey            string
 	SecretType           int32

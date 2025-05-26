@@ -2,13 +2,17 @@ package api
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/studio-asd/pkg/postgres"
 	"github.com/studio-asd/pkg/srun"
-	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/studio-asd/go-example/internal/protovalidate"
 	userv1 "github.com/studio-asd/go-example/proto/api/user/v1"
@@ -60,7 +64,17 @@ func (a *API) GRPC() *GRPC {
 	return newGRPC(a)
 }
 
-func (a *API) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
+func (a *API) Register(ctx context.Context, req *userv1.RegisterUserRequest) (*userv1.RegisterUserResponse, error) {
+	// Check whether we already have a given user by the same email.
+	_, err := a.queries.GetUserByEmail(ctx, req.Email)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+	// The user is already exists, we cannot register the same user twice.
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("user already exists")
+	}
+
 	password, err := encryptUserPassword(req.Password, randSalt())
 	if err != nil {
 		return nil, err
@@ -85,7 +99,7 @@ func (a *API) RegisterUser(ctx context.Context, req *userv1.RegisterUserRequest)
 	}, nil
 }
 
-func (a *API) LoginRequest(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
+func (a *API) Login(ctx context.Context, req *userv1.LoginRequest) (*userv1.LoginResponse, error) {
 	if err := validator.Validate(req); err != nil {
 		return nil, err
 	}

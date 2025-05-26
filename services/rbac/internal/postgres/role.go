@@ -6,16 +6,18 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/studio-asd/pkg/postgres"
 
 	"github.com/studio-asd/go-example/services/rbac"
 )
 
 type CreateRole struct {
-	RoleExternalID string
-	RoleName       string
-	CreatedAt      time.Time
-	PermissionIDs  []int64
+	RoleUUID      uuid.UUID
+	RoleName      string
+	CreatedAt     time.Time
+	PermissionIDs []int64
 }
 
 func (q *Queries) CreateRole(ctx context.Context, role CreateRole) (int64, error) {
@@ -26,9 +28,9 @@ func (q *Queries) CreateRole(ctx context.Context, role CreateRole) (int64, error
 
 	errTransact := q.WithTransact(ctx, sql.LevelReadCommitted, func(ctx context.Context, q *Queries) error {
 		roleID, err = q.CreateSecurityRole(ctx, CreateSecurityRoleParams{
-			RoleExternalID: role.RoleExternalID,
-			RoleName:       role.RoleName,
-			CreatedAt:      role.CreatedAt,
+			RoleUuid:  role.RoleUUID,
+			RoleName:  role.RoleName,
+			CreatedAt: role.CreatedAt,
 		})
 		if err != nil {
 			return err
@@ -51,7 +53,7 @@ func (q *Queries) CreateRole(ctx context.Context, role CreateRole) (int64, error
 				"created_at",
 			},
 			params,
-			postgres.OnConflictDoNothing,
+			"",
 		)
 	})
 	if errTransact != nil {
@@ -61,21 +63,22 @@ func (q *Queries) CreateRole(ctx context.Context, role CreateRole) (int64, error
 }
 
 type RolePermissions struct {
-	RoleID         int64
-	RoleExternalID string
-	RoleName       string
-	Permissions    []Permission
-	CreatedAt      time.Time
+	RoleID      int64
+	RoleUUID    uuid.UUID
+	RoleName    string
+	Permissions []Permission
+	CreatedAt   time.Time
 }
 
 type Permission struct {
-	PermissionID         int64
-	PermissionExternalID string
-	PermissionName       string
-	PermissionKey        string
-	PermissionValue      string
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	PermissionID    int64
+	PermissionUUID  uuid.UUID
+	PermissionName  string
+	PermissionType  string
+	PermissionKey   string
+	PermissionValue string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 func (q *Queries) GetRolePermissions(ctx context.Context, roleID int64) (RolePermissions, error) {
@@ -97,11 +100,12 @@ func (q *Queries) GetRolePermissions(ctx context.Context, roleID int64) (RolePer
 	result.RoleName = rolePerms[0].RoleName
 	for idx, perm := range rolePerms {
 		result.Permissions[idx] = Permission{
-			PermissionID:         perm.PermissionID,
-			PermissionExternalID: perm.PermissionExternalID,
-			PermissionName:       perm.PermissionName,
-			PermissionKey:        perm.PermissionKey,
-			PermissionValue:      perm.PermissionValue,
+			PermissionID:    perm.PermissionID,
+			PermissionUUID:  perm.PermissionUuid,
+			PermissionName:  perm.PermissionName,
+			PermissionType:  perm.PermissionType,
+			PermissionKey:   perm.PermissionKey,
+			PermissionValue: perm.PermissionValue,
 		}
 	}
 	return result, nil

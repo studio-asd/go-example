@@ -15,10 +15,6 @@ type testQuery struct {
 	pg *postgres.Postgres
 }
 
-func newTestQuery(pg *postgres.Postgres) *testQuery {
-	return &testQuery{pg: pg}
-}
-
 func (t *testQuery) Postgres() *postgres.Postgres {
 	return t.pg
 }
@@ -32,9 +28,9 @@ func TestFork(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var loopNum = 10
-	var schemas = make(map[string]struct{})
-	for _ = range loopNum {
+	loopNum := 10
+	schemas := make(map[string]struct{})
+	for range loopNum {
 		newTh, err := th.ForkPostgresSchema(context.Background(), th.Postgres(), "public")
 		if err != nil {
 			t.Fatal(err)

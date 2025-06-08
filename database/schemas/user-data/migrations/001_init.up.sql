@@ -97,30 +97,29 @@ CREATE TABLE IF NOT EXISTS security_roles (
     updated_at timestamptz
 );
 
+CREATE TABLE IF NOT EXISTS security_permission_keys (
+    permission_key varchar(30) PRIMARY KEY,
+    permission_type varchar(20) NOT NULL,
+    permission_key_description TEXT,
+    created_at timestamptz,
+    updated_at timestamptz,
+    UNIQUE(permission_key, permission_type)
+);
+
+CREATE TYPE permission_value AS ENUM('READ','WRITE','DELETE');
+
 -- security_role_permissions maps role to permissions as one role can have more than one permission.
 CREATE TABLE IF NOT EXISTS security_role_permissions (
     role_id bigint NOT NULL,
-    permission_id bigint NOT NULL,
+    permission_key varchar references security_permission_keys(permission_key) NOT NULL,
+    permission_values permission_value[] NOT NULL,
+    -- permission_bits_value is the total value of permission of a single permission_key for a role.
+    permission_bits_value int NOT NULL,
+    row_version bigint NOT NULL,
     created_at timestamptz NOT NULL,
-    -- prevent the role for having the same permissions.
-    PRIMARY KEY(role_id, permission_id)
+    updated_at timestamptz NOT NULL,
+    -- prevent the role for having the same permission.
+    PRIMARY KEY(role_id, permission_Key)
 );
 
 CREATE INDEX IF NOT EXISTS idx_sec_role_perm_role_id ON security_role_permissions("role_id");
-
-CREATE TABLE IF NOT EXISTS security_permissions (
-    permission_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    permission_uuid uuid NOT NULL,
-    permission_name varchar NOT NULL,
-    -- permission_type is the granular type of permission. For example, 'api_endpoint', 'file_access'.
-    -- We don't want to use enum for the permission_type because we might want to add much more permission
-    -- type in the future and adding more of them will changes to the enum.
-    permission_type varchar NOT NULL,
-    permission_key varchar NOT NULL,
-    permission_value varchar NOT NULL,
-    created_at timestamptz NOT NULL,
-    updated_at timestamptz
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sec_perm_name  ON security_permissions("permission_name");
-CREATE UNIQUE INDEX IF NOT EXISTS idx_sec_perm_type_key  ON security_permissions("permission_type", "permission_key");

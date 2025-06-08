@@ -4,6 +4,12 @@ The main purpose of the user module is to identify a given user along with their
 
 ## Registration
 
+## Authentication
+
+In this example repository, we use `user_password` as a way to authenticate the user.
+
+## Session Management
+
 ## Security Model
 
 In this project, we are trying to implement a Role Based Acces Control(RBAC)/Access Control List(ACL) for our users. The RBAC is simply a group of `role` that has `permissions` inside it that can be assigned to a single or multiple `users`.
@@ -69,30 +75,53 @@ To accomodate RBAC model, we will create table structures that supports mapping 
 | created_at | timestamptz | No | No |
 | updated_at | timestamptz | Yes | No |
 
+**Security Permission Keys**
+| Column Name | Data Type | Nullable | Primary Key |
+|------------|-----------|----------|-------------|
+| permission_key | varchar(30) | No | Yes |
+| permission_type | varchar(20) | No | Yes |
+| permission_key_description | text | No | No |
+| created_at | timestamptz | No | No |
+| updated_at | timestamptz | Yes | No |
+
+**Permission Value(ENUM)**
+
+| Name | Description |
+|------|-------------|
+| Read | Permission To Read |
+| Write | Permission To Write |
+| Delete | Permission To Delete |
+
 **Security Role Permission**
 | Column Name | Data Type | Nullable | Primary Key |
 |------------|-----------|----------|-------------|
 | role_id | bigint | No | Yes |
-| permission_id | bigint | No | No |
+| permission_key | varchar | No | Yes |
+| permission_values | permission_value[] | No | No |
+| permission_bits_value | int | No | No |
 | created_at | timestamptz | No | No |
 | updated_at | timestamptz | Yes | No |
 
-**Security Permission**
-| Column Name | Data Type | Nullable | Primary Key |
-|------------|-----------|----------|-------------|
-| permission_id | bigint | No | Yes |
-| permission_uuid | uuid | No | No |
-| permission_name | varchar | No | No |
-| permission_type | varchar | No | No |
-| permission_key | varchar | No | No |
-| permission_values | perm_value(W/R/D/*) | No | No |
-| created_at | timestamptz | No | No |
-| updated_at | timestamptz | Yes | No |
+The goal of the data structure is to ensure each role can be assigned to a permission_key and define
+the permissions freely inside it.
 
-The security permission table supports two type of attributes(`type`, and `key`) that can be used to group and specify the permission, for example:
+```text
+    |-------|
+	| Users |
+	|-------|
+	    |
+        v
+    |-------|    |------|
+	| Roles | -> | Keys |
+	|-------|    |------|
+```
 
-| Permission ID | Permission Name | Permission Type | Permission Key | Permission value |
-|-|-|-|-|-|
-| 1 | API Ledger Write | API | ledger | W |
-| 2 | API Ledger Read | API | ledger | R |
-| 3 | API Ledger Delete | API | ledger | D |
+### Cache Data Structure
+
+As we mainly use Redis for our `cache` store, we need to define hows the permissions and roles are being stored inside of the cache store.
+
+### Authorization
+
+So, how does the RBAC model and the tables data structures plays their role in `authorization` process?
+
+To understand this, please make sure you are not skipping the [Authentication](#authentication) part and read them properly. In the `authentication` part, we know that we are storing sessions as a unique identifier for a user to stay authenticated to the system.

@@ -6,21 +6,63 @@ package postgres
 
 import (
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
 )
 
-type SecurityPermission struct {
-	PermissionID    int64
-	PermissionUuid  uuid.UUID
-	PermissionName  string
-	PermissionType  string
-	PermissionKey   string
-	PermissionValue string
-	CreatedAt       time.Time
-	UpdatedAt       sql.NullTime
+type PermissionValue string
+
+const (
+	PermissionValueREAD   PermissionValue = "READ"
+	PermissionValueWRITE  PermissionValue = "WRITE"
+	PermissionValueDELETE PermissionValue = "DELETE"
+)
+
+func (e *PermissionValue) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PermissionValue(s)
+	case string:
+		*e = PermissionValue(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PermissionValue: %T", src)
+	}
+	return nil
+}
+
+type NullPermissionValue struct {
+	PermissionValue PermissionValue
+	Valid           bool // Valid is true if PermissionValue is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPermissionValue) Scan(value interface{}) error {
+	if value == nil {
+		ns.PermissionValue, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PermissionValue.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPermissionValue) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PermissionValue), nil
+}
+
+type SecurityPermissionKey struct {
+	PermissionKey            string
+	PermissionType           string
+	PermissionKeyDescription sql.NullString
+	CreatedAt                sql.NullTime
+	UpdatedAt                sql.NullTime
 }
 
 type SecurityRole struct {
@@ -32,9 +74,13 @@ type SecurityRole struct {
 }
 
 type SecurityRolePermission struct {
-	RoleID       int64
-	PermissionID int64
-	CreatedAt    time.Time
+	RoleID              int64
+	PermissionKey       string
+	PermissionValues    []PermissionValue
+	PermissionBitsValue int32
+	RowVersion          int64
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 type User struct {

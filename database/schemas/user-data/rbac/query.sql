@@ -1,24 +1,19 @@
--- name: GetPermissions :many
-SELECT permission_id,
-    permission_uuid,
-    permission_name,
+-- name: CreateSecurityPermissionKey :exec
+INSERT INTO security_permission_keys(
+    permission_key,
     permission_type,
-    permission_value,
-    created_at,
-    updated_at
-FROM security_permissions
-WHERE permission_id = ANY($1::bigint[]);
+    permission_key_description,
+    created_at
+) VALUES($1,$2,$3,$4);
 
--- name: GetPermissionsByUUID :many
-SELECT permission_id,
-    permission_uuid,
-    permission_name,
+-- name: GetPermissionKeys :many
+SELECT permission_key,
     permission_type,
-    permission_value,
+    permission_key_description,
     created_at,
     updated_at
-FROM security_permissions
-WHERE permission_uuid = ANY($1::uuid[]);
+FROM security_permission_keys
+WHERE permission_key = ANY($1::varchar[]);
 
 -- name: CreateSecurityRole :one
 INSERT INTO security_roles(
@@ -30,23 +25,21 @@ INSERT INTO security_roles(
 -- name: CreateSecurityRolePermission :exec
 INSERT INTO security_role_permissions(
     role_id,
-    permission_id,
-    created_at
-) VALUES ($1,$2,$3);
+    permission_key,
+    permission_values,
+    permission_bits_value,
+    row_version,
+    created_at,
+    updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7);
 
 -- name: GetSecurityRolePermissions :many
-SELECT srp.role_id,
-    sr.role_name,
-    sp.permission_id,
-    sp.permission_uuid,
-    sp.permission_name,
-    sp.permission_type,
-    sp.permission_key,
-    sp.permission_value
-FROM security_roles sr,
-    security_permissions sp,
-    security_role_permissions srp
-WHERE sr.role_id = $1
-    AND sr.role_id = srp.role_id
-    AND srp.permission_id = sp.permission_id
-ORDER by srp.role_id, srp.permission_id;
+select role_id,
+    permission_key,
+    permission_values,
+    permission_bits_value,
+    row_version,
+    created_at,
+    updated_at
+FROM security_role_permissions
+WHERE role_id = $1;

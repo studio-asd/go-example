@@ -21,6 +21,9 @@ func newGRPC(api *API) *GRPC {
 	}
 }
 
+func (g *GRPC) RegisterGateway(ctx context.Context) {
+}
+
 func (g *GRPC) Transact(context.Context, *ledgerv1.TransactRequest) (*ledgerv1.TransactResponse, error) {
 	return nil, nil
 }

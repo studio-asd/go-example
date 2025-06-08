@@ -41,7 +41,6 @@ type API struct {
 }
 
 func New() {
-
 }
 
 func (a *API) Name() string {
@@ -62,12 +61,12 @@ func (a *API) CreatePermissions(ctx context.Context, req []*rbacv1.CreateSecurit
 			return nil, err
 		}
 		insertParams[idx] = rbacpg.SecurityPermission{
-			PermissionExternalID: uuid.NewString(),
-			PermissionName:       r.PermissionName,
-			PermissionType:       int32(r.PermissionType),
-			PermissionKey:        r.PermissionKey,
-			PermissionValue:      r.PermissionValue,
-			CreatedAt:            createdAt,
+			PermissionUuid:  uuid.New(),
+			PermissionName:  r.PermissionName,
+			PermissionType:  int32(r.PermissionType),
+			PermissionKey:   r.PermissionKey,
+			PermissionValue: r.PermissionValue,
+			CreatedAt:       createdAt,
 		}
 	}
 	_, err := a.queries.CreatePermissions(ctx, insertParams)
@@ -79,7 +78,7 @@ func (a *API) CreatePermissions(ctx context.Context, req []*rbacv1.CreateSecurit
 	createdAtPb := timestamppb.New(createdAt)
 	for idx, param := range insertParams {
 		responses[idx] = &rbacv1.CreateSecurityPermissionResponse{
-			PermissionId:   param.PermissionExternalID,
+			PermissionId:   string(param.PermissionUuid),
 			PermissionName: param.PermissionName,
 			PermissionType: req[idx].PermissionType,
 			CreatedAt:      createdAtPb,
@@ -93,7 +92,16 @@ func (a *API) CreateRole(ctx context.Context, req *rbacv1.CreateSecurityRoleRequ
 		return nil, err
 	}
 
-	permissions, err := a.queries.GetPermissionsByExternalIDs(ctx, req.PermissionIds)
+	uuids := make([]uuid.UUID, len(req.GetPermissionIds()))
+	for idx, id := range req.GetPermissionIds() {
+		uuid, err := uuid.FromBytes([]byte(id))
+		if err != nil {
+			return nil, err
+		}
+		uuids[idx] = uuid
+	}
+
+	permissions, err := a.queries.GetPermissionsByUUID(ctx, uuids)
 	if err != nil {
 		return nil, err
 	}

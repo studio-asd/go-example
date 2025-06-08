@@ -13,6 +13,32 @@ import (
 	"github.com/google/uuid"
 )
 
+const createSecurityPermissionKey = `-- name: CreateSecurityPermissionKey :exec
+INSERT INTO security_permission_keys(
+    permission_key,
+    permission_type,
+    permission_key_description,
+    created_at
+) VALUES($1,$2,$3,$4)
+`
+
+type CreateSecurityPermissionKeyParams struct {
+	PermissionKey            string
+	PermissionType           string
+	PermissionKeyDescription sql.NullString
+	CreatedAt                sql.NullTime
+}
+
+func (q *Queries) CreateSecurityPermissionKey(ctx context.Context, arg CreateSecurityPermissionKeyParams) error {
+	_, err := q.db.Exec(ctx, createSecurityPermissionKey,
+		arg.PermissionKey,
+		arg.PermissionType,
+		arg.PermissionKeyDescription,
+		arg.CreatedAt,
+	)
+	return err
+}
+
 const createSecurityRole = `-- name: CreateSecurityRole :one
 INSERT INTO security_roles(
     role_uuid,
@@ -37,109 +63,61 @@ func (q *Queries) CreateSecurityRole(ctx context.Context, arg CreateSecurityRole
 const createSecurityRolePermission = `-- name: CreateSecurityRolePermission :exec
 INSERT INTO security_role_permissions(
     role_id,
-    permission_id,
-    created_at
-) VALUES ($1,$2,$3)
+    permission_key,
+    permission_values,
+    permission_bits_value,
+    row_version,
+    created_at,
+    updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7)
 `
 
 type CreateSecurityRolePermissionParams struct {
-	RoleID       int64
-	PermissionID int64
-	CreatedAt    time.Time
+	RoleID              int64
+	PermissionKey       string
+	PermissionValues    []PermissionValue
+	PermissionBitsValue int32
+	RowVersion          int64
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
 }
 
 func (q *Queries) CreateSecurityRolePermission(ctx context.Context, arg CreateSecurityRolePermissionParams) error {
-	_, err := q.db.Exec(ctx, createSecurityRolePermission, arg.RoleID, arg.PermissionID, arg.CreatedAt)
+	_, err := q.db.Exec(ctx, createSecurityRolePermission,
+		arg.RoleID,
+		arg.PermissionKey,
+		arg.PermissionValues,
+		arg.PermissionBitsValue,
+		arg.RowVersion,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
 	return err
 }
 
-const getPermissions = `-- name: GetPermissions :many
-SELECT permission_id,
-    permission_uuid,
-    permission_name,
+const getPermissionKeys = `-- name: GetPermissionKeys :many
+SELECT permission_key,
     permission_type,
-    permission_value,
+    permission_key_description,
     created_at,
     updated_at
-FROM security_permissions
-WHERE permission_id = ANY($1::bigint[])
+FROM security_permission_keys
+WHERE permission_key = ANY($1::varchar[])
 `
 
-type GetPermissionsRow struct {
-	PermissionID    int64
-	PermissionUuid  uuid.UUID
-	PermissionName  string
-	PermissionType  string
-	PermissionValue string
-	CreatedAt       time.Time
-	UpdatedAt       sql.NullTime
-}
-
-func (q *Queries) GetPermissions(ctx context.Context, dollar_1 []int64) ([]GetPermissionsRow, error) {
-	rows, err := q.db.Query(ctx, getPermissions, dollar_1)
+func (q *Queries) GetPermissionKeys(ctx context.Context, dollar_1 []string) ([]SecurityPermissionKey, error) {
+	rows, err := q.db.Query(ctx, getPermissionKeys, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetPermissionsRow
+	var items []SecurityPermissionKey
 	for rows.Next() {
-		var i GetPermissionsRow
+		var i SecurityPermissionKey
 		if err := rows.Scan(
-			&i.PermissionID,
-			&i.PermissionUuid,
-			&i.PermissionName,
+			&i.PermissionKey,
 			&i.PermissionType,
-			&i.PermissionValue,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getPermissionsByUUID = `-- name: GetPermissionsByUUID :many
-SELECT permission_id,
-    permission_uuid,
-    permission_name,
-    permission_type,
-    permission_value,
-    created_at,
-    updated_at
-FROM security_permissions
-WHERE permission_uuid = ANY($1::uuid[])
-`
-
-type GetPermissionsByUUIDRow struct {
-	PermissionID    int64
-	PermissionUuid  uuid.UUID
-	PermissionName  string
-	PermissionType  string
-	PermissionValue string
-	CreatedAt       time.Time
-	UpdatedAt       sql.NullTime
-}
-
-func (q *Queries) GetPermissionsByUUID(ctx context.Context, dollar_1 []uuid.UUID) ([]GetPermissionsByUUIDRow, error) {
-	rows, err := q.db.Query(ctx, getPermissionsByUUID, dollar_1)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetPermissionsByUUIDRow
-	for rows.Next() {
-		var i GetPermissionsByUUIDRow
-		if err := rows.Scan(
-			&i.PermissionID,
-			&i.PermissionUuid,
-			&i.PermissionName,
-			&i.PermissionType,
-			&i.PermissionValue,
+			&i.PermissionKeyDescription,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -154,52 +132,34 @@ func (q *Queries) GetPermissionsByUUID(ctx context.Context, dollar_1 []uuid.UUID
 }
 
 const getSecurityRolePermissions = `-- name: GetSecurityRolePermissions :many
-SELECT srp.role_id,
-    sr.role_name,
-    sp.permission_id,
-    sp.permission_uuid,
-    sp.permission_name,
-    sp.permission_type,
-    sp.permission_key,
-    sp.permission_value
-FROM security_roles sr,
-    security_permissions sp,
-    security_role_permissions srp
-WHERE sr.role_id = $1
-    AND sr.role_id = srp.role_id
-    AND srp.permission_id = sp.permission_id
-ORDER by srp.role_id, srp.permission_id
+select role_id,
+    permission_key,
+    permission_values,
+    permission_bits_value,
+    row_version,
+    created_at,
+    updated_at
+FROM security_role_permissions
+WHERE role_id = $1
 `
 
-type GetSecurityRolePermissionsRow struct {
-	RoleID          int64
-	RoleName        string
-	PermissionID    int64
-	PermissionUuid  uuid.UUID
-	PermissionName  string
-	PermissionType  string
-	PermissionKey   string
-	PermissionValue string
-}
-
-func (q *Queries) GetSecurityRolePermissions(ctx context.Context, roleID int64) ([]GetSecurityRolePermissionsRow, error) {
+func (q *Queries) GetSecurityRolePermissions(ctx context.Context, roleID int64) ([]SecurityRolePermission, error) {
 	rows, err := q.db.Query(ctx, getSecurityRolePermissions, roleID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetSecurityRolePermissionsRow
+	var items []SecurityRolePermission
 	for rows.Next() {
-		var i GetSecurityRolePermissionsRow
+		var i SecurityRolePermission
 		if err := rows.Scan(
 			&i.RoleID,
-			&i.RoleName,
-			&i.PermissionID,
-			&i.PermissionUuid,
-			&i.PermissionName,
-			&i.PermissionType,
 			&i.PermissionKey,
-			&i.PermissionValue,
+			&i.PermissionValues,
+			&i.PermissionBitsValue,
+			&i.RowVersion,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

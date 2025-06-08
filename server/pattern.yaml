@@ -1,0 +1,21 @@
+api:
+  "ledger":
+    read:
+      - GET /v1/ledger
+      - GET /v1/ledger/balance
+    write:
+      - POST /v1/ledger
+    delete:
+      - DELETE /v1/ledger
+  "user":
+    read:
+      - GET /v1/user
+    write:
+      - POST /v1/user/register
+  "admin:rbac":
+    read:
+      - GET /v1/rbac/permissions
+      - GET /v1/rbac/roles
+    write:
+      - POST /v1/rbac/permission
+      - POST /v1/rbac/role

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"embed"
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -14,6 +15,12 @@ import (
 	ledgerapi "github.com/studio-asd/go-example/services/ledger/api"
 	userapi "github.com/studio-asd/go-example/services/user/api"
 )
+
+//go:embed pattern.yaml
+var pattern embed.FS
+
+func init() {
+}
 
 type Server struct {
 	ledger *ledgerapi.API

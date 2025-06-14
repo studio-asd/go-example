@@ -74,8 +74,8 @@ protoc:
 # 2. The api proto files can import the types proto files but not vice-versa.
 proto_dirs := \
 	testdata/protovalidate/v1 \
-	types/rbac/v1 \
-	types/user/v1 \
+	types/rbac \
+	types/user \
 	api/testdata/v1 \
 	api/ledger/v1 \
 	api/wallet/v1 \

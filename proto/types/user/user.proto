@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-package go_example.types.user.v1;
-option go_package = "github.com/studio-asd/go-example/proto/types/user/v1";
+package go_example.types.user;
+option go_package = "github.com/studio-asd/go-example/proto/types/user";
 
 enum UserSessionType {
   USER_SESSION_TYPE_UNSPECIFIED = 0;

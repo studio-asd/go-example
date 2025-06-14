@@ -1,15 +1,18 @@
 syntax = "proto3";
 
-package go_example.types.rbac.v1;
-option go_package = "github.com/studio-asd/go-example/proto/types/rbac/v1";
+package go_example.types.rbac;
+option go_package = "github.com/studio-asd/go-example/proto/types/rbac";
 
 import "google/protobuf/timestamp.proto";
 
-enum SecurityPermissionType {
+// SecurityPermissionValue enum defined the value of each permission in a binary number.
+// Basically we are doing shift left(<<) by two(2) for each value.
+enum SecurityPermissionValue {
     PERMISSION_TYPE_UNSPECIFIED = 0;
     PERMISSION_TYPE_READ = 1;
     PERMISSION_TYPE_WRITE = 2;
-    PERMISSION_TYPE_DELETE = 3;
+    PERMISSION_TYPE_DELETE = 4;
+    // Next number should be 8.
 }
 
 message SecurityRole {
@@ -23,7 +26,7 @@ message SecurityRole {
 message SecurityPermission {
     string id = 1;
     string name = 2;
-    repeated SecurityPermissionType permissions = 3;
+    repeated SecurityPermissionValue permissions = 3;
     string permission_key = 4;
     string permission_value = 5;
     google.protobuf.Timestamp created_at = 20;
